@@ -274,7 +274,7 @@ def main():
         # ⛔ KURULU KAYNAK LISTESI AYRICA YAZILIR.
         # Kurulu kumeyi satirlardan turetmek YANLIS: hic export/event tanimlamayan
         # bir kaynak sifir satir uretir ve "kurulu degil" gorunur. Bu tam olarak
-        # yasandi (muto-ai). Satir yoklugu, kaynak yoklugu DEGILDIR.
+        # yasandi. Satir yoklugu, kaynak yoklugu DEGILDIR.
         tum.append([ad, "resource", ad, "shared", os.path.relpath(k, a.resources).replace("\\", "/"),
                     "0", surum])
         r = tara(k)

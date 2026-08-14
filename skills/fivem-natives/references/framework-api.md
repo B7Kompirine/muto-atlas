@@ -22,7 +22,7 @@ hiçbiri hata fırlatmaz:
 ama senin `qb-core`'unda yoksa, "geçerli" demek yanıltır. `fxmanifest`'teki
 `version` alanı da her satıra yazılır.
 
-Ölçüm (musti'nin sunucusu, 2026-08): **173 kaynak, 12.713 satır** —
+Örnek ölçüm (bir QBCore sunucusu): **173 kaynak, 12.713 satır** —
 2.569 event tanımı · 1.002 export · 501 komut · 321 callback · 115 ox_lib modülü.
 
 ## Ekosistem — hangisi neyin yerine geçiyor
@@ -90,7 +90,7 @@ kaçırırsın**. Bu yüzden A bölümü güçlü sinyal, B/C/D uyarıdır.
 
 İlk sürümde "kurulu kaynak" kümesi üretilen satırlardan türetildi. Hiç export/event
 tanımlamayan bir kaynak sıfır satır üretir ve **"kurulu değil" görünür** — bu
-yaşandı (`muto-ai`). Çözüm: her taranan kaynak için ayrı bir `kind=resource`
+yaşandı. Çözüm: her taranan kaynak için ayrı bir `kind=resource`
 satırı yazılır. Kurulu küme oradan okunur.
 
 ## Sorgular
