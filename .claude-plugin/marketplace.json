@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "muto-atlas",
+  "description": "Ground truth data layers, asset database and Lua linter for FiveM/GTA V development in Claude Code.",
+  "owner": {
+    "name": "muto"
+  },
+  "plugins": [
+    {
+      "name": "muto-atlas",
+      "description": "Ground truth for FiveM/GTA V development. 24 offline data layers built from YOUR OWN GTA V install and FiveM server: 7191 natives with apiset resolution and a L",
+      "source": "./",
+      "category": "development"
+    }
+  ]
+}

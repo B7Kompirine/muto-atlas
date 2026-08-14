@@ -1,0 +1,31 @@
+# URETILMIS INDEKSLER — DAGITILMAZ.
+# Bunlar kullanicinin KENDI GTA V kurulumundan CodeWalker ile uretilir
+# (290 MB) ve oyun surumune baglidir. Alici `/asset-build` ile kurar.
+# Ayrica Rockstar'in verisi; paylasilmasi dogru degil.
+data/
+
+# ISTISNA — ELLE YAZILMIS tablolar. Bunlarin ureten betigi YOKTUR; Rockstar'in
+# toplu verisi degil, topluluk/Sollumz arastirmasindan derlenmis kucuk
+# eslesme tablolaridir (toplam ~20 KB). Repoda gitmeleri gerekir: yoksa
+# GTA V'i olmayan kullanicida `assetdb.py mat` calismaz ve o bilgi HICBIR
+# yerden uretilemez.
+!data/
+data/*
+!data/collision_materials.tsv
+!data/collision_flag_presets.tsv
+!data/light_presets.tsv
+
+# Gecici
+*.tmp
+*.log
+_raw/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Yedek / artik
+*.yedek
+*.bak
+*.orig

@@ -1,0 +1,8 @@
+name	typeFlags	includeFlags
+General (Default)	map_animal;map_cover;map_dynamic;map_vehicle;map_weapon	animal;animal_ragdoll;explosion;forklift_forks;glass;object;ped;plant;projectile;ragdoll;test_ai;test_camera;test_script;test_vehicle_wheel;test_weapon;vehicle_bvh;vehicle_not_bvh
+General 2	map_animal;map_cover;map_dynamic;map_vehicle	animal;animal_ragdoll;explosion;forklift_forks;glass;object;ped;plant;projectile;ragdoll;test_ai;test_camera;test_script;test_vehicle_wheel;test_weapon;vehicle_bvh;vehicle_not_bvh
+Water surface	map_river	test_ai;test_camera;test_script;test_vehicle_wheel;test_weapon
+Leaves - Bush	foliage	animal;animal_ragdoll;explosion;forklift_forks;glass;map_dynamic;object;ped;projectile;ragdoll;test_ai;test_camera;test_script;test_weapon;vehicle_bvh;vehicle_not_bvh
+Stair plane	map_stairs	ped;test_ai;test_camera;test_script;test_vehicle_wheel;test_weapon
+Stair mesh	map_animal;map_cover;map_dynamic;map_stairs;map_vehicle;map_weapon	animal;animal_ragdoll;explosion;forklift_forks;glass;object;ped;plant;projectile;ragdoll;test_ai;test_camera;test_script;test_vehicle_wheel;test_weapon;vehicle_bvh;vehicle_not_bvh
+Deep surface	map_deep_surface;map_weapon	projectile;test_camera;test_weapon
