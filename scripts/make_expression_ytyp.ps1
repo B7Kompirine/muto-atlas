@@ -17,6 +17,12 @@
 # "pack:/x.expr" yazarsan expression hic yuklenmez ama mesh animasyonu
 # calismaya devam eder, hatayi fark etmek cok zor olur.
 
+param(
+  # Cikti .ytyp yolu. GOMULU VARSAYILAN YOK: kisisel bir sunucu yolunu
+  # varsayilan yapmak baskasinin makinesinde sessizce yanlis yere yazar.
+  [Parameter(Mandatory=$true)][string] $OutPath
+)
+
 $ErrorActionPreference='Stop'
 $cw = "$env:USERPROFILE\Desktop\FiveM\CodeWalker30_dev46\CodeWalker.Core.dll"
 $script:cwDir = Split-Path $cw -Parent
@@ -71,7 +77,9 @@ $fmt = [CodeWalker.GameFiles.MetaFormat]::RSC
 $data = [CodeWalker.GameFiles.XmlMeta]::GetData($doc, $fmt, "")
 if (-not $data) { Write-Host "[X] GetData null dondu"; exit 1 }
 
-$out = "C:\Users\musti\Desktop\Server\txData\QBCore_14A87C.base\resources\[script]\muto-heist\stream\muto_vauldr.ytyp"
+# Cikti yolu ZORUNLU parametredir; gomulu bir sunucu yolu baskasinda anlamsizdir.
+if (-not $OutPath) { throw "OutPath gerekli: -OutPath <...\stream\<ad>.ytyp>" }
+$out = $OutPath
 [System.IO.File]::WriteAllBytes($out, $data)
 Write-Host ("[+] yazildi: {0} bayt" -f $data.Length)
 

@@ -26,7 +26,7 @@ pwsh    xml_to_ycd.ps1     -XmlPath <x.ycd.xml>
 python dogrula_clipset.py  <geri_okunan.ycd.xml>     # ATLAMA
 ```
 
-Betikler: `C:\Users\musti\Desktop\FiveM\retarget\`
+Betikler: kullanıcının kendi `retarget/` çalışma klasöründe (yolu `data/config.json` ya da kullanıcıdan sorularak alınır).
 
 ## Kod yazmadan bilinmesi gereken beş şey
 

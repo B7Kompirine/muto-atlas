@@ -144,7 +144,7 @@ Sollumz export (.ycd her zaman XML — format sisteminin dışında)
   → dogrula_clipset.py   # değişmez denetimi (BU ADIM ATLANMAZ)
 ```
 
-Hepsi `C:\Users\musti\Desktop\FiveM\retarget\` altında.
+Hepsi kullanıcının kendi `retarget/` çalışma klasörü altında (yol gömülü değildir; kullanıcıdan alınır).
 
 ### 1.3 Vanilla değişmezleri — `dogrula_clipset.py` bunları denetler
 

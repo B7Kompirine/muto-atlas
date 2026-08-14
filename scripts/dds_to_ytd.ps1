@@ -19,7 +19,9 @@ param(
     # Shader'in KULLANMADIGI dokuyu sozluge koyma. Ornek: cutout_fence_normal'da
     # SpecSampler yoktur, '*_s.dds' bosuna ~175 KB stream yuku olur.
     [string[]] $Haric = @(),
-    [string] $CodeWalker = 'C:\Users\musti\Desktop\FiveM\CodeWalker30_dev46\CodeWalker.Core.dll'
+    # Varsayilan yok: yol data/config.json'dan ya da -CodeWalker ile verilir.
+    # Kisisel bir yolu varsayilan yapmak baskasinin makinesinde sessizce basarisiz olur.
+    [string] $CodeWalker = $(if ($env:MUTO_ATLAS_CODEWALKER) { $env:MUTO_ATLAS_CODEWALKER } else { '' })
 )
 
 $ErrorActionPreference = 'Stop'
