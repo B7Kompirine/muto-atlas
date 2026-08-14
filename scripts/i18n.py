@@ -165,6 +165,84 @@ MESAJ = {
         "en": ("clips.tsv.gz is not installed -> DURATION and BONE count unavailable.\n"
                "     That data comes from .ycd files and requires a GTA V install:"),
     },
+
+    # --- kapi karari (verdict) — plugin'in vitrin ciktisi ---
+    "door_q": {"tr": "kapi sistemi calisir mi", "en": "will the door system work"},
+    "door_yes": {"tr": "EVET", "en": "YES"},
+    "door_no": {"tr": "HAYIR", "en": "NO"},
+    "v_flag": {"tr": "'Enable Door Physics' bayragi", "en": "'Enable Door Physics' flag"},
+    "v_yes": {"tr": "VAR", "en": "SET"},
+    "v_no": {"tr": "yok", "en": "not set"},
+    "v_unknown": {"tr": "bilinmeyen ({sa})", "en": "unknown ({sa})"},
+    "v_undef": {"tr": "Tanimsiz kapi tipi.", "en": "Undefined door type."},
+    "v_route_door": {
+        "tr": "YOL: AddDoorToSystem + DoorSystemSetDoorState calisir. Once bunu dene.",
+        "en": "ROUTE: AddDoorToSystem + DoorSystemSetDoorState works. Try this first.",
+    },
+    "v_warn_noflag": {
+        "tr": ("     UYARI: tip kapi ama door physics bayragi kurulu DEGIL ->\n"
+               "        kayit gecse bile kapi hareket etmeyebilir. ytyp'i kontrol et."),
+        "en": ("     WARNING: the type is a door but the door-physics flag is NOT set ->\n"
+               "        registration can succeed and the door still never move. Check the ytyp."),
+    },
+    "v_route_flagonly": {
+        "tr": ("YOL: specialAttribute kapi tipi DEGIL ama 'Enable Door Physics'\n"
+               "        bayragi kurulu. Vanilla'da bu kombinasyon 379 archetype'ta var;\n"
+               "        kapi sistemi bunlarda calisabilir -- once denemeye deger."),
+        "en": ("ROUTE: specialAttribute is NOT a door type, but 'Enable Door Physics'\n"
+               "        is set. Vanilla ships 379 archetypes with this combination; the door\n"
+               "        system can work on them -- worth trying first."),
+    },
+    "v_route_none": {
+        "tr": "YOL: Kapi sistemi ISE YARAMAZ (kayit olsa bile obje kimildamaz).",
+        "en": "ROUTE: The door system WILL NOT WORK (it registers, the object never moves).",
+    },
+    "v_pivot_edge": {
+        "tr": "     Ama pivot kenarda -> SetEntityHeading ile dondurmek DOGRU gorunur:",
+        "en": "     But the pivot sits on an edge -> SetEntityHeading LOOKS correct:",
+    },
+    "v_pivot_center": {
+        "tr": ("     Pivot merkezde gorunuyor -> heading ile dondurmek objeyi\n"
+               "        kendi ortasinda cevirir; kapi gibi durmaz. Offset gerekir."),
+        "en": ("     The pivot looks centred -> heading rotation spins the object around\n"
+               "        its own middle; it will not read as a door. Needs an offset."),
+    },
+    # ⛔ Cok satirli mesajlarda DEVAM satirlari +3 bosluk tasir: cagiran taraf
+    # print("   " + satir) yapiyor ve bu yalniz ILK satira uygulaniyor.
+    "v_only_fix": {
+        "tr": ("     Gercek kapi olmasi icin tek kalici cozum: ytyp override ile\n"
+               "        specialAttribute=7 vermek."),
+        "en": ("     The only permanent fix is a ytyp override that sets\n"
+               "        specialAttribute=7."),
+    },
+    "v_no_physics": {
+        "tr": "UYARI: physicsDictionary bos -> carpismasi yok, itilemez.",
+        "en": "WARNING: physicsDictionary is empty -> no collision, cannot be pushed.",
+    },
+    "v_fragment": {
+        "tr": "NOT: FRAGMENT -> kirilabilir/parcalanabilir yapisi var.",
+        "en": "NOTE: FRAGMENT -> it has a breakable / destructible structure.",
+    },
+    "v_pivot_low": {
+        "tr": "{ax}: orijin ALT kenarda (genislik {span:.2f}m) -> mentese burada",
+        "en": "{ax}: origin on the LOW edge (width {span:.2f}m) -> hinge is here",
+    },
+    "v_pivot_high": {
+        "tr": "{ax}: orijin UST kenarda (genislik {span:.2f}m) -> mentese burada",
+        "en": "{ax}: origin on the HIGH edge (width {span:.2f}m) -> hinge is here",
+    },
+
+    # specialAttribute aciklamalari — yalniz sik gorulen degerler cevrildi.
+    # Cevrilmeyenler Turkce kalir ve bu GORUNUR: eksik ceviri sessizce
+    # kaybolmaz, sonraki turda tamamlanir.
+    "sa_0": {"tr": "Duz obje. Oyunun KAPI SISTEMI bu objeyi tanimaz.",
+             "en": "Plain object. The game's DOOR SYSTEM does not recognise it."},
+    "sa_3": {"tr": "Trafik isigi / lamba rigi.", "en": "Traffic light / lamp rig."},
+    "sa_5": {"tr": "Garaj kapisi. Yukari kayarak acilir.",
+             "en": "Garage door. Slides upward to open."},
+    "sa_7": {"tr": "Normal menteseli kapi. Kapi sisteminin ana tipi.",
+             "en": "Normal hinged door. The door system's primary type."},
+    "sa_8": {"tr": "Surgulu kapi. Yana kayar.", "en": "Sliding door. Slides sideways."},
 }
 
 

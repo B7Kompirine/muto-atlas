@@ -243,9 +243,9 @@ def pivot_note(r):
             continue
         # orijin bir kenara span'in %10'undan yakinsa: mentese orada
         if abs(lo) < span * 0.10:
-            out.append(f"{ax}: orijin ALT kenarda (genislik {span:.2f}m) -> mentese burada")
+            out.append(t("v_pivot_low", ax=ax, span=span))
         elif abs(hi) < span * 0.10:
-            out.append(f"{ax}: orijin UST kenarda (genislik {span:.2f}m) -> mentese burada")
+            out.append(t("v_pivot_high", ax=ax, span=span))
     return out
 
 
@@ -256,7 +256,11 @@ def verdict(r):
     has_phys = bool(r["physicsDict"].strip())
     lines = []
 
-    label, desc = SPECIAL.get(sa, (f"bilinmeyen ({sa})", "Tanimsiz kapi tipi."))
+    label, desc = SPECIAL.get(sa, (t("v_unknown", sa=sa), t("v_undef")))
+    # specialAttribute aciklamasinin cevirisi varsa onu kullan; yoksa tablo.
+    ceviri = t(f"sa_{sa}")
+    if ceviri != f"sa_{sa}":
+        desc = ceviri
     lines.append(f"specialAttribute={sa} -> {label}. {desc}")
 
     try:
@@ -264,35 +268,28 @@ def verdict(r):
     except (TypeError, ValueError):
         arch_flags = 0
     door_phys = bool(arch_flags & ARCH_FLAG_DOOR_PHYSICS)
-    lines.append(
-        f"'Enable Door Physics' bayragi: {'VAR' if door_phys else 'yok'}"
-    )
+    lines.append(f"{t('v_flag')}: {t('v_yes') if door_phys else t('v_no')}")
 
     if sa in DOOR_CAPABLE:
-        lines.append("YOL: AddDoorToSystem + DoorSystemSetDoorState calisir. Once bunu dene.")
+        lines.append(t("v_route_door"))
         if not door_phys:
-            lines.append("     UYARI: tip kapi ama door physics bayragi kurulu DEGIL ->")
-            lines.append("     kayit gecse bile kapi hareket etmeyebilir. ytyp'i kontrol et.")
+            lines.append(t("v_warn_noflag"))
     elif door_phys:
-        lines.append("YOL: specialAttribute kapi tipi DEGIL ama 'Enable Door Physics'")
-        lines.append("     bayragi kurulu. Vanilla'da bu kombinasyon 379 archetype'ta var;")
-        lines.append("     kapi sistemi bunlarda calisabilir -- once denemeye deger.")
+        lines.append(t("v_route_flagonly"))
     else:
-        lines.append("YOL: Kapi sistemi ISE YARAMAZ (kayit olsa bile obje kimildamaz).")
+        lines.append(t("v_route_none"))
         piv = pivot_note(r)
         if piv:
-            lines.append("     Ama pivot kenarda -> SetEntityHeading ile dondurmek DOGRU gorunur:")
+            lines.append(t("v_pivot_edge"))
             lines.extend("       " + p for p in piv)
         else:
-            lines.append("     Pivot merkezde gorunuyor -> heading ile dondurmek objeyi")
-            lines.append("     kendi ortasinda cevirir; kapi gibi durmaz. Offset gerekir.")
-        lines.append("     Gercek kapi olmasi icin tek kalici cozum: ytyp override ile")
-        lines.append("     specialAttribute=7 vermek.")
+            lines.append(t("v_pivot_center"))
+        lines.append(t("v_only_fix"))
 
     if not has_phys:
-        lines.append("UYARI: physicsDictionary bos -> carpismasi yok, itilemez.")
+        lines.append(t("v_no_physics"))
     if frag:
-        lines.append("NOT: FRAGMENT -> kirilabilir/parcalanabilir yapisi var.")
+        lines.append(t("v_fragment"))
     return lines
 
 
@@ -347,8 +344,8 @@ def cmd_door(args):
             continue
         r = rs[0]
         sa = int(r["specialAttribute"] or 0)
-        ok = "EVET" if sa in DOOR_CAPABLE else "HAYIR"
-        print(f"\n{n}  ->  kapi sistemi calisir mi: {ok}")
+        ok = t("door_yes") if sa in DOOR_CAPABLE else t("door_no")
+        print(f"\n{n}  ->  {t('door_q')}: {ok}")
         for l in verdict(r):
             print("   " + l)
     return EXIT_NOTFOUND if eksik else EXIT_OK
