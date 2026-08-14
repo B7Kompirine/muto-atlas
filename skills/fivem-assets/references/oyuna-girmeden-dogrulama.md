@@ -28,10 +28,32 @@ bakılmaz. Bir kez atlanıp saatler kaybedilen somut örnekler:
 
 ## Basamak 1 — Derlenmiş dosyayı geri oku (saniyeler)
 
-`res_to_xml.ps1` ile binary'yi XML'e döküp **vanilla muadiliyle yapısal
-diff** al. Alan değerlerini değil, **hangi düğümlerin hiç olmadığını**
-karşılaştır. Bir ped `.yft`'inde oyunu çökerten eksik `ArticulatedBody`
-düğümünü başka hiçbir denetim yakalamadı.
+**Araçlar: `assetdb.py doctor` ve `assetdb.py diff`** — ikisi de binary'yi
+`res_to_xml.ps1` ile XML'e döküp okur, elle yapmana gerek yok.
+
+```bash
+assetdb.py doctor stream/ -r          # sessiz hataları tara
+assetdb.py diff seninki.yft vanilla.yft
+```
+
+`doctor` bilinen sessiz hata kalıplarını arar: `.ycd`'de boş `<Hash>`
+(klibin adı yoktur, `TaskPlayAnim` bulamaz), çözülmeyen `AnimationHash`,
+0 kemik kanallı animasyon, MLO entity'sinde ymap bayrağı, odaya/portala
+atanmamış entity, dejenere sınır kutusu, `TimeFlags`'i saatsiz ışık.
+Denetlenemeyen dosya **asla temiz sayılmaz** — ayrı bölümde bildirilir ve
+çıkış kodu 2 olur.
+
+`diff` alan değerlerini değil **hangi düğümlerin hiç olmadığını**
+karşılaştırır ve farkın *başladığı* sınırı raporlar (bir alt ağaç komple
+eksikse her torununu ayrı satır yapmaz).
+
+**Ped `.yft` çökmesi hakkında düzeltme (ölçüldü):** bu basamakta
+`ArticulatedBody` düğümünü ARAMA — CodeWalker'ın XML yazıcısı o dizeyi
+hiç üretmez, vanilla `mp_m_freemode_01.yft`'in XML'inde de geçmez, yani
+"eksik" görünmesi anlamsızdır. Ölçülen gerçek işaret şudur: **vanilla ped
+`.yft`'inde `<Physics>` düğümü hiç yoktur.** Yani `diff` çıktısında
+`Physics` "SENDE VAR, VANILLA'DA YOK" tarafında görünüyorsa onu çıkar;
+aranacak şey eksik bir alt düğüm değil, fazladan bir üst düğümdür.
 
 Bu basamakta yakalananlar: shader adı/bucket, kemik tag'leri ve
 hiyerarşi, geometri sayısı, `<Hash>` dolu mu, klip sayısı (çok klipli
@@ -185,7 +207,8 @@ edilir ve yanlış sonuç çıkar.
 | Ne doğrulanacak | En üst yeterli basamak |
 |---|---|
 | ağırlık, deform, pivot, ölçü | 0 (Blender ölçümü) |
-| shader/bucket, kemik tag, hiyerarşi, `<Hash>`, klip sayısı | 1 (XML diff) |
+| shader/bucket, kemik tag, hiyerarşi, `<Hash>`, klip sayısı | 1 (`doctor` / `diff`) |
+| ışığın saati, konisi, menzili; iç mekân neden karanlık | 1 (`light` / `timecycle --mlo`) |
 | klip eğrisi, faz→değer, genlik, ölü kuyruk | 2 (`cw_anim_check.ps1`) |
 | "gözle doğru duruyor mu" | 3 (render + kullanıcıya gönder) |
 | vanilla asset'i incelemek, dünya yerleşimi, MLO düzeni | 4 (CodeWalker GUI, elle) |

@@ -134,6 +134,48 @@ assetdb.py framework --check              # çalışma anında patlayacak export
 assetdb.py stats                          # ne kurulu, ne eksik
 ```
 
+### Kendi dosyalarını denetlemek — oyuna girmeden
+
+Yukarıdaki komutlar *vanilla* hakkında soru cevaplar. Aşağıdakiler **senin**
+dosyalarına bakar: bozuk bir asset sana bir tur değil, bir denetim maliyetine
+gelsin diye.
+
+```bash
+assetdb.py doctor  stream/ -r            # sessiz hata kapısı: hata vermeden ne çalışmayacak
+assetdb.py diff    seninki.yft vanilla.yft   # hangi DÜĞÜMLER farklı (değer değil)
+assetdb.py light   prop_lamp.ydr         # gömülü ışıklar: saat, koni, menzil, bayrak
+assetdb.py light   --tablo               # ölçülmüş vanilla ışık referansı
+assetdb.py timecycle --mlo ic_mekan.ytyp # oda → modifier → ambient
+```
+
+`doctor` üç seviye raporlar: **FATAL** (oyun çöker / kaynağın tamamı düşer),
+**SILENT** (hiç hata vermeden çalışmaz — en pahalı sınıf), **WARN** (olağandışı).
+Denetleyemediği dosyalar ayrı bölümde listelenir ve **asla temiz sayılmaz**.
+
+`diff` alan değerlerini değil düğüm *varlığını* karşılaştırır. Bir Sollumz
+export'u "0 uyarı" verip yine de oyunu çökertebilir, çünkü sorun yanlış bir
+değer değil komple eksik bir düğümdür; değer karşılaştıran hiçbir denetim
+bunu bulmaz, düğüm kümesi karşılaştıran bulur.
+
+### İç mekân neden karanlık
+
+Cevap genelde prop'ta da ışıkta da değil, odanın **timecycle modifier**'ında.
+Oda kendi modifier'ını çözülmemiş bir JOAAT hash olarak tutar
+(`hash_CDE50982`); `--mlo` bilinen 1087 modifier adını hash'leyip geri çözer
+ve aydınlatılmamış bir yüzeyin görünüp görünmeyeceğini belirleyen iki çarpanı
+gösterir. İkisi de `0.000` ise doğrudan aydınlatılmayan hiçbir şey çizilmez —
+prop ayarıyla telafi edilemez.
+
+Aynı modifier adı çoğu zaman birden fazla DLC'de tanımlıdır (1087'nin 691'i).
+Hangisinin kazandığı DLC yükleme sırasına bağlıdır ve dosyalardan **okunamaz**,
+o yüzden çakışma gizlenmez, raporlanır.
+
+Her kural dayandığı ölçümle birlikte kaynakta yazılıdır. Ölçüm soruyu
+**çözmüyorsa** araç bunu da söyler: `TimeFlags 0` değeri 72.539 vanilla ışığın
+yalnızca 8'inde geçer, ama o 8'i iç mekân lamba prop'udur — yani "hiç yanmaz"
+ile "saat kısıtı yok" okumalarının ikisi de veriyle uyumludur. O denetim
+*kusur* değil, *şüpheli, oyunda doğrula* diye raporlanır.
+
 ## Çıkış kodları
 
 ```

@@ -1,6 +1,6 @@
-# fivem-natives — yetenek durumu ve yol haritası
+# muto-atlas — yetenek durumu ve yol haritası
 
-Son güncelleme: 2026-08-14 · Plugin v2.1.0 (muto) · 31 sorgu · 22 veri katmanı · 53 script
+Son güncelleme: 2026-08-15 · Plugin v2.2.0 (muto) · 35 sorgu · 24 veri katmanı · 63 script
 
 Bu belge üç soruyu ayırır: **ne yapabiliyoruz**, **ne kadar güvenilir**,
 **ne eksik**. Güven oranları keyfi değil; aşağıdaki ölçekten geliyor.
