@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "muto-atlas",
-      "description": "Ground truth for FiveM/GTA V development. 24 offline data layers built from YOUR OWN GTA V install and FiveM server: 7191 natives with apiset resolution and a L",
+      "description": "Ground truth for FiveM/GTA V development. 24 offline data layers built from your own GTA V install and FiveM server: natives with apiset resolution and a Lua linter, archetypes, world placements, animations, skeletons, vehicles, weapons, peds, MLO interiors, embedded lights, timecycle modifiers, and your server's framework API. It also checks your own files before the game sees them, so a broken asset costs a check instead of a reconnect. Nothing is guessed; a file that could not be inspected is never reported as clean.",
       "source": "./",
       "category": "development"
     }
