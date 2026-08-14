@@ -1,287 +1,176 @@
-# fivem-natives
+# muto-atlas
 
-FiveM geliştirme veri katmanı — Claude Code plugin'i. İki bölüm:
+**FiveM / GTA V geliştirmesinde yer gerçeği.** Oyunun kendi verisine bakıp cevap
+veren, tahmin etmeyen bir Claude Code plugin'i.
 
-1. **Native veritabanı + Lua linteri** — native uydurmasını, yanlış tarafa
-   yazmasını ve yanlış imza kullanmasını engeller.
-2. **Asset veritabanı** — prop / kapı / obje / animasyon gerçeği. `ytyp`'ten
-   üretilir; "bu kapı açılır mı" sorusunu tahminle değil veriyle cevaplar.
+[← English README](../README.md)
 
-Tüm veri çevrimdışıdır; sorgu için ağ gerekmez.
+---
+
+## Neden var
+
+Bir kapıyı açtırmak istiyorsun. `AddDoorToSystem` denersin, olmaz.
+`FreezeEntityPosition` denersin, olmaz. `SetEntityDynamic`,
+`NetworkRequestControlOfEntity`… yarım saat gider.
+
+Cevap oyunun kendi `.ytyp`'sinde tek satırdı:
+
+```
+specialAttribute = 0   → bu obje KAPI DEĞİL, kapı sisteminde menteşesi yok
+```
+
+Tek sorgu, ilk satır kodu yazmadan önce bunu söylerdi:
+
+```bash
+assetdb.py door v_ilev_gb_teldr
+```
+
+Bütün fikir bu: **önce veriye bak, sonra kod yaz.**
 
 ## Kurulum
 
-```bash
-git clone https://github.com/<kullanici>/fivem-natives
-claude plugin marketplace add ./fivem-natives
-claude plugin install fivem-natives@fivem-natives
-```
-
-Sonra veri katmanlarını kur — **tek komut**:
+### 1. Plugin'i kur — iki komut, klonlama yok
 
 ```bash
-python scripts/setup.py --resources "<FiveM sunucun>/resources"
+claude plugin marketplace add B7Kompirine/muto-atlas
+claude plugin install muto-atlas@muto-atlas
 ```
 
-Etkileşimli oturumda `/asset-setup` de aynı işi yapar.
+Claude Code'u yeniden başlat. Artık **14 komutun** (`/asset`, `/native`, `/where`,
+`/anim`, `/ped`, `/yed`, `/clipset`, `/3dnui`, `/weapon`, …) ve **2 skill'in**
+(`fivem-natives`, `fivem-assets`) var.
 
-### İki kademe
+> **Skill'ler plugin'in içinde gelir — ayrıca kurulmaz.** FiveM asset'i, native,
+> rigging ya da animasyon işi yaptığında, sen hiç komut yazmasan bile kendiliğinden
+> devreye girerler.
 
-Repo **kod taşır, veri taşımaz**. Katmanlar kurulumda üretilir.
+### 2. Veri katmanlarını üret
 
-| kademe | ne gerekir | ne gelir |
-|---|---|---|
-| **HAFİF** (12 katman) | internet + (isteğe bağlı) bir FiveM sunucu klasörü | 7191 native · 269k animasyon adı · 21631 prop · 247 senaryo · 1109 ped künyesi · 184 silah + 634 bileşen · 921 araç · 853 MLO konumu · 895 IPL · 33912 dünya nesnesi · framework indeksi |
-| **AĞIR** (12 katman) | GTA V kurulumu + `CodeWalker.Core.dll` | 316k arketip · 3M dünya yerleşimi · 3.1M LOD zinciri · 316k klip (süre+kemik) · 478k kemik · expression · ytyp extension · ptfx · shader · collision · decal |
+Plugin **hiç oyun verisi taşımaz**; bu adımı yapana kadar komutların cevaplayacak
+bir şeyi olmaz. **GTA V ve CodeWalker gerekir** — bu işi yapan herkeste ikisi de
+zaten vardır; eksik olan veri değil, **yol bilgisidir.**
 
-Ağır katmanlar **dağıtılmaz**: Rockstar'ın verisi ve ~300 MB. Kullanıcının
-kendi oyun kurulumundan üretilir:
+En kolay yol, Claude Code içinde:
+
+```
+/asset-setup
+```
+
+Ne bulabiliyorsa bulur, eksik yolu **sana sorar**, kalanı kurar. Elle de olur:
 
 ```bash
-python scripts/setup.py --agir --gta "<GTA V>" --codewalker "<yol>\CodeWalker.Core.dll"
+python scripts/setup.py --save \
+  --gta        "C:\Program Files\Epic Games\GTAV" \
+  --codewalker "C:\...\CodeWalker\CodeWalker.Core.dll" \
+  --resources  "C:\...\sunucun\resources"
 ```
 
-GTA V olmadan da plugin **çalışır** — hafif kademe tek başına araç, silah, ped,
-MLO, IPL, dünya nesnesi ve framework sorgularını cevaplar. Ağır katman isteyen
-bir sorgu çalıştırıldığında araç **tahmin etmez**, `EXIT 2` döner ve o katmanı
-kuracak komutu yazar.
+`--save` yolları `data/config.json`'a yazar; bir daha sorulmaz.
+`scripts/` kurulu plugin klasöründedir (`${CLAUDE_PLUGIN_ROOT}`, tipik olarak
+`~/.claude/plugins/cache/muto-atlas/muto-atlas/<sürüm>`).
+
+Doğrulama:
 
 ```bash
-python scripts/setup.py --plan     # hicbir sey yazma, sadece durumu goster
-python scripts/assetdb.py stats    # her katmanin VAR/YOK durumu
+python scripts/assetdb.py stats
 ```
+
+### Neden veri repoda yok
+
+İki sebep, ikisi de ölçüldü:
+
+1. `entities.db` tek başına **214 MB**; GitHub'ın dosya sınırı 100 MB. Push
+   teknik olarak reddedilir.
+2. Rockstar'ın verisi. Yeniden dağıtımı telif sorunudur.
+
+Yan faydası: herkesin katmanı **kendi oyun sürümünden** gelir. Merkezî bir kopya
+dağıtılsaydı herkes tek bir sürüme mahkûm olurdu.
+
+## Ne veriyor
+
+24 çevrimdışı veri katmanı:
+
+| katman | satır | neyi cevaplar |
+|---|---:|---|
+| arketip | 316.975 | kapı mı, pivot nerede, fiziği var mı |
+| dünya yerleşimi | 3.054.420 | bu model dünyada nerede duruyor |
+| ymap LOD zinciri | 3.145.882 | uzakta neden titriyor / kayboluyor |
+| animasyon klibi | 315.964 | süre, iz sayısı, hangi iskelet |
+| animasyon adı | 269.414 | `TaskPlayAnim` için sözlük + klip |
+| iskelet kemiği | 478.055 | kemik adı ↔ tag ↔ parent |
+| dünya nesnesi | 33.912 | **etiketli** ATM, kamera, bank… **rotasyonla** |
+| prop | 21.631 | `CREATE_OBJECT` ile spawn edilebilir |
+| framework API | 12.713 | sunucunun gerçekten tanımladığı export/event |
+| native | 7.191 | imza, apiset (client/server/shared), hash |
+| ytyp extension | 64.209 | partikül, merdiven, ışık, expression |
+| partikül efekti | 2.549 | `StartParticleFx*` için geçerli `fxName` |
+| expression | 2.338 | prosedürel kemik hareketi, yay |
+| ped | 1.109 | klip sözlüğü, expression seti, movement clipset |
+| araç | 921 | handling id, mod kit, extra |
+| IPL | 895 | sınır kutusu, `RequestIpl` / `RemoveIpl` |
+| MLO iç mekân | 853 | her iç mekânın her dünya yerleşimi |
+| silah + parça | 184 + 634 | bileşen, livery, takılma kemiği |
+| …ayrıca | | shader, collision materyali, decal, procedural, senaryo |
+
+Artı bir **Lua linteri**: uydurma native, sunucuda çağrılan client-only native,
+yanlış argüman sayısı, per-frame performans hataları.
 
 ## Kullanım
 
 ```bash
-/native GetVehicleNumberPlateText     # imza, taraf, docs linki
-/native araç yakıtı --apiset server   # serbest metin arama
-/native-lint resources/muto-lumber    # Lua denetimi
-
-/asset v_ilev_gb_teldr                # ytyp gerçeği + yorum
-/asset door prop_gate_prison_01       # "kapı sistemi çalışır mı"
-/anim weld                            # animasyon dict + clip
-/asset-build <resources yolu>         # indeksleri yeniden kur
-
-/where v_ilev_gb_teldr                # dunyada nerede (ymap + MLO ic mekan)
-
-python scripts/assetdb.py pedmeta a_c_rottweiler     # klip sozlugu + expression + clipset
-python scripts/assetdb.py weapon WEAPON_CARBINERIFLE --parcalar   # 11 bilesen + AttachBone
-python scripts/assetdb.py vehicle adder              # handlingId, modkit, extra
-python scripts/assetdb.py mlo v_genbank              # 6 dunya konumu
-python scripts/assetdb.py ipl finbank                # RequestIpl adi dogrulama
-python scripts/assetdb.py world --near 147,-1035,29 --mesafe 60   # yakindaki ATM/CCTV/bank
-python scripts/assetdb.py world --aileler            # 34 nesne ailesi
-/yed muto_vauldr 50607                # collision animasyonu TAKIP ETSIN (.yed zinciri)
-/3dnui prop_atm_01                    # obje ustunde canli/tiklanabilir HTML ekran (DUI)
+assetdb.py door    v_ilev_gb_teldr        # kapı sistemi bunu oynatır mı
+assetdb.py show    prop_atm_01            # tam künye + yorum
+assetdb.py where   prop_atm_01            # dünyadaki tüm yerleşimleri
+assetdb.py world   --near 147,-1035,29 --radius 50   # bu noktanın çevresinde ne var
+assetdb.py pedmeta a_c_rottweiler         # klip sözlüğü, expression, clipset
+assetdb.py weapon  WEAPON_CARBINERIFLE --parts       # bileşenler + takılma kemikleri
+assetdb.py vehicle adder                  # handling id, mod kit, extra
+assetdb.py mlo     v_genbank              # iç mekân + tüm dünya konumları
+assetdb.py anim    weld                   # sözlük + klip + süre
+assetdb.py fx      <ad> --exact           # bu gerçek bir partikül efekti mi
+assetdb.py framework --check              # çalışma anında patlayacak export/event
+assetdb.py stats                          # ne kurulu, ne eksik
 ```
-
-`/3dnui` — bir objenin üstüne **gerçek HTML/JS çalışan, tıklanabilir bir
-ekran** koyar (ATM tuş takımı, kasa terminali, kamera monitörü, laptop).
-Önce `screentex.ps1` ile modelin ekran dokusu olup olmadığı **sorulur**,
-sonra üç render yolundan doğrusu seçilir: `AddReplaceTexture` (modelin kendi
-ekranı) / dünya quad'ı (`CreatePanel`) / entity'ye bağlı quad. Ölçülmüş
-değerler ve 13 maddelik tuzak kataloğu:
-`skills/fivem-assets/references/3dnui-dui-panel.md`
-
-`/yed` — bir fragment prop'a animasyon oynatildiginda **carpismanin da
-animasyonla birlikte hareket etmesini** saglayan bes parcali zinciri kurar:
-`.yft` (kemik tag + fragment physics + COPY_TRANSFORMS) -> `.yed` (expression) ->
-`ytyp` (Expression extension + clip dict) -> `.ycd` -> Lua. Tuzaklariyla birlikte
-tam recete: `skills/fivem-assets/references/yed-collision-animasyon.md`
-
-İki skill (`fivem-natives`, `fivem-assets`) ilgili işlerde otomatik devreye girer;
-komutları elle çağırmak gerekmez.
-
-## Doğrudan CLI
-
-```bash
-python scripts/nativedb.py check GetEntityCoords DrawMarker
-python scripts/nativedb.py show  GetVehicleNumberPlateText
-python scripts/nativedb.py search vehicle fuel --apiset server
-python scripts/nativedb.py ns    VEHICLE --apiset server
-python scripts/nativedb.py stats
-
-python scripts/lint_lua.py <klasör> [--side client|server] [--json]
-```
-
-`check` bilinmeyen native için exit 1 döner — CI'da kullanılabilir.
-
-## Veri
-
-| küme | adet |
-|---|---:|
-| toplam | 7191 |
-| client-only | 6830 |
-| shared | 232 |
-| server-only | 129 |
-
-Kaynaklar:
-
-- `https://runtime.fivem.net/doc/natives.json` — GTA V nativeleri
-- `https://runtime.fivem.net/doc/natives_cfx.json` — Cfx nativeleri (`apiset` taşır)
-- `citizenfx/fivem` → `ServerGameState_Scripting.cpp` — sunucu handler kayıtları
-
-GTA V listesi upstream'de `apiset` taşımadığı için sunucu erişilebilirliği son iki
-kaynaktan türetilir. Bir native hem GTA V client setinde hem Cfx sunucu bildiriminde
-geçiyorsa `shared` işaretlenir.
-
-Güncelleme:
-
-```bash
-python scripts/build_index.py --fetch
-```
-
-## Lint kuralları
-
-| kural | seviye | anlamı |
-|---|---|---|
-| E001 | hata | native yok (yazım hatası / uydurma) |
-| E002 | hata | client-only native sunucu dosyasında |
-| E003 | hata | imzadan fazla argüman |
-| W101 | uyarı | `RequestModel`/`RequestAnimDict` per-frame |
-| W102 | uyarı | `GetGamePool`/`GetActivePlayers` `Wait(0)` içinde |
-| W103 | uyarı | mesafe hesabı per-frame, önbelleklenmemiş |
-| W104 | uyarı | imzadan eksik argüman |
-
-Linter tablo/metot çağrılarını (`Bridge.HasItem`) ve taranan dosyalarda tanımlı
-fonksiyonları native saymaz. Taraf tespiti dosya adından ve `fxmanifest.lua`
-içindeki `client_scripts`/`server_scripts` bloklarından yapılır; `--side` ile
-geçersiz kılınabilir.
-
----
-
-# Asset veritabanı
-
-## Neden var
-
-Fleeca vezne kapısı `v_ilev_gb_teldr` bir türlü açılmadı. `AddDoorToSystem`,
-`FreezeEntityPosition`, `SetEntityDynamic`, `NetworkRequestControlOfEntity`
-sırayla denendi. Cevap `int_lev_des.ytyp`'nin tek satırındaydı:
-
-```
-specialAttribute = 0   → bu obje kapı DEĞİL, menteşesi yok
-```
-
-Bu katman o satırı kod yazılmadan önce sorgulanabilir yapar.
-
-## Veri
-
-| küme | adet | kaynak |
-|---|---:|---|
-| archetype (vanilla) | 315.699 | GTA V RPF → 2744 ytyp, CodeWalker.Core ile |
-| archetype (custom) | 656 | sunucunun kendi `.ytyp` dosyaları |
-| dünya yerleşimi | 3.054.420 | 19.366 ymap + MLO iç mekân genişletmesi |
-| animasyon klibi (detaylı) | 312.748 | 24.692 `.ycd` — süre + iz + kemik sayısı |
-| çok izli klip (ped+prop) | 88.011 | aynı |
-| iskeletli model | 72.364 | 144.798 `.ydr`/`.yft` taraması |
-| kemik kaydı | 478.055 | ad + tag + parent |
-| expression | 2.338 | 242 `.yed` (100'ü yay/spring içerir) |
-| animasyon klibi (isim) | 269.414 | DurtyFree/gta-v-data-dumps |
-| animasyon dictionary | 19.771 | aynı |
-| spawn edilebilir prop | 21.631 | aynı |
-| ped senaryosu | 247 | aynı |
-| **ped künyesi** | **1.109** | **dump — klip sözlüğü, expression, movement clipset** |
-| **silah** | **184** | **dump — kategori, model, mermi, tint** |
-| **silah parçası** | **634** | **dump — 479 bileşen + 155 livery, `AttachBone` ile** |
-| **araç** | **921** | **dump — handlingId, modkit, extra, sınıf** |
-| **MLO iç mekânı** | **853** | **dump — 385 iç mekân, KONUM başına satır (844 konum)** |
-| **IPL** | **895** | **dump — sınır kutusu + grup/kategori** |
-| **dünya nesnesi** | **33.912** | **dump — 34 aile, ROTASYON ile (`entities` rotasyon tutmaz)** |
-
-Son yedi küme `scripts/build_dumps.py` ile üretilir:
-
-```bash
-python scripts/build_dumps.py --dump <gta-v-data-dumps klasoru>
-```
-
-Kaynak sürümü `data/dumps.meta.json`'a yazılır (`v3717.0 / mp2025_02_g9ec`).
-
-**⛔ Join kuralı:** dump katmanlarının ad kolonları kaynaktaki harf düzeniyle
-yazılır (`W_AR_ASSAULTRIFLE`), plugin'in kendi katmanları küçük harftir.
-Karşılaştırma **daima `.lower()` üzerinden** kurulur. Birebir join her ailede
-0 döndürür ve bu **sessizdir** — tablo dolu görünür, eşleşme boş çıkar.
-Ölçülmüş örnek: `A_C_Rottweiler` klip sözlüğünü `creatures@rottweiler@move`
-diye yazar, `A_C_Rottweiler_02` aynı sözlüğü `CREATURES@ROTTWEILER@MOVE`
-diye yazar.
-
-**Her dump katmanında `dlc` kolonu vardır ve gereklidir.** Sunucu
-`sv_enforceGameBuild` ile bir yapıya sabitlenir; dump'ta **var** ama sunucunun
-yapısında **yok** olan bir ad "geçerli" diye raporlanır, oyunda `RequestModel`
-hiç yüklenmez ve F8'de hata da çıkmaz.
 
 ## Çıkış kodları
 
-`assetdb.py` dört ayrı kod döndürür — hepsini `!= 0` diye okumak yanlıştır:
+```
+0  bulundu
+1  sorgu çalıştı; ad otoritede yok
+2  veri katmanı kurulu değil — sonuç hakkında HİÇBİR ŞEY iddia edilemez
+3  iç hata (bozuk dosya)
+```
 
-| kod | anlam |
-|---:|---|
-| 0 | bulundu |
-| 1 | sorgu çalıştı, **ad otoritede yok** |
-| 2 | **veri katmanı kurulu değil** — sonuç hakkında hiçbir şey denemez |
-| 3 | iç hata (bozuk dosya, istisna) |
+`2`'yi `1` sanmak, **veri eksikliğini varlık yokluğu sanmak** ve sonra tahmin
+etmektir. Bu plugin tam olarak onu önlemek için var. `stats` asla `2` dönmez —
+neyin eksik olduğunu söyleyen komut odur.
 
-`2`'yi `1` sanmak, katman eksik olduğu için çıkan "0 sonuç"u "bu asset oyunda
-yok" diye okumaktır. `assetdb.py stats` her katmanın VAR/YOK durumunu basar.
+## Dil
 
-Archetype başına: `specialAttribute`, `flags`, `assetType`, `lodDist`,
-bbMin/bbMax (pivot/menteşe tespiti), `bsRadius`, fizik/doku/clip sözlükleri,
-hangi ytyp'ten geldiği ve vanilla mı custom mu.
-
-## CLI
+Çıktı varsayılan olarak İngilizce. Türkçe için:
 
 ```bash
-python scripts/assetdb.py show   v_ilev_gb_teldr     # detay + yorum
-python scripts/assetdb.py door   prop_gate_prison_01 # kapı kararı
-python scripts/assetdb.py search fleeca              # archetype arama
-python scripts/assetdb.py prop   prop_cctv           # spawn edilebilir proplar
-python scripts/assetdb.py where  v_ilev_gb_teldr     # dünyada nerede (6 Fleeca)
-python scripts/assetdb.py near   145.42 -1041.81 29.64 --radius 10 --filter door
-python scripts/assetdb.py anim   weld                # dict + clip + süre + kemik
-python scripts/assetdb.py anim   anim@heists@ornate_bank@grab_cash --dict
-python scripts/assetdb.py bones  prop_cs_cardbox_01  # iskelet: kemik adı + tag
-python scripts/assetdb.py clipfit anim@heists@fleeca_bank@bank_vault_door bank_vault_door_opens
-python scripts/assetdb.py expr   spring              # expression (.yed)
-python scripts/assetdb.py scenario welding
-python scripts/assetdb.py stats
-
-# modelin ekranı var mı — shader/doku eşlemesi (AddReplaceTexture için)
-powershell -File scripts/screentex.ps1 -Model prop_atm_01 -All
+assetdb.py --lang tr ...                    # tek çağrı
+export MUTO_ATLAS_LANG=tr                   # oturum boyu
+python scripts/setup.py --lang tr --save    # kalıcı
 ```
 
-`screentex.ps1` modelin `.ydr/.yft/.ydd`'sini RPF'ten okuyup her shader'ın
-doku parametrelerini yazar. `AddReplaceTexture(origTxd, origTxn, …)` için
-gereken iki ad tahmin edilemez; bu sorgu doğrudan verir. Ölçüldü: ekran
-**`emissive*` shader**'dadır ve doku neredeyse her zaman **modele gömülüdür**
-(→ `origTxd` = model adı). Keypad ve CCTV prop'larının ekran dokusu yoktur.
+## Tasarım kuralları
 
-### Prop + karakter animasyonu
+Bunlar üslup tercihi değil; her biri sessiz bir hatadan öğrenildi.
 
-`anim <dict> --dict` klipleri **süreye göre gruplar**. Aynı sürede *farklı
-kemik sayısı* varsa o bir ped+prop çiftidir:
+- **Ölç, varsayma.** Belgedeki her sayının onu üreten bir komutu var.
+- **Aracın bir şey göstermemesi, o şeyin olmadığının kanıtı değildir.** Satır
+  yokluğu asset yokluğu değildir; olmayan bir property `None` döner ve
+  `None.length` **`0`**'dır.
+- **Adlar kaynaktaki hâliyle saklanır, join daima küçük harf üzerinden kurulur.**
+  Dump adları `MixedCase`, plugin katmanları küçük harf — birebir join her ailede
+  sessizce sıfır döndürür.
+- **Her yazma geri okunur.** "Komut hata vermedi" yazıldığının kanıtı değildir.
+- **Eksik çeviri anahtarın kendisini basar**, boş string değil — boşluk fark
+  edilmezdi.
 
-```
-[47.967s]  <-- ayni sure, FARKLI iskelet: ped + prop cifti
-  bag_grab              47.967s  kemik=72    <- ped
-  cart_cash_dissapear   47.967s  kemik=96    <- prop (para arabası)
-```
-
-Sadece aynı süre yetmez — `_female`/`_suit` varyantları da aynı süredir ama
-hepsi ped'dir. Ayırt eden kemik sayısının farklı olması.
-
-Prop tarafında kemik adları da elimizde:
-
-```
-$ assetdb.py bones ch_prop_cash_low_trolly_01a
-  ydr · 47 kemik
-    #0  Prop_Cash_low_Trolly_01a_Root   tag=0       parent=-
-    #1  Prop_Cash_low_Trolly_01a_Main   tag=56965   parent=0
-    #2  P_M_CashTrolly_S_1_Stack001     tag=29611   parent=1
-    #3  P_M_CashTrolly_S_1_Stack002     tag=29612   parent=1
-```
-
-Her para destesi ayrı kemik — "para dolduruyor" animasyonu bu kemikleri
-oynatarak/gizleyerek çalışıyor. `GetEntityBoneIndexByName` bu adları alır.
+---
 
 ## specialAttribute — kapı tablosu
 

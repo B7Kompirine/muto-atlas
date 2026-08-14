@@ -57,14 +57,25 @@ server, wrong argument counts, and per-frame performance mistakes.
 
 ## Install
 
+**Step 1 — install the plugin** (two commands, no cloning):
+
 ```bash
-git clone https://github.com/<you>/muto-atlas
-claude plugin marketplace add ./muto-atlas
+claude plugin marketplace add B7Kompirine/muto-atlas
 claude plugin install muto-atlas@muto-atlas
 ```
 
-Then build the data layers. **This tool needs GTA V and CodeWalker** — you almost
-certainly already have both; what it's missing is only the *paths*:
+Restart Claude Code. You now have **14 commands** (`/asset`, `/native`, `/where`,
+`/anim`, `/ped`, `/yed`, `/clipset`, `/3dnui`, `/weapon`, …) and **2 skills**
+(`fivem-natives`, `fivem-assets`).
+
+> The skills are part of the plugin — you do **not** install them separately.
+> They trigger automatically when you work on FiveM assets, natives, rigging or
+> animation, even if you never type a command.
+
+**Step 2 — build the data layers.** The plugin ships with no game data, so the
+commands have nothing to answer with until you do this. **You need GTA V and
+CodeWalker** — you almost certainly already have both; what's missing is only the
+*paths*:
 
 ```bash
 python scripts/setup.py --save \
@@ -74,7 +85,18 @@ python scripts/setup.py --save \
 ```
 
 `--save` writes the paths to `data/config.json`; you are never asked again.
-Inside Claude Code, `/asset-setup` does the same and asks for anything missing.
+
+Inside Claude Code just run **`/asset-setup`** — it detects what it can, asks you
+for whatever is missing, and builds everything. That is the easiest route.
+
+Verify with `/asset-setup` or:
+
+```bash
+python scripts/assetdb.py stats
+```
+
+`scripts/` lives in the installed plugin directory, which Claude Code reports as
+`${CLAUDE_PLUGIN_ROOT}` (typically `~/.claude/plugins/cache/muto-atlas/muto-atlas/<version>`).
 
 **Why no data ships with the repo:** `entities.db` alone is 214 MB — over GitHub's
 100 MB file limit — and it is Rockstar's data. It is built locally instead. A useful
