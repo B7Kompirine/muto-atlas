@@ -1,3 +1,5 @@
+<img src="../assets/logo.png" alt="muto-atlas" width="128" align="right">
+
 # muto-atlas
 
 **FiveM / GTA V geliştirmesinde yer gerçeği.** Oyunun kendi verisine bakıp cevap

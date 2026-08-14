@@ -1,3 +1,5 @@
+<img src="assets/logo.png" alt="muto-atlas" width="128" align="right">
+
 # muto-atlas
 
 **Ground truth for FiveM / GTA V development.** A Claude Code plugin that answers
