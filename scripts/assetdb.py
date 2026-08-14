@@ -633,9 +633,8 @@ def cmd_bones(args):
         copies = found.get(n.lower())
         print(f"\n=== {n} ===")
         if not copies:
-            print("  ISKELETI YOK. Bu model kemiksiz duz bir mesh;")
-            print("  PlayEntityAnim / bone index islemleri calismaz.")
-            print("  (Model hic yoksa: assetdb.py search ile kontrol et.)")
+            print(t("bones_none"))
+            print(t("bones_none_hint"))
             eksik += 1
             continue
 
@@ -650,7 +649,7 @@ def cmd_bones(args):
         variants.sort(key=len, reverse=True)   # zengin (yeni/DLC) surum once
 
         if len(variants) > 1:
-            counts = " / ".join(f"{len(v)} kemik" for v in variants)
+            counts = " / ".join(t("bones_n", n=len(v)) for v in variants)
             print(f"  DIKKAT: bu model {len(variants)} farkli iskelet surumuyle")
             print(f"  indekslenmis ({counts}) — kemik INDEKSLERI surumler")
             print("  arasinda kayar, TAG'ler kaymaz. Indeks yerine tag ile baglan.")
@@ -674,7 +673,7 @@ def cmd_bones(args):
                 print(f"  Ilk ayrisma: #{at} — kemik kadrosu AYNI, degisen sadece indeks sirasi.")
 
         for v in variants:
-            head = f"  {v[0]['src']} · {len(v)} kemik"
+            head = f"  {v[0]['src']} · " + t("bones_n", n=len(v))
             print(head if len(variants) == 1 else head + "  (surum)")
             for r in v[:args.limit]:
                 par = r["parentIndex"]
@@ -682,7 +681,7 @@ def cmd_bones(args):
                 print(f"    #{r['boneIndex']:<4} {r['boneName']:<32} tag={r['boneTag']:<6} parent={par}")
             extra = len(v) - args.limit
             if extra > 0:
-                print(f"    ... {extra} kemik daha (--limit ile artir)")
+                print("    " + t("bones_more", n=extra))
     return EXIT_NOTFOUND if eksik else EXIT_OK
 
 
@@ -1787,6 +1786,9 @@ def katman_envanteri():
         ("mlo_interiors.tsv.gz", MLOS), ("ipls.tsv.gz", IPLS),
         ("world_objects.tsv.gz", WORLDOBJ),
         ("framework_api.tsv.gz", FRAMEWORK),
+        # --- isik / timecycle ---
+        ("lights.tsv.gz", os.path.join(DATA, "lights.tsv.gz")),
+        ("timecycle.tsv.gz", os.path.join(DATA, "timecycle.tsv.gz")),
     ]
     print(t("inventory"))
     eksik = 0
@@ -2060,6 +2062,36 @@ def cmd_world(args):
     return EXIT_NOTFOUND if not hits else EXIT_OK
 
 
+def cmd_doctor(args):
+    """Sessiz hata kapisi. Kendi cikis kodlarini dondurur (bkz. doctor.py):
+
+        0 temiz | 1 bulgu var | 2 EN AZ BIR DOSYA DENETLENEMEDI
+
+    2, EXIT_NOLAYER ile ayni sayidir ve bu KASITLIDIR: denetlenemeyen dosya
+    "temiz" degildir, tipki kurulu olmayan katmanin "sonuc yok" olmamasi gibi.
+    """
+    import doctor  # tembel: diger komutlar subprocess/tempfile yuku odemesin
+    return doctor.calistir(args)
+
+
+def cmd_timecycle(args):
+    """Timecycle modifier sorgusu. 0 bulundu | 1 yok | 2 katman kurulu degil."""
+    import timecycle
+    return timecycle.calistir(args)
+
+
+def cmd_light(args):
+    """Gomulu isiklari coz. 0 isik bulundu | 1 isik yok | 2 dosya okunamadi."""
+    import light
+    return light.calistir(args)
+
+
+def cmd_diff(args):
+    """Yapisal diff. 0 fark yok | 1 fark var | 2 dosya okunamadi."""
+    import yapisal_diff
+    return yapisal_diff.calistir(args)
+
+
 def main():
     p = argparse.ArgumentParser(
         description="muto-atlas — GTA V / FiveM ground-truth asset database")
@@ -2247,6 +2279,39 @@ def main():
                    help="cross-check usage against definitions (A/B/C/D report)")
     s.add_argument("--limit", type=int, default=25)
     s.set_defaults(func=cmd_framework)
+
+    s = sub.add_parser("doctor", help="sessiz hata kapisi: asseti oyuna sokmadan denetle")
+    s.add_argument("paths", nargs="+",
+                   help="dosya ya da klasor (.ycd .ytyp .ymap ... ya da .xml)")
+    s.add_argument("-r", "--recursive", action="store_true",
+                   help="klasorleri alt klasorlerle birlikte gez")
+    s.add_argument("--level", choices=["fatal", "silent", "warn"], default="warn",
+                   help="en dusuk bildirilecek siddet (varsayilan: warn = hepsi)")
+    s.set_defaults(func=cmd_doctor)
+
+    s = sub.add_parser("timecycle", help="timecycle modifier: ic mekan neden karanlik")
+    s.add_argument("name", nargs="?", help="modifier adi (bos: ozet)")
+    s.add_argument("--ara", "--search", dest="ara", help="ada gore arama")
+    s.add_argument("--mlo", help="bir MLO ytyp'inin odalari -> timecycle + ambient")
+    s.add_argument("--param", help="parametre adi filtresi")
+    s.add_argument("--kaynak", "--sources", dest="kaynak", action="store_true",
+                   help="ayni adi tanimlayan TUM kaynaklari goster")
+    s.add_argument("--limit", type=int, default=25)
+    s.set_defaults(func=cmd_timecycle)
+
+    s = sub.add_parser("light", help="bir .ydr/.yft icindeki gomulu isiklari coz")
+    s.add_argument("path", nargs="?", help=".ydr / .yft / .xml")
+    s.add_argument("--tablo", "--table", dest="tablo", action="store_true",
+                   help="olculen vanilla isik referansini yazdir")
+    s.add_argument("--ham", "--raw", dest="ham", action="store_true",
+                   help="cozumsuz, ham alanlar")
+    s.set_defaults(func=cmd_light)
+
+    s = sub.add_parser("diff", help="iki kaynagi DUGUM VARLIGI uzerinden karsilastir")
+    s.add_argument("mine", help="senin dosyan (.yft .ydr .ycd ... ya da .xml)")
+    s.add_argument("vanilla", help="vanilla muadili")
+    s.add_argument("--limit", type=int, default=25)
+    s.set_defaults(func=cmd_diff)
 
     s = sub.add_parser("stats", help="indeks ozeti")
     s.set_defaults(func=cmd_stats)

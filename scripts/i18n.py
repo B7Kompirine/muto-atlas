@@ -223,6 +223,20 @@ MESAJ = {
         "tr": "NOT: FRAGMENT -> kirilabilir/parcalanabilir yapisi var.",
         "en": "NOTE: FRAGMENT -> it has a breakable / destructible structure.",
     },
+    # --- bones ---
+    "bones_n": {"tr": "{n} kemik", "en": "{n} bones"},
+    "bones_more": {"tr": "... {n} kemik daha (--limit ile artir)",
+                   "en": "... {n} more bones (raise --limit)"},
+    "bones_none": {
+        "tr": ("  ISKELETI YOK. Bu model kemiksiz duz bir mesh;\n"
+               "  PlayEntityAnim / bone index islemleri calismaz."),
+        "en": ("  NO SKELETON. This model is a plain mesh with no bones;\n"
+               "  PlayEntityAnim / bone-index operations will not work."),
+    },
+    "bones_none_hint": {
+        "tr": "  (Model hic yoksa: assetdb.py search ile kontrol et.)",
+        "en": "  (If the model does not exist at all: check with assetdb.py search.)",
+    },
     "v_pivot_low": {
         "tr": "{ax}: orijin ALT kenarda (genislik {span:.2f}m) -> mentese burada",
         "en": "{ax}: origin on the LOW edge (width {span:.2f}m) -> hinge is here",

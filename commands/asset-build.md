@@ -57,7 +57,24 @@ python "${CLAUDE_PLUGIN_ROOT}/scripts/build_anims.py"
 İnternet ister (DurtyFree/gta-v-data-dumps). Daha önce indirilmişse
 `--offline` ile önbellekten kurar.
 
-## 5. Doğrula
+## 5. Işık + timecycle
+
+```bash
+# timecycle modifier'ları (~1 sn) — "iç mekân neden karanlık"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/build_timecycle.ps1"
+
+# gömülü ışıklar — GTA'nın BÜTÜN .ydr/.yft/.ydd dosyaları taranır, UZUN sürer
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/build_lights.ps1"
+```
+
+`build_lights.ps1` 171k dosya tarar ve makineye göre **bir saati bulabilir**.
+Süreyi önceden ölçmek için `-Ornek 600` ile çalıştır: örneklem modu tahmini
+yazar ve **dosya yazmaz** (yarım veri kalıcı olmasın diye).
+
+İkisi de opsiyoneldir. Kurulu değillerse `light --tablo` ve `timecycle`
+uydurma değer döndürmez, çıkış kodu **2** verir.
+
+## 6. Doğrula
 
 ```bash
 python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" stats

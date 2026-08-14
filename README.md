@@ -51,6 +51,8 @@ That is the whole idea. **Look at the data first, then write the code.**
 | vehicles | 921 | handling id, mod kits, extras |
 | IPLs | 895 | bounds, for `RequestIpl` / `RemoveIpl` |
 | MLO interiors | 853 | every world placement of every interior |
+| timecycle modifiers | 1,087 | why an interior is dark — ambient multipliers, exposure, fog |
+| embedded lights | 72,539 | every light in every `.ydr`/`.yft`/`.ydd` — hours, cone, falloff, flags |
 | weapons + parts | 184 + 634 | components, liveries, attach bones |
 | …plus | | shaders, collision materials, decals, procedural, scenarios |
 
@@ -121,6 +123,58 @@ assetdb.py framework --check              # exports/events that will fail at run
 assetdb.py stats                          # what is installed, what is missing
 ```
 
+### Checking your own files, before the game sees them
+
+The commands above answer questions about *vanilla*. These three inspect **your**
+files — so a broken asset costs you a check, not a full reconnect cycle.
+
+```bash
+assetdb.py doctor  stream/ -r            # silent-failure gate: what will fail without an error
+assetdb.py diff    mine.yft vanilla.yft  # which NODES differ (not which values)
+assetdb.py light   prop_lamp.ydr         # decode embedded lights: hours, cone, falloff, flags
+assetdb.py light   --tablo               # measured vanilla light reference
+```
+
+### Why is my interior dark?
+
+Usually the answer is not in your prop and not in your light — it is the room's
+**timecycle modifier**, which overrides ambient light, exposure and fog.
+
+```bash
+assetdb.py timecycle --mlo my_interior.ytyp   # each room → its modifier → ambient values
+assetdb.py timecycle int_hospital_dark        # what that modifier actually changes
+assetdb.py timecycle --ara hospital           # find modifiers by name
+```
+
+The room stores its modifier as an unresolved JOAAT hash (`hash_CDE50982`);
+`--mlo` hashes the 1,087 known modifier names and resolves it back to
+`int_extlight_small`, then shows the two multipliers that decide whether an
+unlit surface is visible at all. When both are `0.000`, nothing that isn't
+directly lit will render — no prop setting can compensate for that.
+
+Same modifier name is often defined in several DLCs (691 of 1,087 are). Which
+one wins depends on DLC load order and **cannot** be read from the files, so
+the conflict is reported rather than hidden.
+
+`doctor` reads `.ycd`, `.ytyp` (incl. MLO rooms/portals), `.ydr` and `.yft`, and
+reports three severities: **FATAL** (game crashes / the whole resource dies),
+**SILENT** (fails with no error at all — the expensive class), **WARN** (unusual).
+Files it could not inspect are listed separately and are **never** counted as clean.
+
+`diff` compares node *presence*, not field values. A Sollumz export can pass with
+"0 warnings" and still crash the game because a node is missing entirely; no
+value-by-value check finds that, a node-set comparison does.
+
+Every rule is backed by a measurement recorded next to it in the source — e.g.
+the MLO entity-flag check rests on 118 vanilla MLOs / 18,799 entities, in which
+bit 8 is never set even once.
+
+Where the measurement does **not** settle the question, the tool says so instead
+of guessing. `TimeFlags 0` appears in only 8 of 72,539 vanilla lights — but those
+8 are interior lamp props, so "never lights" and "no time restriction" are both
+consistent with the data. That check is reported as *suspicious, verify in game*,
+not as a defect.
+
 Two skills (`fivem-natives`, `fivem-assets`) trigger automatically on relevant work —
 you don't have to call the commands by hand.
 
@@ -136,6 +190,15 @@ you don't have to call the commands by hand.
 Reading `2` as `1` means mistaking *missing data* for *a missing asset*, and then
 guessing. That is exactly the failure this plugin exists to prevent. `stats` never
 returns `2` — it is the command that tells you what's missing.
+
+`doctor`, `diff` and `light` inspect files rather than query a layer, so their
+codes read slightly differently — but `2` keeps the same meaning:
+
+```
+doctor   0 clean   1 findings        2 at least one file COULD NOT be inspected
+diff     0 same    1 structural diff 2 a file could not be read
+light    0 lights  1 no lights       2 the file could not be read
+```
 
 ## Language
 
