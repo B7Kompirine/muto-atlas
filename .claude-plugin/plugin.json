@@ -1,7 +1,7 @@
 {
   "name": "muto-atlas",
-  "version": "2.1.0",
-  "description": "Ground truth for FiveM/GTA V development. 24 offline data layers built from YOUR OWN GTA V install and FiveM server: 7191 natives with apiset resolution and a Lua linter, 316k archetypes from ytyp (door type, pivot, physics), 3M world placements, 269k animation clips, 478k skeleton bones, vehicles, weapons with components, ped metadata, MLO interiors, IPLs, 34k labelled world objects with rotation, and an index of the QBCore/Qbox/ESX/ox framework API so missing exports and events are caught before runtime. Nothing is guessed; every answer cites data.",
+  "version": "2.2.0",
+  "description": "Ground truth for FiveM/GTA V development. 24 offline data layers built from YOUR OWN GTA V install and FiveM server: 7191 natives with apiset resolution and a Lua linter, 316k archetypes from ytyp (door type, pivot, physics), 3M world placements, 269k animation clips, 478k skeleton bones, vehicles, weapons with components, ped metadata, MLO interiors, IPLs, 34k labelled world objects with rotation, 72k embedded lights, 1087 timecycle modifiers, and an index of the QBCore/Qbox/ESX/ox framework API so missing exports and events are caught before runtime. It also checks YOUR files before the game sees them: doctor catches silent failures in ycd/ytyp/MLO/ydr/yft, diff compares which nodes exist against a vanilla counterpart, light decodes embedded lights, timecycle explains why an interior is dark. Nothing is guessed; every answer cites data, and a file that could not be inspected is never reported as clean.",
   "author": {
     "name": "muto"
   },
