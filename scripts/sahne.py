@@ -84,18 +84,18 @@ def _anim_coz(anim):
         return None
     yol = anim["ycd"]
     if not os.path.isfile(yol):
-        return {"hata": "ycd yok: %s" % yol}
+        return {"hata": "no such .ycd: %s" % yol}
     d = ycd_oku.oku(yol)
     klip_ad = anim.get("klip")
     if not klip_ad:
         klip_ad = next(iter(d["klipler"]), None)
     k = d["klipler"].get(klip_ad)
     if not k:
-        return {"hata": "klip yok: %s (mevcut: %s)"
+        return {"hata": "no such clip: %s (available: %s)"
                 % (klip_ad, list(d["klipler"])[:6])}
     a = d["animasyonlar"].get(k["anim"])
     if not a:
-        return {"hata": "klip '%s' animasyonu bulunamadi (%s)" % (klip_ad, k["anim"])}
+        return {"hata": "clip '%s' has no matching animation (%s)" % (klip_ad, k["anim"])}
     return {"ycd": os.path.basename(yol), "klip": klip_ad,
             "klipler": sorted(d["klipler"]),
             "kare": a["kare"], "sure": a["sure"], "fps": a["fps"],
@@ -110,7 +110,7 @@ def coz(sahne, maks_ucgen=None):
     for o in sahne["objeler"]:
         if not os.path.isfile(o["model"]):
             objeler.append({"ad": o.get("arketip", "?"), "hata":
-                            "model yok: %s" % o["model"], "konum": o["konum"],
+                            "no such model: %s" % o["model"], "konum": o["konum"],
                             "donus": o["donus"]})
             continue
         kw = {"bake": False}
@@ -161,7 +161,7 @@ def ymap_yaz(sahne, cikti, ad=None):
             pass
     cik = (r.stdout or "") + (r.stderr or "")
     if r.returncode != 0:
-        raise RuntimeError("ymap uretilemedi:\n%s" % cik.strip()[:600])
+        raise RuntimeError("could not write the ymap:\n%s" % cik.strip()[:600])
     return cik.strip()
 
 
@@ -173,7 +173,7 @@ def calistir(args):
 
     for m in (getattr(args, "ekle", None) or []):
         if not os.path.isfile(m):
-            print("ERROR: model yok: %s" % m, file=sys.stderr)
+            print("ERROR: no such model: %s" % m, file=sys.stderr)
             return 2
         obje_ekle(sahne, m)
 
@@ -186,22 +186,22 @@ def calistir(args):
             if os.path.isfile(spec[:k]):
                 ycd, klip = spec[:k], spec[k + 1:]
         if not os.path.isfile(ycd):
-            print("ERROR: ycd yok: %s" % ycd, file=sys.stderr)
+            print("ERROR: no such .ycd: %s" % ycd, file=sys.stderr)
             return 2
         if not sahne["objeler"]:
-            print("ERROR: once --ekle ile obje koy", file=sys.stderr)
+            print("ERROR: add an object first with --add", file=sys.stderr)
             return 2
         sahne["objeler"][-1]["anim"] = {"ycd": os.path.abspath(ycd), "klip": klip}
 
     if getattr(args, "sil", None) is not None:
         i = args.sil
         if not 0 <= i < len(sahne["objeler"]):
-            print("ERROR: obje indeksi yok: %d" % i, file=sys.stderr)
+            print("ERROR: no such object index: %d" % i, file=sys.stderr)
             return 2
         sahne["objeler"].pop(i)
 
     if not sahne["objeler"]:
-        print("ERROR: sahnede obje yok. --ekle <model.ydr> ile ekle.", file=sys.stderr)
+        print("ERROR: the scene is empty. Add one with --add <model.ydr>.", file=sys.stderr)
         return 2
 
     if dosya:
@@ -213,23 +213,23 @@ def calistir(args):
         except RuntimeError as e:
             print("ERROR: %s" % e, file=sys.stderr)
             return 2
-        print("\n  Asset degisti: sunucudan CIKIP yeniden baglan — restart yetmez.")
+        print("\n  The asset changed: LEAVE the server and rejoin - a restart is not enough.")
         return 0
 
     # varsayilan: ozet
     c = coz(sahne)
-    print("%s — %d obje" % (c["ad"], len(c["objeler"])))
+    print("%s - %d object(s)" % (c["ad"], len(c["objeler"])))
     for i, o in enumerate(c["objeler"]):
         if o.get("hata"):
-            print("  #%d %-24s HATA: %s" % (i, o.get("ad", "?"), o["hata"]))
+            print("  #%d %-24s ERROR: %s" % (i, o.get("ad", "?"), o["hata"]))
             continue
         a = o.get("anim")
-        anim = ("anim=%s %dk/%.2fs" % (a["klip"], a["kare"], a["sure"])
+        anim = ("anim=%s %df/%.2fs" % (a["klip"], a["kare"], a["sure"])
                 if a and not a.get("hata") else
-                ("ANIM HATA: %s" % a["hata"] if a else "-"))
-        print("  #%d %-24s %5d ucgen  %2d kemik  %d isik  %s"
+                ("ANIM ERROR: %s" % a["hata"] if a else "-"))
+        print("  #%d %-24s %5d tris  %2d bones  %d light(s)  %s"
               % (i, o["arketip"], len(o["mesh"]["idx"]) // 3, len(o["kemikler"]),
                  len(o["isiklar"]), anim))
     if dosya:
-        print("\n  kayitli: %s" % dosya)
+        print("\n  saved: %s" % dosya)
     return 0

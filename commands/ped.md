@@ -1,5 +1,5 @@
 ---
-description: Ped iskeleti, kemik rest pose, yüz animasyonu ve expression (rigging referansı)
+description: Ped skeleton, bone rest pose, facial animation and expressions (rigging reference)
 argument-hint: <kemik adı|tag> | tree <ped> | facial <ped> | mood <duygu> | expr <yed>
 allowed-tools: Bash(python:*), Bash(powershell.exe:*), Read, Glob, Grep
 ---

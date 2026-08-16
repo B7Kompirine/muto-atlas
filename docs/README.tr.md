@@ -45,9 +45,9 @@ Claude Code'u yeniden başlat. Artık **22 komutun** ve **2 skill'in**
 |---|---|
 | **Veriyi sorgula** | `/asset` `/native` `/where` `/anim` |
 | **Asset üret** | `/ped` `/retarget` `/clipset` `/yed` `/weapon` `/weaponfx` `/3dnui` `/rayfire` |
-| **Işık & sahne** | `/isik` `/sahne` |
+| **Işık & sahne** | `/light` `/scene` |
 | **Denetle & kur** | `/asset-setup` `/asset-build` `/native-lint` |
-| **Araç yolları** | `/yol` `/codewalker` `/gta` `/sunucu` `/blender` |
+| **Araç yolları** | `/paths` `/codewalker` `/gta` `/server` `/blender` |
 
 > **Skill'ler plugin'in içinde gelir — ayrıca kurulmaz.** FiveM asset'i, native,
 > rigging ya da animasyon işi yaptığında, sen hiç komut yazmasan bile kendiliğinden
@@ -151,7 +151,7 @@ gelsin diye.
 assetdb.py doctor  stream/ -r            # sessiz hata kapısı: hata vermeden ne çalışmayacak
 assetdb.py diff    seninki.yft vanilla.yft   # hangi DÜĞÜMLER farklı (değer değil)
 assetdb.py light   prop_lamp.ydr         # gömülü ışıklar: saat, koni, menzil, bayrak
-assetdb.py light   --tablo               # ölçülmüş vanilla ışık referansı
+assetdb.py light   --table               # ölçülmüş vanilla ışık referansı
 assetdb.py timecycle --mlo ic_mekan.ytyp # oda → modifier → ambient
 ```
 

@@ -1,5 +1,5 @@
 ---
-description: Prop/obje/kapı archetype verisini sorgula (ytyp gerçeği — kapı mı, pivot nerede)
+description: Query prop/object/door archetype data (ytyp truth: is it a door, where is the pivot)
 argument-hint: <model adı veya arama terimi> | door <model adı>
 allowed-tools: Bash(python:*), Read
 ---

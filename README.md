@@ -76,9 +76,9 @@ Restart Claude Code. You now have **22 commands** and **2 skills**
 |---|---|
 | **Ask the data** | `/asset` `/native` `/where` `/anim` |
 | **Author assets** | `/ped` `/retarget` `/clipset` `/yed` `/weapon` `/weaponfx` `/3dnui` `/rayfire` |
-| **Light & scene** | `/isik` `/sahne` |
+| **Light & scene** | `/light` `/scene` |
 | **Check & build** | `/asset-setup` `/asset-build` `/native-lint` |
-| **Tool paths** | `/yol` `/codewalker` `/gta` `/sunucu` `/blender` |
+| **Tool paths** | `/paths` `/codewalker` `/gta` `/server` `/blender` |
 
 > The skills are part of the plugin — you do **not** install them separately.
 > They trigger automatically when you work on FiveM assets, natives, rigging or
@@ -137,13 +137,13 @@ Every external path lives in one registry (`data/config.json`, which is
 gitignored — personal paths never reach the repo). Ask it, or set it:
 
 ```bash
-assetdb.py yol                       # show all, marked found / missing
-assetdb.py yol codewalker            # where is CodeWalker.Core.dll?
-assetdb.py yol gta "D:\Games\GTAV"   # set it
-assetdb.py yol gizmo "C:\Tools\Gizmo.exe"   # any name you like
+assetdb.py path                       # show all, marked found / missing
+assetdb.py path codewalker            # where is CodeWalker.Core.dll?
+assetdb.py path gta "D:\Games\GTAV"   # set it
+assetdb.py path gizmo "C:\Tools\Gizmo.exe"   # any name you like
 ```
 
-Slash commands: `/yol`, `/codewalker`, `/gta`, `/sunucu`, `/blender` — with no
+Slash commands: `/paths`, `/codewalker`, `/gta`, `/server`, `/blender` — with no
 argument they report the location, with a path they set it.
 
 This used to be **29 copies** of a guessed CodeWalker path and **23** of a
@@ -156,10 +156,10 @@ still doesn't work".
 ### Scenes: several objects, clip decoding, and a ymap placement
 
 ```bash
-assetdb.py sahne --dosya scene.json --ekle a.ydr --ekle b.yft
-assetdb.py sahne --dosya scene.json --anim "door.ycd:door_open"
-assetdb.py sahne --dosya scene.json                 # summary + clip check
-assetdb.py sahne --dosya scene.json --ymap out.ymap # write the placement
+assetdb.py scene --file scene.json --add a.ydr --add b.yft
+assetdb.py scene --file scene.json --anim "door.ycd:door_open"
+assetdb.py scene --file scene.json                 # summary + clip check
+assetdb.py scene --file scene.json --ymap out.ymap # write the placement
 ```
 
 The `.ycd` is decoded into per-frame bone channels, so a clip's real frame
@@ -183,17 +183,17 @@ files — so a broken asset costs you a check, not a full reconnect cycle.
 assetdb.py doctor  stream/ -r            # silent-failure gate: what will fail without an error
 assetdb.py diff    mine.yft vanilla.yft  # which NODES differ (not which values)
 assetdb.py light   prop_lamp.ydr         # decode embedded lights: hours, cone, falloff, flags
-assetdb.py light   --tablo               # measured vanilla light reference
+assetdb.py light   --table               # measured vanilla light reference
 ```
 
 ### Editing a prop light
 
 ```bash
 assetdb.py light prop_lamp.ydr                          # decode it
-assetdb.py light prop_lamp.ydr --tablo                  # measured vanilla band
-assetdb.py light prop_lamp.ydr --uygula edit.json       # write back, verified
+assetdb.py light prop_lamp.ydr --table                  # measured vanilla band
+assetdb.py light prop_lamp.ydr --apply edit.json       # write back, verified
 assetdb.py light prop_lamp.ydr --set 0.Intensity=8 --set 0.ConeOuterAngle=35
-assetdb.py light prop_lamp.ydr --ekle | --sil 1         # add / remove a light
+assetdb.py light prop_lamp.ydr --add | --remove 1         # add / remove a light
 ```
 
 Values are judged against the **measured vanilla distribution** — p05, median
@@ -226,7 +226,7 @@ tool are included.
 Darkness has three layers, and the answer is usually not the third:
 
 ```bash
-assetdb.py cycle w_clear --saat 20            # 1. base weather cycle at that hour
+assetdb.py cycle w_clear --hour 20            # 1. base weather cycle at that hour
 assetdb.py timecycle int_hospital_dark        # 2. the room's modifier
 assetdb.py light prop_lamp.ydr                # 3. the prop's own light
 ```

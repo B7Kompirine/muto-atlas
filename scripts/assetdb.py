@@ -2325,47 +2325,57 @@ def main():
     s.add_argument("--limit", type=int, default=25)
     s.set_defaults(func=cmd_timecycle)
 
-    s = sub.add_parser("cycle", help="hava timecycle'i bir saatte: ortam isigi + gunes")
-    s.add_argument("hava", nargs="?", help="w_clear, w_thunder ... (bos: liste)")
+    s = sub.add_parser("cycle", help="weather timecycle at a given hour: ambient + sun")
+    s.add_argument("hava", nargs="?", metavar="WEATHER",
+                   help="w_clear, w_thunder ... (omit to list them)")
     s.add_argument("--saat", "--hour", dest="saat", type=float, default=12.0)
     s.add_argument("--bolge", "--region", dest="bolge", default="GLOBAL",
                    help="GLOBAL | URBAN")
-    s.add_argument("--mod", help="ustune binecek timecycle modifier adi")
+    s.add_argument("--mod", metavar="NAME",
+                   help="timecycle modifier to blend on top")
     s.add_argument("--guc", "--strength", dest="guc", type=float, default=1.0)
     s.add_argument("--liste", "--list", dest="liste", action="store_true")
     s.set_defaults(func=cmd_cycle)
 
-    s = sub.add_parser("sahne", help="coklu obje + animasyon + isik sahnesi: ozet ve .ymap cikisi")
-    s.add_argument("--dosya", help="sahne json (varsa yuklenir, degisiklikler yazilir)")
-    s.add_argument("--ekle", action="append", metavar="MODEL",
-                   help=".ydr/.yft ekle (tekrarlanabilir)")
-    s.add_argument("--anim", action="append", metavar="YCD[:KLIP]",
-                   help="son eklenen objeye animasyon bagla")
-    s.add_argument("--sil", type=int, metavar="IDX", help="obje sil")
-    s.add_argument("--ymap", metavar="CIKTI", help="yerlesimi .ymap olarak yaz")
-    s.add_argument("--ad", help="ymap adi (varsayilan: sahne adi)")
+    s = sub.add_parser("scene", aliases=["sahne"],
+                       help="multi-object scene: summary, clip check, .ymap placement")
+    s.add_argument("--file", "--dosya", dest="dosya",
+                   help="scene json (loaded if present, changes written back)")
+    s.add_argument("--add", "--ekle", dest="ekle", action="append", metavar="MODEL",
+                   help="add a .ydr/.yft (repeatable)")
+    s.add_argument("--anim", action="append", metavar="YCD[:CLIP]",
+                   help="attach an animation to the object added last")
+    s.add_argument("--remove", "--sil", dest="sil", type=int, metavar="IDX",
+                   help="remove an object by index")
+    s.add_argument("--ymap", metavar="OUT", help="write the placement as a .ymap")
+    s.add_argument("--name", "--ad", dest="ad", help="ymap name (default: scene name)")
     s.set_defaults(func=cmd_sahne)
 
-    s = sub.add_parser("yol", help="dis arac yollari: goster / ayarla (codewalker, gta, ...)")
-    s.add_argument("ad", nargs="?", help="codewalker | gta | sunucu | blender | <kendi adin>")
-    s.add_argument("deger", nargs="?", help="yeni yol (bos: sadece goster)")
-    s.add_argument("--sil", action="store_true", help="kaydi kaldir")
+    s = sub.add_parser("path", aliases=["yol"],
+                       help="external tool paths: show / set (codewalker, gta, ...)")
+    s.add_argument("ad", nargs="?", metavar="NAME",
+                   help="codewalker | gta | server | blender | <any name you choose>")
+    s.add_argument("deger", nargs="?", metavar="PATH",
+                   help="new path (omit to just show it)")
+    s.add_argument("--remove", "--sil", dest="sil", action="store_true",
+                   help="drop the stored entry")
     s.set_defaults(func=cmd_yol)
 
-    s = sub.add_parser("light", help="bir .ydr/.yft icindeki gomulu isiklari coz")
+    s = sub.add_parser("light", help="decode and edit the lights embedded in a .ydr/.yft")
     s.add_argument("path", nargs="?", help=".ydr / .yft / .xml")
     s.add_argument("--tablo", "--table", dest="tablo", action="store_true",
-                   help="olculen vanilla isik referansini yazdir")
+                   help="print the measured vanilla light reference")
     s.add_argument("--ham", "--raw", dest="ham", action="store_true",
-                   help="cozumsuz, ham alanlar")
+                   help="raw fields, undecoded")
     # --- geri yazma
-    s.add_argument("--uygula", "--apply", dest="uygula",
-                   help="editorun urettigi JSON'u dosyaya yaz")
+    s.add_argument("--apply", "--uygula", dest="uygula", metavar="JSON",
+                   help="write a JSON edit set back into the file")
     s.add_argument("--set", action="append", metavar="[IDX.]ALAN=DEGER",
-                   help="alan yaz: --set 0.Intensity=8 (tekrarlanabilir)")
-    s.add_argument("--ekle", action="store_true", help="ilk isigi kopyalayarak ekle")
-    s.add_argument("--sil", type=int, action="append", metavar="IDX",
-                   help="isik sil (tekrarlanabilir)")
+                   help="set a field: --set 0.Intensity=8 (repeatable)")
+    s.add_argument("--add", "--ekle", dest="ekle", action="store_true",
+                   help="add a light by copying the first one")
+    s.add_argument("--remove", "--sil", dest="sil", type=int, action="append",
+                   metavar="IDX", help="remove a light (repeatable)")
     s.set_defaults(func=cmd_light)
 
     s = sub.add_parser("diff", help="iki kaynagi DUGUM VARLIGI uzerinden karsilastir")

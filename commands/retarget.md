@@ -1,5 +1,5 @@
 ---
-description: Yabancı iskeletli (Sketchfab/Mixamo) animasyonu GTA ped rig'ine aktar + weight painting + yaratık rig'i
+description: Retarget a foreign-rig animation (Sketchfab/Mixamo) onto the GTA ped rig + weight painting
 argument-hint: <kaynak dosya/rig> | weights | mover | fps | axis | creature
 allowed-tools: Bash(python:*), Bash(powershell.exe:*), Read, Edit, Write, Glob, Grep
 ---

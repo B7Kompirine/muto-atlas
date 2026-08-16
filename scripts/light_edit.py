@@ -119,14 +119,14 @@ def uygula(path, isiklar, yedekle=True):
         xml = gecici + ".xml"
         if rc != 0 or not os.path.isfile(xml):
             # Cevirici calismadiysa bu HATA'dir, "isik yok" degil.
-            raise RuntimeError("XML uretilemedi (%d): %s" % (rc, cikti.strip()[:300]))
+            raise RuntimeError("could not produce XML (%d): %s" % (rc, cikti.strip()[:300]))
 
         agac = ET.parse(xml)
         kok = agac.getroot()
         L = _lights_dugumu(kok)
         if L is None:
             if not isiklar:
-                raise RuntimeError("dosyada <Lights> yok ve eklenecek isik da yok")
+                raise RuntimeError("the file has no <Lights> and there is nothing to add")
             # Fragment'te Lights KOKTEDIR, Drawable/Lights degil (olculdu).
             L = ET.SubElement(kok, "Lights")
         for c in list(L):
@@ -137,15 +137,15 @@ def uygula(path, isiklar, yedekle=True):
 
         rc, cikti = _ps(XML_TO_RES, "-XmlPath", xml)
         if rc != 0 or not os.path.isfile(gecici):
-            raise RuntimeError("binary derlenemedi (%d): %s" % (rc, cikti.strip()[:300]))
+            raise RuntimeError("could not compile the binary (%d): %s" % (rc, cikti.strip()[:300]))
 
         # DOGRULAMA: tek gecerli olcut geri okumadir (boyut degil).
         try:
             geri = light_sahne.oku(gecici)
         except (RuntimeError, ValueError) as e:
-            raise RuntimeError("derlendi ama geri OKUNAMADI: %s" % e)
+            raise RuntimeError("compiled but could NOT be read back: %s" % e)
         if len(geri["isiklar"]) != len(isiklar):
-            raise RuntimeError("geri okumada isik sayisi tutmadi: %d yazildi, %d okundu"
+            raise RuntimeError("light count mismatch on read-back: %d written, %d read"
                                % (len(isiklar), len(geri["isiklar"])))
 
         if yedekle:
@@ -155,7 +155,7 @@ def uygula(path, isiklar, yedekle=True):
         shutil.copyfile(gecici, path)
         # "Komut hata vermedi" dagitim kaniti degildir.
         if os.path.getsize(path) != os.path.getsize(gecici):
-            raise RuntimeError("kopyalama dogrulanamadi: boyut tutmadi")
+            raise RuntimeError("copy not verified: size mismatch")
         return geri
 
 
@@ -165,7 +165,7 @@ def _set_uygula(isiklar, kurallar):
     """'0.Intensity=8' ya da 'Intensity=8' (hepsi)."""
     for k in kurallar:
         if "=" not in k:
-            raise ValueError("--set bicimi: [idx.]Alan=deger  (gelen: %s)" % k)
+            raise ValueError("--set format: [idx.]Field=value  (got: %s)" % k)
         sol, deg = k.split("=", 1)
         sol = sol.strip()
         if "." in sol:
@@ -176,15 +176,15 @@ def _set_uygula(isiklar, kurallar):
         alan = alan.strip()
         for i in hedef:
             if not 0 <= i < len(isiklar):
-                raise ValueError("isik indeksi yok: %d (0..%d)" % (i, len(isiklar) - 1))
+                raise ValueError("no such light index: %d (0..%d)" % (i, len(isiklar) - 1))
             l = isiklar[i]
             if alan not in l:
-                raise ValueError("boyle bir alan yok: %s" % alan)
+                raise ValueError("no such field: %s" % alan)
             eski = l[alan]
             if isinstance(eski, list):
                 p = [float(x) for x in deg.replace(",", " ").split()]
                 if len(p) != len(eski):
-                    raise ValueError("%s %d deger ister" % (alan, len(eski)))
+                    raise ValueError("%s expects %d values" % (alan, len(eski)))
                 l[alan] = [int(x) for x in p] if alan in RGB else p
             elif isinstance(eski, str):
                 l[alan] = deg.strip()
@@ -198,7 +198,7 @@ def _set_uygula(isiklar, kurallar):
 def calistir(args):
     yol = getattr(args, "path", None)
     if not yol or not os.path.isfile(yol):
-        print("ERROR: dosya yok: %s" % yol, file=sys.stderr)
+        print("ERROR: no such file: %s" % yol, file=sys.stderr)
         return 2
     try:
         sahne = light_sahne.oku(yol)
@@ -214,7 +214,7 @@ def calistir(args):
             d = json.load(fh)
         yeni = d.get("isiklar", d if isinstance(d, list) else None)
         if yeni is None:
-            print("ERROR: JSON icinde 'isiklar' yok", file=sys.stderr)
+            print("ERROR: no 'isiklar' array in the JSON", file=sys.stderr)
             return 2
         isiklar = [{k: v for k, v in l.items() if not k.startswith("_")}
                    for l in yeni]
@@ -223,14 +223,14 @@ def calistir(args):
     if getattr(args, "ekle", False):
         yeni = json.loads(json.dumps(isiklar[0])) if isiklar else None
         if yeni is None:
-            print("ERROR: kopyalanacak isik yok (dosyada hic isik yok).",
+            print("ERROR: no light to copy (the file has none).",
                   file=sys.stderr)
             return 2
         isiklar.append(yeni)
 
     for i in sorted(getattr(args, "sil", None) or [], reverse=True):
         if not 0 <= i < len(isiklar):
-            print("ERROR: silinecek indeks yok: %d" % i, file=sys.stderr)
+            print("ERROR: no such index to remove: %d" % i, file=sys.stderr)
             return 2
         isiklar.pop(i)
 
@@ -244,7 +244,7 @@ def calistir(args):
     if kaynak is None and not any([getattr(args, "set", None),
                                    getattr(args, "sil", None),
                                    getattr(args, "ekle", False)]):
-        print("ERROR: ne yapilacagi belirtilmedi (--uygula / --set / --ekle / --sil)",
+        print("ERROR: nothing to do (--apply / --set / --add / --remove)",
               file=sys.stderr)
         return 2
 
@@ -255,12 +255,12 @@ def calistir(args):
         print("ERROR: %s" % e, file=sys.stderr)
         return 2
 
-    print("%s: %d isik -> %d isik yazildi ve GERI OKUNARAK dogrulandi"
+    print("%s: %d light(s) -> %d written and VERIFIED BY READING BACK"
           % (os.path.basename(yol), onceki, len(geri["isiklar"])))
     for l in geri["isiklar"]:
-        print("  #%d %-8s yog=%-6s menzil=%-5s koni=%s/%s"
+        print("  #%d %-8s int=%-6s range=%-5s cone=%s/%s"
               % (l["_i"], l["Type"], _sayi(l["Intensity"]), _sayi(l["Falloff"]),
                  _sayi(l["ConeInnerAngle"]), _sayi(l["ConeOuterAngle"])))
-    print("  yedek: %s.yedek" % os.path.basename(yol))
-    print("\n  Asset degisti: sunucudan CIKIP yeniden baglan — restart yetmez.")
+    print("  backup: %s.yedek" % os.path.basename(yol))
+    print("\n  The asset changed: LEAVE the server and rejoin - a restart is not enough.")
     return 0

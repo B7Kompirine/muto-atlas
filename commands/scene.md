@@ -1,6 +1,6 @@
 ---
-description: Çoklu obje sahnesi — obje listesi, .ycd klip çözümü ve ymap yerleşimi çıkarma
-argument-hint: --ekle <model.ydr> [--anim <ycd>:<klip>] [--ymap out.ymap]
+description: Multi-object scene - object list, .ycd clip decoding and ymap placement
+argument-hint: --add <model.ydr> [--anim <ycd>:<clip>] [--ymap out.ymap]
 allowed-tools: Bash(python:*), Bash(powershell:*), Read, Edit
 ---
 
@@ -14,23 +14,23 @@ yerleşimi `.ymap` olarak yazar.
 ## Sırayla
 
 ```bash
-# sahne kur (kalıcı: --dosya ile kaydedilir)
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" sahne --dosya sahnem.json \
-    --ekle prop_a.ydr --ekle prop_b.yft
+# sahne kur (kalıcı: --file ile kaydedilir)
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" sahne --file sahnem.json \
+    --add prop_a.ydr --add prop_b.yft
 
 # son eklenen objeye animasyon bağla
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" sahne --dosya sahnem.json \
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" sahne --file sahnem.json \
     --anim "kapi.ycd:kapi_ac"
 
-# sahnenin ozeti: ucgen/kemik/isik sayilari + klip dogrulamasi
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" sahne --dosya sahnem.json
+# sahnenin ozeti: ucgen/kemik/light sayilari + klip dogrulamasi
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" sahne --file sahnem.json
 
 # yerleşimi haritaya çıkar
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" sahne --dosya sahnem.json \
-    --ymap muto_sahne.ymap --ad muto_sahne
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" sahne --file sahnem.json \
+    --ymap muto_sahne.ymap --name muto_sahne
 ```
 
-Obje silme: `--sil <indeks>`. Klip adı verilmezse sözlüğün ilk klibi seçilir
+Obje silme: `--remove <indeks>`. Klip adı verilmezse sözlüğün ilk klibi seçilir
 ve özet çıktısında kare/süre/kemik kanalı sayısı raporlanır.
 
 ## Ölçülmüş, tahmin edilmemiş
@@ -58,9 +58,9 @@ ve özet çıktısında kare/süre/kemik kanalı sayısı raporlanır.
   sahne yine açılır, eksik obje atlanır.
 - ymap yazdıktan sonra hatırlat: asset değişti → sunucudan **çıkıp yeniden
   bağlan**, restart yetmez.
-- Işık işi tek dosyaysa `/isik` daha doğrudan; `/sahne` çoklu obje içindir.
+- Işık işi tek dosyaysa `/light` daha doğrudan; `/scene` çoklu obje içindir.
 - **Animasyon oynatan bir görsel önizleme bu pakette yoktur.** Klip çözülür,
   doğrulanır ve raporlanır; "gözle izle" isteniyorsa Blender/oyun gerekir.
 
 Işık matematiği ve önizlemenin sınırları:
-`${CLAUDE_PLUGIN_ROOT}/skills/fivem-assets/references/isik-matematigi-ve-onizleme.md`
+`${CLAUDE_PLUGIN_ROOT}/skills/fivem-assets/references/light-matematigi-ve-onizleme.md`

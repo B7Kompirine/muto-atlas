@@ -1,5 +1,5 @@
 ---
-description: Animasyon (süre + kemik), prop iskeleti, expression ve senaryo araması
+description: Search animations (duration + bones), prop skeletons, expressions and scenarios
 argument-hint: <arama terimi> | <dict> --dict | bones <model> | expr <terim>
 allowed-tools: Bash(python:*), Read
 ---

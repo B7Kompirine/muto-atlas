@@ -1,5 +1,5 @@
 ---
-description: Lua dosyalarını native hatalarına karşı denetle (uydurma native, yanlış taraf, argüman sayısı)
+description: Lint Lua files for native mistakes (invented natives, wrong side, wrong arity)
 argument-hint: [dosya veya klasör yolu — boşsa mevcut dizin]
 allowed-tools: Bash(python:*), Read, Edit, Grep, Glob
 ---

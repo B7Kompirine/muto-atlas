@@ -52,16 +52,16 @@ def _kul(*p):
 
 
 # ad -> (config anahtari, aciklama, tip, aday yollar)
-# tip: "dosya" | "klasor".  Adaylar SIRAYLA denenir; ilk var olan kazanir.
+# tip: "file" | "folder".  Adaylar SIRAYLA denenir; ilk var olan kazanir.
 KAYITLI = {
     "codewalker": (
-        "codeWalker", "CodeWalker.Core.dll — .ydr/.yft/.ycd cozumu", "dosya",
+        "codeWalker", "CodeWalker.Core.dll - decodes .ydr/.yft/.ycd", "file",
         [_kul("Desktop", "FiveM", "CodeWalker30_dev46", "CodeWalker.Core.dll"),
          _kul("Desktop", "CodeWalker", "CodeWalker.Core.dll"),
          _kul("Desktop", "Programlar", "CodeWalker", "CodeWalker.Core.dll")],
     ),
     "gta": (
-        "gtaFolder", "GTA V kurulum klasoru — veri katmanlarinin kaynagi", "klasor",
+        "gtaFolder", "GTA V install folder - source of every data layer", "folder",
         [r"C:\Program Files\Rockstar Games\Grand Theft Auto V",
          r"C:\Program Files\Epic Games\GTAV",
          r"C:\Program Files (x86)\Steam\steamapps\common\Grand Theft Auto V",
@@ -69,12 +69,12 @@ KAYITLI = {
          r"D:\SteamLibrary\steamapps\common\Grand Theft Auto V",
          r"E:\Grand Theft Auto V"],
     ),
-    "sunucu": (
-        "resources", "FiveM sunucusunun resources klasoru — framework indeksi",
-        "klasor", [],
+    "server": (
+        "resources", "your FiveM server resources folder - framework index",
+        "folder", [],
     ),
     "blender": (
-        "blender", "blender.exe — betikleri bassiz calistirmak icin", "dosya",
+        "blender", "blender.exe - to run scripts headless", "file",
         [r"C:\Program Files\Blender Foundation\Blender 5.2\blender.exe",
          r"C:\Program Files\Blender Foundation\Blender 4.4\blender.exe"],
     ),
@@ -82,6 +82,9 @@ KAYITLI = {
 
 # Kayitli olmayan adlar da saklanir; carpismasin diye bu on ek ile.
 SERBEST_ONEK = "yol_"
+
+# Eski Turkce adlar takma ad olarak kalir: eski komut satirlari kirilmasin.
+TAKMA = {"sunucu": "server", "yol": "path"}
 
 
 def config_oku():
@@ -100,14 +103,15 @@ def config_yaz(d):
 
 
 def _anahtar(ad):
-    k = KAYITLI.get(ad.lower())
+    ad = TAKMA.get(ad.lower(), ad.lower())
+    k = KAYITLI.get(ad)
     return k[0] if k else SERBEST_ONEK + ad.lower()
 
 
 def _var_mi(p, tip):
     if not p:
         return False
-    return os.path.isdir(p) if tip == "klasor" else os.path.isfile(p)
+    return os.path.isdir(p) if tip == "folder" else os.path.isfile(p)
 
 
 def coz(ad):
@@ -116,32 +120,32 @@ def coz(ad):
     Sira: config.json -> bilinen adaylar. Config'de YAZILI ama diskte YOK
     ise bu ayrica soylenir -- "ayarladim ama calismiyor" en sik durum.
     """
-    ad = ad.lower()
+    ad = TAKMA.get(ad.lower(), ad.lower())
     kayit = KAYITLI.get(ad)
-    tip = kayit[2] if kayit else "dosya"
+    tip = kayit[2] if kayit else "file"
     cfg = config_oku()
     yazili = cfg.get(_anahtar(ad))
     if yazili:
         if _var_mi(yazili, tip):
             return yazili, "config.json"
-        return None, "config.json'da yazili ama diskte YOK: %s" % yazili
+        return None, "set in config.json but MISSING on disk: %s" % yazili
     for aday in (kayit[3] if kayit else []):
         if _var_mi(aday, tip):
-            return aday, "otomatik bulundu"
-    return None, "ayarli degil ve otomatik bulunamadi"
+            return aday, "found automatically"
+    return None, "not set, and not found automatically"
 
 
 def ayarla(ad, deger):
     """Diskte olmayan yolu KABUL ETMEZ: sessizce bozuk kayit birakmaktansa
     hemen soyler."""
-    ad = ad.lower()
+    ad = TAKMA.get(ad.lower(), ad.lower())
     kayit = KAYITLI.get(ad)
     tip = kayit[2] if kayit else None
     deger = os.path.abspath(os.path.expanduser(deger))
     if tip is None:
-        tip = "klasor" if os.path.isdir(deger) else "dosya"
+        tip = "folder" if os.path.isdir(deger) else "file"
     if not _var_mi(deger, tip):
-        raise ValueError("boyle bir %s yok: %s" % (tip, deger))
+        raise ValueError("no such %s: %s" % (tip, deger))
     cfg = config_oku()
     cfg[_anahtar(ad)] = deger
     config_yaz(cfg)
@@ -169,7 +173,7 @@ def hepsi():
         if k.startswith(SERBEST_ONEK):
             ad = k[len(SERBEST_ONEK):]
             p, kaynak = coz(ad)
-            out.append((ad, p, kaynak, "(kullanici tanimli)"))
+            out.append((ad, p, kaynak, "(user-defined)"))
     return out
 
 
@@ -180,7 +184,7 @@ def calistir(args):
     deger = getattr(args, "deger", None)
 
     if ad and getattr(args, "sil", False):
-        print("silindi: %s" % ad if sil(ad) else "zaten kayitli degil: %s" % ad)
+        print("removed: %s" % ad if sil(ad) else "not stored anyway: %s" % ad)
         return 0
 
     if ad and deger:
@@ -190,7 +194,7 @@ def calistir(args):
             print("ERROR: %s" % e, file=sys.stderr)
             return 2
         print("%-12s -> %s" % (ad, p))
-        print("  kaydedildi: %s" % CONFIG)
+        print("  saved to: %s" % CONFIG)
         return 0
 
     if ad:
@@ -198,27 +202,27 @@ def calistir(args):
         if p:
             print("%s\n  %s  (%s)" % (ad, p, kaynak))
             return 0
-        print("%s\n  YOK — %s" % (ad, kaynak), file=sys.stderr)
+        print("%s\n  MISSING - %s" % (ad, kaynak), file=sys.stderr)
         k = KAYITLI.get(ad.lower())
         if k and k[3]:
-            print("  bakilan yerler:", file=sys.stderr)
+            print("  looked in:", file=sys.stderr)
             for a in k[3]:
                 print("    %s" % a, file=sys.stderr)
-        print('\n  ayarlamak icin: assetdb.py yol %s "<yol>"' % ad, file=sys.stderr)
+        print('\n  set it with: assetdb.py path %s "<path>"' % ad, file=sys.stderr)
         return 1
 
     eksik = 0
-    print("kutuk: %s\n" % CONFIG)
+    print("registry: %s\n" % CONFIG)
     for ad, p, kaynak, acik in hepsi():
         if p:
             print("  [+] %-11s %s" % (ad, p))
-            print("      %-11s %s · %s" % ("", kaynak, acik))
+            print("      %-11s %s | %s" % ("", kaynak, acik))
         else:
             eksik += 1
-            print("  [!] %-11s YOK — %s" % (ad, kaynak))
+            print("  [!] %-11s MISSING - %s" % (ad, kaynak))
             print("      %-11s %s" % ("", acik))
-    print('\n  ayarla: assetdb.py yol <ad> "<yol>"   ·   kaldir: --sil')
-    print("  yeni ad da kaydedilir: assetdb.py yol gizmo \"C:\\...\\Gizmo.exe\"")
+    print('\n  set:  assetdb.py path <name> "<path>"   |   drop: --remove')
+    print("  any name works too: assetdb.py path gizmo \"C:\\...\\Gizmo.exe\"")
     return 1 if eksik else 0
 
 

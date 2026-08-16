@@ -1,5 +1,5 @@
 ---
-description: Koreografili hareket/yıkım — RayFire (des_*) composite sistemi. Collision'ın hareket etmesi, bina çökmesi, senaryo dizisi.
+description: Choreographed motion and destruction - the RayFire (des_*) composite system
 argument-hint: [ne olacak — "kule çöksün" / "duvar yıkılsın" / "vinç devrilsin"]
 allowed-tools: Bash(powershell.exe:*), Bash(pwsh:*), Bash(python:*), Read, Edit, Write, Glob, Grep, AskUserQuestion
 ---

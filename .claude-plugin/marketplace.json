@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "muto-atlas",
-      "description": "Ground truth for FiveM/GTA V development. 25 offline data layers built from your own GTA V install and FiveM server: natives with apiset resolution and a Lua linter, archetypes, world placements, animations, skeletons, vehicles, weapons, peds, MLO interiors, embedded lights, weather timecycles, and your server's framework API. It also checks your own files before the game sees them, and edits prop lights in a browser preview that runs the engine's own falloff, cone and tonemap math — no Blender, no reconnecting to the server. Nothing is guessed; a file that could not be inspected is never reported as clean.",
+      "description": "Ground truth for FiveM/GTA V development. 25 offline data layers built from your own GTA V install and FiveM server: natives with apiset resolution and a Lua linter, archetypes, world placements, animations, skeletons, vehicles, weapons, peds, MLO interiors, embedded lights, weather timecycles, and your server's framework API. It also checks your own files before the game sees them, decodes and edits prop lights against a measured vanilla reference, and reads .ycd clips without launching the game. Nothing is guessed; a file that could not be inspected is never reported as clean.",
       "source": "./",
       "category": "development"
     }

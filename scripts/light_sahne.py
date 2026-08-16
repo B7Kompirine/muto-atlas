@@ -165,14 +165,14 @@ def _kemikler(kok):
 def _layout(vb):
     lay = vb.find("Layout")
     if lay is None:
-        raise ValueError("VertexBuffer icinde <Layout> yok")
+        raise ValueError("no <Layout> inside VertexBuffer")
     alanlar, ofset = [], 0
     for c in lay:
         n = SEMANTIK.get(c.tag)
         if n is None:
             # Sessiz atlama satiri kaydirir: normal sanilan sey UV olur.
-            raise ValueError("bilinmeyen vertex semantigi: %s "
-                             "(SEMANTIK tablosuna ekle)" % c.tag)
+            raise ValueError("unknown vertex semantic: %s "
+                             "(add it to the SEMANTIK table)" % c.tag)
         alanlar.append((c.tag, ofset, n))
         ofset += n
     return alanlar, ofset
@@ -401,9 +401,9 @@ def yaz_json(sahne, path):
 
 if __name__ == "__main__":
     s = oku(sys.argv[1])
-    print("%s (%s): %d ucgen, %d vertex, %d kemik, %d isik" % (
+    print("%s (%s): %d triangles, %d vertices, %d bones, %d lights" % (
         s["ad"], s["tip"], len(s["mesh"]["idx"]) // 3,
         len(s["mesh"]["pos"]) // 3, len(s["kemikler"]), len(s["isiklar"])))
     for l in s["isiklar"]:
-        print("  #%d %-8s dunya=%s" % (l["_i"], l["Type"],
+        print("  #%d %-8s world=%s" % (l["_i"], l["Type"],
                                        [round(v, 3) for v in l["_dunya"]["pos"]]))

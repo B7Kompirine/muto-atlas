@@ -1,5 +1,5 @@
 ---
-description: Archetype/animasyon indekslerini yeniden kur (yeni MLO/prop eklediysen)
+description: Rebuild the archetype/animation indexes (after adding a new MLO or prop)
 argument-hint: [sunucu resources yolu]
 allowed-tools: Bash(powershell.exe:*), Bash(python:*), Read
 ---
@@ -71,7 +71,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/s
 Süreyi önceden ölçmek için `-Ornek 600` ile çalıştır: örneklem modu tahmini
 yazar ve **dosya yazmaz** (yarım veri kalıcı olmasın diye).
 
-İkisi de opsiyoneldir. Kurulu değillerse `light --tablo` ve `timecycle`
+İkisi de opsiyoneldir. Kurulu değillerse `light --table` ve `timecycle`
 uydurma değer döndürmez, çıkış kodu **2** verir.
 
 ## 6. Doğrula

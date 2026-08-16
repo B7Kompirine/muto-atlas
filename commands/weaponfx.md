@@ -1,5 +1,5 @@
 ---
-description: Silah görselleri — glow (emissive), wireframe, zincir/charm süsleme ve UV animasyonlu skin
+description: Weapon visuals - glow (emissive), wireframe, charms, and UV-animated skins
 argument-hint: <glow|wireframe|zincir|charm|uvanim> [silah modeli]
 allowed-tools: Bash(powershell.exe:*), Bash(python:*), Read, Edit, Write, Glob, Grep
 ---

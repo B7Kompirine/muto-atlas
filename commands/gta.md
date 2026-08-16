@@ -1,6 +1,6 @@
 ---
-description: GTA V kurulum klasörü nerede — göster ya da yeni yolu ayarla
-argument-hint: [yol]  ·  boş bırak = nerede olduğunu söyle
+description: Where the GTA V install folder is - show it, or set a new path
+argument-hint: [path]  ·  omit to just show it
 allowed-tools: Bash(python:*), Read
 ---
 
@@ -8,10 +8,10 @@ Kullanıcının sorgusu: `$ARGUMENTS`
 
 ```bash
 # nerede?
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" yol gta
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" path gta
 
 # ayarla
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" yol gta "$ARGUMENTS"
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" path gta "$ARGUMENTS"
 ```
 
 `$ARGUMENTS` boşsa **göster**, bir yol verilmişse **ayarla**.

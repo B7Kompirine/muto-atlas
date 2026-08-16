@@ -1,5 +1,5 @@
 ---
-description: Bir prop/obje dünyada nerede (ymap + MLO iç mekân) veya bir koordinatın çevresinde ne var
+description: Where a prop/object sits in the world (ymap + MLO interior), or what is near a coordinate
 argument-hint: <model adı> | near <x> <y> <z> [--radius N] [--filter parça]
 allowed-tools: Bash(python:*), Read
 ---

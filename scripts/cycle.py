@@ -37,7 +37,7 @@ KULLANIM
     python assetdb.py cycle w_thunder --saat 3 --mod v_dark --guc 1.0
     python assetdb.py cycle w_clear --saat 12 --bolge URBAN
 
-Veri yoksa: powershell -File build_cycle.ps1 -GtaFolder "<GTA klasoru>"
+Veri yoksa: powershell -File build_cycle.ps1 -GtaFolder "<GTA folder>"
 """
 from __future__ import annotations
 
@@ -86,7 +86,7 @@ def yukle(hava="w_clear", bolge="GLOBAL"):
         return _cache[key]
     path = os.path.join(DATA, hava + ".xml")
     if not os.path.isfile(path):
-        raise FileNotFoundError("cycle yok: %s (mevcut: %s)" % (path, mevcut()))
+        raise FileNotFoundError("no such cycle: %s (available: %s)" % (path, mevcut()))
     cyc = list(ET.parse(path).getroot())[0]
     regions = {r.get("name"): r for r in cyc}
     reg = regions.get(bolge)
@@ -209,7 +209,7 @@ def ortam(hava="w_clear", saat=20.0, bolge="GLOBAL", hdr=False,
     if modifier:
         mod = _mod_yukle().get(modifier.lower())
         if mod is None:
-            raise KeyError("modifier yok: %s (ornek: %s)"
+            raise KeyError("no such modifier: %s (e.g. %s)"
                            % (modifier, modifierlar(modifier[:4])[:8]))
     else:
         guc = 0.0
@@ -251,15 +251,15 @@ def ortam(hava="w_clear", saat=20.0, bolge="GLOBAL", hdr=False,
 
 def calistir(args):
     if not os.path.isdir(DATA) or not mevcut():
-        print("ERROR: cycle katmani kurulu degil.", file=sys.stderr)
+        print("ERROR: the weather cycle layer is not installed.", file=sys.stderr)
         print("  powershell -File build_cycle.ps1 -GtaFolder \"<GTA klasoru>\"",
               file=sys.stderr)
         return 2
     if getattr(args, "liste", False) or not getattr(args, "hava", None):
-        print("hava cycle'lari (%d):" % len(mevcut()))
+        print("weather cycles (%d):" % len(mevcut()))
         for w in mevcut():
             print("  " + w)
-        print("\nbir cycle icin: assetdb.py cycle w_clear --saat 20")
+        print("\nfor one cycle: assetdb.py cycle w_clear --hour 20")
         return 0
     try:
         a = ortam(args.hava, saat=args.saat, bolge=args.bolge,
@@ -268,9 +268,9 @@ def calistir(args):
         print("ERROR: %s" % e, file=sys.stderr)
         return 1
     m = a["_meta"]
-    print("%s / %s  cycle=%s  saat=%s" % (m["hava"], m["bolge"], m["cycle"], m["saat"]))
+    print("%s / %s  cycle=%s  hour=%s" % (m["hava"], m["bolge"], m["cycle"], m["saat"]))
     if m["modifier"]:
-        print("modifier=%s  guc=%.2f" % (m["modifier"], m["guc"]))
+        print("modifier=%s  strength=%.2f" % (m["modifier"], m["guc"]))
     print()
     for k in ("dir_col", "dir_amb", "amb_nat_up", "amb_nat_dn",
               "amb_art_up", "amb_art_dn", "light_dir"):

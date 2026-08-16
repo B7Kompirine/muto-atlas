@@ -150,13 +150,13 @@ def saat_bloklari(saatler):
 def saat_metni(timeflags):
     saatler = aktif_saatler(timeflags)
     if timeflags is None:
-        return "TimeFlags yok"
+        return "no TimeFlags"
     if not saatler:
-        return "hicbir saat biti yok (TimeFlags 0)"
+        return "no hour bits at all (TimeFlags 0)"
     if len(saatler) == SAAT_BITLERI:
-        return "her saat (24/24)"
+        return "every hour (24/24)"
     blok = ", ".join(f"{a:02d}:00-{(b + 1) % 24:02d}:00" for a, b in saat_bloklari(saatler))
-    return f"{blok}  ({len(saatler)} saat)"
+    return f"{blok}  ({len(saatler)}h)"
 
 
 def bitler(v):
@@ -219,37 +219,37 @@ def supheli(isik, ref=None):
     """Isigi GORUNMEZ yapan ya da olculen araligin disina dusen durumlar.
 
     Mantik denetimleri her zaman calisir; aralik denetimi yalnizca referans
-    katmani kuruluysa -- olcum yoksa "araligin disinda" denemez.
+    katmani kuruluysa -- olcum yoksa "outside the range" denemez.
     """
     u = []
     if not aktif_saatler(isik["TimeFlags"]):
         # OLCULDU: 72.539 vanilla isikta TimeFlags 0 yalnizca 8 kez gecer
         # (%0,011) -- ve gectigi yerler ic mekan lamba prop'lari
         # (m232_lamp_office_01, m25_2_int_01_lp_m_bedroom, imp_lightrig01).
-        # Bu yuzden 0'in "hic yanmaz" mi yoksa "saat kisiti yok" mu demek
+        # Bu yuzden 0'in "hic yanmaz" mi yoksa "no hour restriction" mu demek
         # oldugu BU VERIDEN COZULEMEZ. Nadir oldugu soylenir, davranis
         # IDDIA EDILMEZ; ayrimi ancak oyunda test etmek kapatir.
-        u.append("TimeFlags 0: hicbir saat biti yok. Vanilla'da cok nadir "
-                 "(72539 isikta 8 kez, %0.011) -- davranisi bu veriden "
-                 "belirlenemez, oyunda test et")
+        u.append("TimeFlags 0: no hour bits at all. Very rare in vanilla "
+                 "(8 of 72,539 lights, 0.011%) -- the data does not settle "
+                 "what it does; test it in game")
     if isik["Intensity"] is not None and isik["Intensity"] <= 0:
-        u.append("Intensity 0 -> isik yayilmaz")
+        u.append("Intensity 0 -> emits nothing")
     if isik["Falloff"] is not None and isik["Falloff"] <= 0:
-        u.append("Falloff 0 -> menzil yok, isik hicbir yuzeye ulasmaz")
+        u.append("Falloff 0 -> no range, the light reaches no surface")
     if isik["Type"] == "Spot":
         ic, dis = isik["ConeInnerAngle"], isik["ConeOuterAngle"]
         if dis is not None and dis <= 0:
-            u.append("Spot ama ConeOuterAngle 0 -> koni kapali")
+            u.append("Spot but ConeOuterAngle 0 -> cone is shut")
         elif ic is not None and dis is not None and ic > dis:
-            u.append(f"ConeInnerAngle ({ic:g}) > ConeOuterAngle ({dis:g}) -> koni ters")
+            u.append(f"ConeInnerAngle ({ic:g}) > ConeOuterAngle ({dis:g}) -> cone inverted")
     if ref:
         for alan, s in ref["ist"].items():
             v = isik.get(alan)
             if v is None or v == 0:
                 continue
             if v < s["p05"] or v > s["p95"]:
-                u.append(f"{alan}={v:g} vanilla'nin %90'lik bandinin disinda "
-                         f"[{s['p05']:g}, {s['p95']:g}] (hata degil, referans)")
+                u.append(f"{alan}={v:g} is outside vanilla's 90% band "
+                         f"[{s['p05']:g}, {s['p95']:g}] (not an error - reference)")
     return u
 
 
@@ -261,58 +261,58 @@ def yaz_isik(idx, i, ham=False, ref=None):
         return
     if i["Colour"]:
         r, g, b = i["Colour"]
-        print(f"      renk         RGB({r},{g},{b})")
+        print(f"      colour       RGB({r},{g},{b})")
     if i["Intensity"] is not None:
-        print(f"      yogunluk     {i['Intensity']:g}")
+        print(f"      intensity    {i['Intensity']:g}")
     if i["Falloff"] is not None:
-        us = f"   (us {i['FalloffExponent']:g})" if i["FalloffExponent"] is not None else ""
-        print(f"      menzil       {i['Falloff']:g} m{us}")
+        us = f"   (exp {i['FalloffExponent']:g})" if i["FalloffExponent"] is not None else ""
+        print(f"      range        {i['Falloff']:g} m{us}")
     if i["Type"] == "Spot" and i["ConeOuterAngle"] is not None:
-        print(f"      koni         ic {i['ConeInnerAngle']:g}deg -> dis "
+        print(f"      cone         inner {i['ConeInnerAngle']:g}deg -> outer "
               f"{i['ConeOuterAngle']:g}deg")
     if i["Type"] == "Capsule" and i["Extent"]:
-        print(f"      uzanim       {i['Extent']}")
-    print(f"      saat         {saat_metni(i['TimeFlags'])}"
+        print(f"      extent       {i['Extent']}")
+    print(f"      hours        {saat_metni(i['TimeFlags'])}"
           f"   [TimeFlags {i['TimeFlags']}]")
     if i["CoronaSize"]:
-        print(f"      korona       boyut {i['CoronaSize']:g}  yogunluk "
+        print(f"      corona       size {i['CoronaSize']:g}  intensity "
               f"{i['CoronaIntensity']:g}")
     if i["VolumeIntensity"]:
-        print(f"      hacim        yogunluk {i['VolumeIntensity']:g}  olcek "
+        print(f"      volume       intensity {i['VolumeIntensity']:g}  scale "
               f"{i['VolumeSizeScale']:g}")
     if i["ShadowBlur"]:
-        print(f"      golge        bulaniklik {i['ShadowBlur']}")
+        print(f"      shadow       blur {i['ShadowBlur']}")
     b = bitler(i["Flags"])
     yaygin = ""
     if ref and i["Flags"] in ref["bayrak"]:
-        yaygin = f"  (vanilla'da x{ref['bayrak'][i['Flags']]})"
-    print(f"      bayrak       {i['Flags']}  = bit {b or 'yok'}{yaygin}")
+        yaygin = f"  (vanilla x{ref['bayrak'][i['Flags']]})"
+    print(f"      flags        {i['Flags']}  = bits {b or 'none'}{yaygin}")
     if i["BoneId"]:
-        print(f"      kemik        tag {i['BoneId']}")
+        print(f"      bone         tag {i['BoneId']}")
     if i["ProjectedTextureHash"]:
-        print(f"      projeksiyon  {i['ProjectedTextureHash']}")
+        print(f"      projection   {i['ProjectedTextureHash']}")
     for s in supheli(i, ref):
         print(f"      ! {s}")
 
 
 def yaz_tablo(ref):
     tip = ", ".join(f"{k} {v}" for k, v in ref["tip"].most_common())
-    print("OLCULEN VANILLA ISIK REFERANSI")
-    print(f"  kaynak : data/lights.tsv.gz — {ref['n']} isik / {ref['dosya']} model")
-    print(f"  tip    : {tip}")
-    print("  NOT: aralik disi olmak HATA DEMEK DEGILDIR, 'vanilla'da nadir' demektir.\n")
-    print(f"  {'alan':<20} {'n':>7} {'min':>9} {'p05':>9} {'medyan':>9} "
+    print("MEASURED VANILLA LIGHT REFERENCE")
+    print(f"  source : data/lights.tsv.gz - {ref['n']} lights / {ref['dosya']} models")
+    print(f"  types  : {tip}")
+    print("  NOTE: outside the range is NOT an error, it means 'rare in vanilla'.\n")
+    print(f"  {'field':<20} {'n':>7} {'min':>9} {'p05':>9} {'median':>9} "
           f"{'p95':>9} {'maks':>9}")
     for k, s in ref["ist"].items():
         print(f"  {k:<20} {s['n']:>7} {s['min']:>9g} {s['p05']:>9g} "
               f"{s['medyan']:>9g} {s['p95']:>9g} {s['maks']:>9g}")
 
-    print("\n  Flags (en yaygin 8):")
+    print("\n  Flags (8 most common):")
     for v, c in ref["bayrak"].most_common(8):
-        print(f"    {v:<12} x{c:<7} bit {bitler(v) or 'yok'}")
-    print("  Bit ADLARI veritabaninda YOK -> bit indeksi gosterilir, isim uydurulmaz.")
+        print(f"    {v:<12} x{c:<7} bits {bitler(v) or 'none'}")
+    print("  Bit NAMES are not in the database -> indices are shown, names are not invented.")
 
-    print("\n  TimeFlags (en yaygin 8):")
+    print("\n  TimeFlags (8 most common):")
     for v, c in ref["tf"].most_common(8):
         print(f"    {v:<12} x{c:<7} {saat_metni(v)}")
 
@@ -321,28 +321,28 @@ def calistir(args):
     ref = referans()
     if args.tablo:
         if ref is None:
-            print(f"ERROR: {LIGHTS} yok.", file=sys.stderr)
-            print("  Olculmus referans YOK - aralik hakkinda hicbir sey iddia "
+            print(f"ERROR: {LIGHTS} not found.", file=sys.stderr)
+            print("  No measured reference - NOTHING can be claimed about ranges "
                   "edilemez. Uret: powershell -File build_lights.ps1",
                   file=sys.stderr)
             return 2
         yaz_tablo(ref)
         return 0
     if not args.path:
-        print("ERROR: dosya verilmedi (ya da --tablo kullan).", file=sys.stderr)
+        print("ERROR: no file given (or use --table).", file=sys.stderr)
         return 2
 
     kok, hata = kok_oku(args.path)
     if hata:
         print(f"ERROR: {args.path}: {hata}", file=sys.stderr)
-        print("  Dosya OKUNAMADI - icinde isik olup olmadigi hakkinda hicbir sey "
+        print("  File could NOT be read - nothing can be said about the lights "
               "iddia edilemez.", file=sys.stderr)
         return 2
 
     isiklar = isiklari_oku(kok)
     if isiklar is None:
-        print(f"{os.path.basename(args.path)} ({kok.tag}): <Lights> dugumu YOK.")
-        print("  Bu kaynak tipi isik tasimiyor olabilir; 'isik yok' ile ayni sey "
+        print(f"{os.path.basename(args.path)} ({kok.tag}): has NO <Lights> node.")
+        print("  This resource type may not carry lights at all; that is NOT the same "
               "DEGILDIR.")
         return 1
     if not isiklar:
@@ -350,9 +350,9 @@ def calistir(args):
               f"-> gomulu isik yok.")
         return 1
 
-    print(f"{os.path.basename(args.path)} ({kok.tag}): {len(isiklar)} isik")
+    print(f"{os.path.basename(args.path)} ({kok.tag}): {len(isiklar)} lights")
     for idx, i in enumerate(isiklar):
         yaz_isik(idx, i, args.ham, ref)
     toplam_uyari = sum(len(supheli(i, ref)) for i in isiklar)
-    print(f"\n{len(isiklar)} isik | {toplam_uyari} uyari")
+    print(f"\n{len(isiklar)} lights | {toplam_uyari} warnings")
     return 0

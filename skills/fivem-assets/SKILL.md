@@ -829,22 +829,22 @@ zincir/charm, **akan doku**) eklenecekse:
   bir bayraktır**. İlk kontrol noktası CodeWalker: skin orada animasyonlu
   değilse oyunda da değildir.
 
-## IŞIK — oku, çöz, geri yaz (`/isik`)
+## IŞIK — oku, çöz, geri yaz (`/light`)
 
 Işıkla ilgili **her** iş burada başlar.
 
 ```bash
 assetdb.py light prop_lamp.ydr              # oku ve ÇÖZ (sihirli sayıları aç)
-assetdb.py light prop_lamp.ydr --tablo      # 72.539 vanilla ışığın ölçülmüş bandı
-assetdb.py light prop_lamp.ydr --uygula duzenleme.json
+assetdb.py light prop_lamp.ydr --table      # 72.539 vanilla ışığın ölçülmüş bandı
+assetdb.py light prop_lamp.ydr --apply duzenleme.json
 assetdb.py light prop_lamp.ydr --set 0.Intensity=8 --set 0.ConeOuterAngle=35
-assetdb.py light prop_lamp.ydr --ekle | --sil 1
-assetdb.py cycle w_clear --saat 20          # hava cycle'ının taban katmanı
+assetdb.py light prop_lamp.ydr --add | --remove 1
+assetdb.py cycle w_clear --hour 20          # hava cycle'ının taban katmanı
 assetdb.py timecycle int_hospital_dark      # odanın modifier'ı
 ```
 
 Geri yazma `res_to_xml → XML → xml_to_res` turudur ve her yazma **geri
-okunarak** doğrulanır. Değer önerirken `--tablo`'nun ölçülmüş bandını kullan
+okunarak** doğrulanır. Değer önerirken `--table`'nun ölçülmüş bandını kullan
 (alan başına p05 / medyan / p95); katman kurulu değilse aralık **uydurma**.
 
 Ölçülmüş, tahmin edilmemiş:
@@ -856,18 +856,18 @@ okunarak** doğrulanır. Değer önerirken `--tablo`'nun ölçülmüş bandını
   saat 20'de ışık **yanmaz**. "Yanmıyor" şikâyetinde ilk bakılacak yer budur —
   çoğu vakada ışık sağlamdır, saat yanlıştır.
 - **Boyut geçerlilik ölçütü değildir** (RSC7 zlib'dir): 15.056 → 15.904 bayt
-  aynı içeriktir. Tek ölçüt **geri okumadır**; `--uygula` her zaman geri
+  aynı içeriktir. Tek ölçüt **geri okumadır**; `--apply` her zaman geri
   okur ve ışık sayısı tutmuyorsa yazmaz.
 
-Tam matematik + timecycle üç katmanı: `references/isik-matematigi-ve-onizleme.md`
+Tam matematik + timecycle üç katmanı: `references/light-matematigi-ve-onizleme.md`
 
-## SAHNE — çoklu obje, klip çözümü, ymap (`/sahne`)
+## SAHNE — çoklu obje, klip çözümü, ymap (`/scene`)
 
 ```bash
-assetdb.py sahne --dosya s.json --ekle a.ydr --ekle b.yft
-assetdb.py sahne --dosya s.json --anim "kapi.ycd:kapi_ac"
-assetdb.py sahne --dosya s.json                   # özet + klip doğrulaması
-assetdb.py sahne --dosya s.json --ymap out.ymap   # yerleşimi haritaya çıkar
+assetdb.py scene --file s.json --add a.ydr --add b.yft
+assetdb.py scene --file s.json --anim "kapi.ycd:kapi_ac"
+assetdb.py scene --file s.json                   # özet + klip doğrulaması
+assetdb.py scene --file s.json --ymap out.ymap   # yerleşimi haritaya çıkar
 ```
 
 `.ycd` okuma `ycd_oku.py`'dedir. Altı kanal tipi desteklenir; ölçülen dağılım

@@ -1,5 +1,5 @@
 ---
-description: GTA V movement clipset (.ycd) üretimi — vanilla değişmezleri, üretim hattı ve hata kataloğu
+description: Build a GTA V movement clipset (.ycd) - vanilla invariants and the production line
 ---
 
 # /clipset

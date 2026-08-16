@@ -1,5 +1,5 @@
 ---
-description: FiveM native ara, doğrula, imzasını göster
+description: Search a FiveM native, verify it exists, show its signature
 argument-hint: <native adı veya arama terimi> [--apiset server|client|shared]
 allowed-tools: Bash(python:*), Read
 ---

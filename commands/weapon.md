@@ -1,5 +1,5 @@
 ---
-description: Add-on silah üretimi — Blender/Sollumz iskelet eşleme + vWeaponsToolkit meta + FiveM kaynak
+description: Build an add-on weapon - Blender/Sollumz bone mapping + weapon meta + streaming
 argument-hint: <silah adı> [referans vanilla silah modeli]
 allowed-tools: Bash(powershell.exe:*), Bash(python:*), Read, Edit, Write, Glob, Grep
 ---

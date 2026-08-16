@@ -1,5 +1,5 @@
 ---
-description: Prop'un collision'ı animasyonu takip etsin — .yed expression zinciri (yft + yed + ytyp + ycd + Lua)
+description: Make a prop's collision follow its animation - the .yed expression chain (yft + yed + ytyp)
 argument-hint: <model adı> [animasyonlu kemik tag'i]
 allowed-tools: Bash(powershell.exe:*), Bash(python:*), Read, Edit, Write, Glob, Grep
 ---

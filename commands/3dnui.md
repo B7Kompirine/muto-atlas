@@ -1,6 +1,6 @@
 ---
-description: Objenin üstünde canlı, tıklanabilir HTML ekran — DUI panel + raycast/UV etkileşim zinciri
-argument-hint: <model adı veya "ne yapmak istediğin">
+description: Live clickable HTML screen on an object - DUI panel + raycast/UV hit test
+argument-hint: <model> | <coords> | konu
 allowed-tools: Bash(powershell.exe:*), Bash(python:*), Read, Edit, Write, Glob, Grep
 ---
 

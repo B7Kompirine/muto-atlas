@@ -1,5 +1,5 @@
 ---
-description: Kurulum — kullanıcıya yollarını sorar, 24 katmanı kendi verisinden üretir
+description: Setup - asks for your paths, builds all data layers from your own install
 argument-hint: "[sunucu resources klasörü]"
 allowed-tools: Bash(python:*), Bash(powershell.exe:*), Read, Glob, AskUserQuestion
 ---

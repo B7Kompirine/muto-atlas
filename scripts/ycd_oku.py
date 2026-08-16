@@ -98,7 +98,7 @@ def _kanal(ch, kare):
         v = _sayilar(ch.find("Values"))
         return "skaler", (v + [v[-1] if v else 0.0] * kare)[:kare]
 
-    raise ValueError("bilinmeyen kanal tipi: %s" % t)
+    raise ValueError("unknown channel type: %s" % t)
 
 
 def _blok_coz(blok, kare):
@@ -219,16 +219,16 @@ def oku(path):
 
 if __name__ == "__main__":
     d = oku(sys.argv[1])
-    print("%s: %d klip, %d animasyon" % (d["ad"], len(d["klipler"]), len(d["animasyonlar"])))
+    print("%s: %d clips, %d animations" % (d["ad"], len(d["klipler"]), len(d["animasyonlar"])))
     ara = sys.argv[2] if len(sys.argv) > 2 else None
     for ad, k in d["klipler"].items():
         if ara and ara not in ad:
             continue
         a = d["animasyonlar"].get(k["anim"])
         if not a:
-            print("  %-34s -> ANIMASYON YOK (%s)" % (ad, k["anim"]))
+            print("  %-34s -> NO ANIMATION (%s)" % (ad, k["anim"]))
             continue
         hareketli = sum(1 for t in a["kemikler"].values()
                         for v in t.values() if len({tuple(x) for x in v}) > 1)
-        print("  %-34s kare=%-4d sure=%.2fs kemik=%-3d hareketli kanal=%d"
+        print("  %-34s frames=%-4d dur=%.2fs bones=%-3d moving channels=%d"
               % (ad, a["kare"], a["sure"], len(a["kemikler"]), hareketli))

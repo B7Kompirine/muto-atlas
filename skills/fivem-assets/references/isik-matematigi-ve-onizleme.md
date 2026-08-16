@@ -8,7 +8,7 @@ farklıdır**. Bu dosya o dördünü ve etrafındaki sessiz hataları toplar.
 Sorgular:
 ```
 python assetdb.py light <ydr|yft>          # gömülü ışıkları çöz
-python assetdb.py cycle w_clear --saat 20  # hava cycle'ı: ortam + güneş
+python assetdb.py cycle w_clear --hour 20  # hava cycle'ı: ortam + güneş
 python assetdb.py timecycle <modifier>     # odanın ezmesi
 ```
 
@@ -148,8 +148,8 @@ Bir sahnenin görünümü üç katmandır ve sırası şudur:
 
 ```bash
 assetdb.py light prop_lamp.ydr              # oku + sihirli sayıları çöz
-assetdb.py light prop_lamp.ydr --uygula duzenleme.json
-assetdb.py light prop_lamp.ydr --set 0.Intensity=8 --ekle --sil 1
+assetdb.py light prop_lamp.ydr --apply duzenleme.json
+assetdb.py light prop_lamp.ydr --set 0.Intensity=8 --add --remove 1
 ```
 
 Hat iki parçadır ve ikisi de ölçüldü:
@@ -178,7 +178,7 @@ her sayısal alan için `p05 / medyan / p95 / min / maks`. Katman yoksa
   değil, saattir. Bir önizleme bunu uygulamazsa araçta parlak görünür,
   oyunda karanlık çıkar.
 - **Boyut geçerlilik ölçütü DEĞİLDİR.** Aynı içerik 15.056 → 15.904 bayt
-  çıktı (RSC7 zlib). Tek ölçüt geri okumadır; `--uygula` yazdıktan sonra
+  çıktı (RSC7 zlib). Tek ölçüt geri okumadır; `--apply` yazdıktan sonra
   dosyayı yeniden çözer, ışık sayısı tutmazsa hata verir ve orijinali
   `.yedek` olarak korur.
 
