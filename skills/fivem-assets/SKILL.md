@@ -829,6 +829,94 @@ zincir/charm, **akan doku**) eklenecekse:
   bir bayraktır**. İlk kontrol noktası CodeWalker: skin orada animasyonlu
   değilse oyunda da değildir.
 
+## IŞIK — oku, çöz, geri yaz (`/isik`)
+
+Işıkla ilgili **her** iş burada başlar.
+
+```bash
+assetdb.py light prop_lamp.ydr              # oku ve ÇÖZ (sihirli sayıları aç)
+assetdb.py light prop_lamp.ydr --tablo      # 72.539 vanilla ışığın ölçülmüş bandı
+assetdb.py light prop_lamp.ydr --uygula duzenleme.json
+assetdb.py light prop_lamp.ydr --set 0.Intensity=8 --set 0.ConeOuterAngle=35
+assetdb.py light prop_lamp.ydr --ekle | --sil 1
+assetdb.py cycle w_clear --saat 20          # hava cycle'ının taban katmanı
+assetdb.py timecycle int_hospital_dark      # odanın modifier'ı
+```
+
+Geri yazma `res_to_xml → XML → xml_to_res` turudur ve her yazma **geri
+okunarak** doğrulanır. Değer önerirken `--tablo`'nun ölçülmüş bandını kullan
+(alan başına p05 / medyan / p95); katman kurulu değilse aralık **uydurma**.
+
+Ölçülmüş, tahmin edilmemiş:
+
+- **Işık kemiğe bağlıdır.** `prop_worklight_01a`'da `BoneId 41615` zincirde
+  **1.737 m** yukarıdadır; kemik zinciri uygulanmazsa ışık yerde durur.
+  `Position/Direction/Tangent` **kemik uzayındadır**, model orijininde değil.
+- **`TimeFlags` bir sayı değil saat kümesidir.** `14680095` = 21:00–05:00;
+  saat 20'de ışık **yanmaz**. "Yanmıyor" şikâyetinde ilk bakılacak yer budur —
+  çoğu vakada ışık sağlamdır, saat yanlıştır.
+- **Boyut geçerlilik ölçütü değildir** (RSC7 zlib'dir): 15.056 → 15.904 bayt
+  aynı içeriktir. Tek ölçüt **geri okumadır**; `--uygula` her zaman geri
+  okur ve ışık sayısı tutmuyorsa yazmaz.
+
+Tam matematik + timecycle üç katmanı: `references/isik-matematigi-ve-onizleme.md`
+
+## SAHNE — çoklu obje, klip çözümü, ymap (`/sahne`)
+
+```bash
+assetdb.py sahne --dosya s.json --ekle a.ydr --ekle b.yft
+assetdb.py sahne --dosya s.json --anim "kapi.ycd:kapi_ac"
+assetdb.py sahne --dosya s.json                   # özet + klip doğrulaması
+assetdb.py sahne --dosya s.json --ymap out.ymap   # yerleşimi haritaya çıkar
+```
+
+`.ycd` okuma `ycd_oku.py`'dedir. Altı kanal tipi desteklenir; ölçülen dağılım
+(tek sözlük, 71 animasyon): `StaticQuaternion` 2717 · `StaticFloat` 1246 ·
+`StaticVector3` 575 · `CachedQuaternion1` 345 · `QuantizeFloat` 314 ·
+`IndirectQuantizeFloat` 2.
+
+Sessiz kıranlar — hepsi ölçüldü:
+
+- **CodeWalker XML'e çevirirken nicemlemeyi ZATEN çözer.** `<Values>` kare kare
+  düz float taşır; kendi kuantum çözücünü yazma.
+- **`CachedQuaternion` kanal değil İŞARETÇİDİR** — `<QuatIndex>` düşürülen
+  bileşeni söyler, eksik olan `sqrt(1−Σ)` ile kurulur, işaret tipin adından
+  (`…1` → +, `…2` → −). Doğrulandı: 47.499 karede birim olmayan quaternion **0**,
+  en büyük sapma **1.72e-08**.
+- **`.//Animations` YANLIŞ düğümü yakalar** — klibin *içindeki* referans
+  listesini de alır ve sessizce "kare=1, kemik=0" üretir. Kökün **doğrudan**
+  çocuğunu kullan.
+- **İki klip tipi var:** `Animation` ve `AnimationList`. Tek biçim varsaymak
+  ölçülen dosyada 8 klibin 4'ünü düşürüyordu.
+- **Animasyona geometri bağlanacaksa pişirilmez** (`bake=False`); pişirilmiş
+  vertex'e animasyon uygulanırsa kemik dönüşümü iki kez girer. Doğrulandı:
+  bind pozunda skinning ↔ pişirilmiş sonuç farkı **0.000e+00 m**.
+- **`bidx` slot 0 boş olabilir** — bir kapının 330 vertexinin %100'ünde slot 0
+  ağırlıksızdı. Körlemesine slot 0 almak bbox'ı **1.096 m** kaydırdı.
+- **ymap extent entity birleşiminden**; dışında kalan entity sessizce görünmez.
+  `CalcFlags()` çağırma (contentFlags 65→1 düşer), `CalcExtents()` kullanma
+  (sıfır kutu bırakır), `CEntityDefs`'i doğrudan yazma (0 entity çıkar).
+
+## YIKIM / KOREOGRAFİLİ HAREKET (RayFire `des_*`)
+
+Bir şeyin **yıkılması**, bir **collision'ın hareket ettirilmesi** ya da
+**senaryo benzeri** koreografili bir dizi geçtiğinde önce yol seçilir —
+`.yed` zinciri mi (tek prop'un kapağı), RayFire mı (bina çöküyor).
+Karıştırmak turlarca kaybettirir; iki reçetenin melezi hiç çalışmaz.
+
+**`references/rayfire-des-uretim.md`** · komut: `/rayfire`
+
+## VANİLLA HARİTA PARÇASINI DEĞİŞTİRME
+
+Yol, prop ya da yapı parçasını kendi modelinle değiştirme. Dört şey
+**sessizce** kırar: extent'e dokunmak (haritanın tamamında collision gitti),
+LOD zincirinin tamamı + `hei_` ikizleri, dokuların modelde **olmaması**
+(yedi vanilla modelin hiçbirinde gömülü doku yok), aynı doku adının farklı
+sözlükte farklı içerik taşıması (175 kopyadan 22'si).
+
+**`references/vanilla-parca-degistirme.md`**
+Doku sözlüğü indeksi: `scripts/ytd_index.ps1` · `scripts/ytd_ara.ps1`
+
 ## GÖRSEL GEREKTİĞİNDE — üretme, öner ve prompt ver
 
 Ekran arka planı, ikon, logo, doku, UI görseli gerektiğinde **rastgele bir
