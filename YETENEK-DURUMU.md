@@ -272,6 +272,45 @@ python scripts/lint_lua.py <dosya>
 **Bilinen yanlış negatif:** alt çizgili adlar (`GetGroundZFor_3dCoord`)
 "native değil" diye işaretleniyor.
 
+## 1.15 Işık okuma + düzenleme + geri yazma — **%90**
+
+```bash
+assetdb.py light <ydr|yft>              # oku, sihirli sayıları çöz
+assetdb.py light <ydr|yft> --editor     # tarayıcıda oyun-doğru düzenle
+assetdb.py light <ydr|yft> --uygula edit.json | --set | --ekle | --sil
+```
+
+**Dayanak:** 72.539 gömülü ışık indeksi; yazma turu `prop_worklight_01a.yft`
+üzerinde uçtan uca ölçüldü — `Intensity 2→8`, `ConeOuterAngle 60→35`,
+sonra 1 ışık → 2 ışık (biri eklendi), her seferinde **geri okunarak**
+doğrulandı. Kemik uzayı çözümü ölçüyle tuttu: `BoneId 41615` → dünya
+(0, −0.102, **1.746**) = zincirdeki ampul konumu.
+
+Önizleme fiziksel olarak doğrulandı (piksel okunarak): saat 12 →
+`[107,109,110]`, 17 → `[93,95,96]`, 20 → `[14,19,32]`, 06 → `[20,30,38]`.
+`TimeFlags` kapısı `14680095` = `0xE0001F` ile birebir (23:00 açık,
+20:00 kapalı).
+
+**Kalan %10 — üçü bilinçli eksik, biri sınır:** doku (albedo tek sayı),
+korona sprite'ı, hacimsel ışın yok; gölge oyunun *mesafe* haritası yerine
+derinlik haritasıdır (ders korunur, depolama farklı). Önizleme "ışık nereye
+ne kadar düşüyor"u cevaplar, "sahne birebir böyle görünecek"i değil.
+
+## 1.16 Hava timecycle'ı (taban katman) — **%88**
+
+```bash
+assetdb.py cycle w_clear --saat 20 [--mod v_dark] [--bolge URBAN]
+```
+
+17 hava cycle'ı + `time.xml`. **13 keyframe vardır, 24 saat değil** ve
+saatleri `levels/gta5/time.xml`'dedir — `data/time.xml` 4 sample'lik başka
+dosyadır. Ölçülen tuzak: bir sample `name="09:00"` yazıp `hour="10"` taşır;
+ada bakan sonraki tüm keyframe'leri bir saat kaydırır.
+
+**Kalan %12:** kırpma tavanları (`TAVAN_ORTAM` 0.5 · `TAVAN_GUNES` 1.0)
+motor sabiti değil **sunum kalibrasyonudur**; vanilla görüntüyle
+karşılaştırılarak doğrulanmadı, o yüzden parametre bırakıldı.
+
 ---
 
 # 2. NE YAPAMIYORUZ

@@ -38,9 +38,16 @@ claude plugin marketplace add B7Kompirine/muto-atlas
 claude plugin install muto-atlas@muto-atlas
 ```
 
-Claude Code'u yeniden başlat. Artık **14 komutun** (`/asset`, `/native`, `/where`,
-`/anim`, `/ped`, `/yed`, `/clipset`, `/3dnui`, `/weapon`, …) ve **2 skill'in**
+Claude Code'u yeniden başlat. Artık **22 komutun** ve **2 skill'in**
 (`fivem-natives`, `fivem-assets`) var.
+
+| | |
+|---|---|
+| **Veriyi sorgula** | `/asset` `/native` `/where` `/anim` |
+| **Asset üret** | `/ped` `/retarget` `/clipset` `/yed` `/weapon` `/weaponfx` `/3dnui` `/rayfire` |
+| **Işık & sahne** | `/isik` `/sahne` |
+| **Denetle & kur** | `/asset-setup` `/asset-build` `/native-lint` |
+| **Araç yolları** | `/yol` `/codewalker` `/gta` `/sunucu` `/blender` |
 
 > **Skill'ler plugin'in içinde gelir — ayrıca kurulmaz.** FiveM asset'i, native,
 > rigging ya da animasyon işi yaptığında, sen hiç komut yazmasan bile kendiliğinden

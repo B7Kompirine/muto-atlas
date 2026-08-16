@@ -30,7 +30,7 @@ That is the whole idea. **Look at the data first, then write the code.**
 
 ## What it gives you
 
-24 offline data layers, built from **your own** GTA V install and FiveM server:
+25 offline data layers, built from **your own** GTA V install and FiveM server:
 
 | layer | rows | what it answers |
 |---|---:|---|
@@ -52,6 +52,7 @@ That is the whole idea. **Look at the data first, then write the code.**
 | IPLs | 895 | bounds, for `RequestIpl` / `RemoveIpl` |
 | MLO interiors | 853 | every world placement of every interior |
 | timecycle modifiers | 1,087 | why an interior is dark — ambient multipliers, exposure, fog |
+| weather cycles | 17 | the base layer under the modifier — ambient + sun at any hour |
 | embedded lights | 72,539 | every light in every `.ydr`/`.yft`/`.ydd` — hours, cone, falloff, flags |
 | weapons + parts | 184 + 634 | components, liveries, attach bones |
 | …plus | | shaders, collision materials, decals, procedural, scenarios |
@@ -68,9 +69,16 @@ claude plugin marketplace add B7Kompirine/muto-atlas
 claude plugin install muto-atlas@muto-atlas
 ```
 
-Restart Claude Code. You now have **14 commands** (`/asset`, `/native`, `/where`,
-`/anim`, `/ped`, `/yed`, `/clipset`, `/3dnui`, `/weapon`, …) and **2 skills**
+Restart Claude Code. You now have **22 commands** and **2 skills**
 (`fivem-natives`, `fivem-assets`).
+
+| | |
+|---|---|
+| **Ask the data** | `/asset` `/native` `/where` `/anim` |
+| **Author assets** | `/ped` `/retarget` `/clipset` `/yed` `/weapon` `/weaponfx` `/3dnui` `/rayfire` |
+| **Light & scene** | `/isik` `/sahne` |
+| **Check & build** | `/asset-setup` `/asset-build` `/native-lint` |
+| **Tool paths** | `/yol` `/codewalker` `/gta` `/sunucu` `/blender` |
 
 > The skills are part of the plugin — you do **not** install them separately.
 > They trigger automatically when you work on FiveM assets, natives, rigging or
@@ -123,6 +131,49 @@ assetdb.py framework --check              # exports/events that will fail at run
 assetdb.py stats                          # what is installed, what is missing
 ```
 
+### Where do my tools live?
+
+Every external path lives in one registry (`data/config.json`, which is
+gitignored — personal paths never reach the repo). Ask it, or set it:
+
+```bash
+assetdb.py yol                       # show all, marked found / missing
+assetdb.py yol codewalker            # where is CodeWalker.Core.dll?
+assetdb.py yol gta "D:\Games\GTAV"   # set it
+assetdb.py yol gizmo "C:\Tools\Gizmo.exe"   # any name you like
+```
+
+Slash commands: `/yol`, `/codewalker`, `/gta`, `/sunucu`, `/blender` — with no
+argument they report the location, with a path they set it.
+
+This used to be **29 copies** of a guessed CodeWalker path and **23** of a
+guessed GTA folder, one per script; installing a tool somewhere unusual meant
+editing twenty files. They now all read the one registry. A path that is not on
+disk is rejected at set time, and "written in config but missing on disk" is
+reported as its own case — it is the most common cause of "I set it and it
+still doesn't work".
+
+### Scenes: several objects, clip decoding, and a ymap placement
+
+```bash
+assetdb.py sahne --dosya scene.json --ekle a.ydr --ekle b.yft
+assetdb.py sahne --dosya scene.json --anim "door.ycd:door_open"
+assetdb.py sahne --dosya scene.json                 # summary + clip check
+assetdb.py sahne --dosya scene.json --ymap out.ymap # write the placement
+```
+
+The `.ycd` is decoded into per-frame bone channels, so a clip's real frame
+count, duration and which bones it actually drives are known without launching
+the game. Six channel types are handled, including `CachedQuaternion` — which is
+a *pointer*, not a channel: it names the dropped component, and the missing one
+is rebuilt as `sqrt(1-Σ)` with the sign taken from the type name. Verified
+across 47,499 rotation frames: zero non-unit quaternions, max deviation
+1.72e-08.
+
+The ymap is written with extents computed from the union of the entities and is
+**read back** to confirm the entity count before it is accepted; an entity
+outside the extents renders nothing at all, with no error.
+
 ### Checking your own files, before the game sees them
 
 The commands above answer questions about *vanilla*. These three inspect **your**
@@ -135,7 +186,56 @@ assetdb.py light   prop_lamp.ydr         # decode embedded lights: hours, cone, 
 assetdb.py light   --tablo               # measured vanilla light reference
 ```
 
+### Editing a prop light
+
+```bash
+assetdb.py light prop_lamp.ydr                          # decode it
+assetdb.py light prop_lamp.ydr --tablo                  # measured vanilla band
+assetdb.py light prop_lamp.ydr --uygula edit.json       # write back, verified
+assetdb.py light prop_lamp.ydr --set 0.Intensity=8 --set 0.ConeOuterAngle=35
+assetdb.py light prop_lamp.ydr --ekle | --sil 1         # add / remove a light
+```
+
+Values are judged against the **measured vanilla distribution** — p05, median
+and p95 per field across the embedded lights in your own install (72,539 lights
+in 4,476 files here), computed live from the layer. If the layer is not built,
+no range is offered at all; an invented one would be worse than none.
+
+Three things it gets right that cost real time when they are wrong:
+
+- **The light hangs off a bone, not the model origin.** In `prop_worklight_01a`
+  the light sits on `BoneId 41615`, 1.737 m up the chain; skip the bone chain and
+  it renders on the floor. `Position`/`Direction` are in **bone space**.
+- **`TimeFlags` is a set of hours, not a number.** `14680095` means 21:00–05:00,
+  so at 20:00 the light is off. When someone says "my light doesn't work", this
+  is the first thing to check — usually the light is fine and the hour is not.
+- **File size proves nothing** (RSC7 is zlib — identical content went 15,056 →
+  15,904 bytes). Every write is verified by **reading the file back**; if the
+  light count does not match, the file is left untouched and the original is
+  kept as `.yedek`.
+
+**Provenance.** This is an independent implementation. The lighting formulas are
+derived from the game's own shader files (`lighting_common.fxh`, `common.fxh`,
+`postfx.fx`) and verified against measurements; the reference bands are computed
+locally from your own GTA V install and never redistributed (`data/` is
+gitignored). No code, assets, UI, names or branding from any third-party editing
+tool are included.
+
 ### Why is my interior dark?
+
+Darkness has three layers, and the answer is usually not the third:
+
+```bash
+assetdb.py cycle w_clear --saat 20            # 1. base weather cycle at that hour
+assetdb.py timecycle int_hospital_dark        # 2. the room's modifier
+assetdb.py light prop_lamp.ydr                # 3. the prop's own light
+```
+
+`cycle` evaluates the weather timecycle itself. Its keyframes are **not** hours:
+there are 13 of them and their times live in `time.xml` — where one sample is
+named `09:00` but carries `hour="10"`, so trusting the name shifts everything
+after it by an hour.
+
 
 Usually the answer is not in your prop and not in your light — it is the room's
 **timecycle modifier**, which overrides ambient light, exposure and fog.

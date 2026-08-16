@@ -2080,8 +2080,34 @@ def cmd_timecycle(args):
     return timecycle.calistir(args)
 
 
+def cmd_cycle(args):
+    """Hava cycle'i bir saatte. 0 tamam | 1 bulunamadi | 2 katman kurulu degil."""
+    import cycle
+    return cycle.calistir(args)
+
+
+def cmd_sahne(args):
+    """Coklu obje sahnesi: ozet | --ymap. 0 tamam | 2 hata."""
+    import sahne
+    return sahne.calistir(args)
+
+
+def cmd_yol(args):
+    """Dis arac yollari. 0 hepsi var | 1 eksik/bulunamadi | 2 gecersiz yol."""
+    import yol
+    return yol.calistir(args)
+
+
 def cmd_light(args):
-    """Gomulu isiklari coz. 0 isik bulundu | 1 isik yok | 2 dosya okunamadi."""
+    """Gomulu isiklari coz/duzenle. 0 tamam | 1 isik yok | 2 dosya okunamadi.
+
+    Iki kip tek komutta toplanir cunku ikisi de ayni sey ile baslar (dosyayi
+    coz): okuma varsayilan, yazma (--uygula/--set/--ekle/--sil).
+    """
+    if any([getattr(args, "uygula", None), getattr(args, "set", None),
+            getattr(args, "ekle", False), getattr(args, "sil", None)]):
+        import light_edit
+        return light_edit.calistir(args)
     import light
     return light.calistir(args)
 
@@ -2299,12 +2325,47 @@ def main():
     s.add_argument("--limit", type=int, default=25)
     s.set_defaults(func=cmd_timecycle)
 
+    s = sub.add_parser("cycle", help="hava timecycle'i bir saatte: ortam isigi + gunes")
+    s.add_argument("hava", nargs="?", help="w_clear, w_thunder ... (bos: liste)")
+    s.add_argument("--saat", "--hour", dest="saat", type=float, default=12.0)
+    s.add_argument("--bolge", "--region", dest="bolge", default="GLOBAL",
+                   help="GLOBAL | URBAN")
+    s.add_argument("--mod", help="ustune binecek timecycle modifier adi")
+    s.add_argument("--guc", "--strength", dest="guc", type=float, default=1.0)
+    s.add_argument("--liste", "--list", dest="liste", action="store_true")
+    s.set_defaults(func=cmd_cycle)
+
+    s = sub.add_parser("sahne", help="coklu obje + animasyon + isik sahnesi: ozet ve .ymap cikisi")
+    s.add_argument("--dosya", help="sahne json (varsa yuklenir, degisiklikler yazilir)")
+    s.add_argument("--ekle", action="append", metavar="MODEL",
+                   help=".ydr/.yft ekle (tekrarlanabilir)")
+    s.add_argument("--anim", action="append", metavar="YCD[:KLIP]",
+                   help="son eklenen objeye animasyon bagla")
+    s.add_argument("--sil", type=int, metavar="IDX", help="obje sil")
+    s.add_argument("--ymap", metavar="CIKTI", help="yerlesimi .ymap olarak yaz")
+    s.add_argument("--ad", help="ymap adi (varsayilan: sahne adi)")
+    s.set_defaults(func=cmd_sahne)
+
+    s = sub.add_parser("yol", help="dis arac yollari: goster / ayarla (codewalker, gta, ...)")
+    s.add_argument("ad", nargs="?", help="codewalker | gta | sunucu | blender | <kendi adin>")
+    s.add_argument("deger", nargs="?", help="yeni yol (bos: sadece goster)")
+    s.add_argument("--sil", action="store_true", help="kaydi kaldir")
+    s.set_defaults(func=cmd_yol)
+
     s = sub.add_parser("light", help="bir .ydr/.yft icindeki gomulu isiklari coz")
     s.add_argument("path", nargs="?", help=".ydr / .yft / .xml")
     s.add_argument("--tablo", "--table", dest="tablo", action="store_true",
                    help="olculen vanilla isik referansini yazdir")
     s.add_argument("--ham", "--raw", dest="ham", action="store_true",
                    help="cozumsuz, ham alanlar")
+    # --- geri yazma
+    s.add_argument("--uygula", "--apply", dest="uygula",
+                   help="editorun urettigi JSON'u dosyaya yaz")
+    s.add_argument("--set", action="append", metavar="[IDX.]ALAN=DEGER",
+                   help="alan yaz: --set 0.Intensity=8 (tekrarlanabilir)")
+    s.add_argument("--ekle", action="store_true", help="ilk isigi kopyalayarak ekle")
+    s.add_argument("--sil", type=int, action="append", metavar="IDX",
+                   help="isik sil (tekrarlanabilir)")
     s.set_defaults(func=cmd_light)
 
     s = sub.add_parser("diff", help="iki kaynagi DUGUM VARLIGI uzerinden karsilastir")
