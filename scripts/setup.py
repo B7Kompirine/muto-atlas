@@ -49,12 +49,11 @@ ROOT = os.path.dirname(HERE)
 DATA = os.path.join(ROOT, "data")
 PY = sys.executable or "python"
 
-GTA_ADAYLARI = [
-    r"C:\Program Files\Epic Games\GTAV",
-    r"C:\Program Files\Rockstar Games\Grand Theft Auto V",
-    r"C:\Program Files (x86)\Steam\steamapps\common\Grand Theft Auto V",
-    r"D:\SteamLibrary\steamapps\common\Grand Theft Auto V",
-]
+# Aday listesi TEK YERDE: yol.py. Burada ikinci bir kopya tutulursa biri
+# guncellenip digeri unutulur -- CodeWalker icin 29, GTA icin 23 kopya vardi.
+from yol import KAYITLI as _YOL_KAYITLI  # noqa: E402
+
+GTA_ADAYLARI = _YOL_KAYITLI["gta"][3]
 
 # (dosya, kademe, aciklama, uretim komutu)
 KATMANLAR = [
@@ -160,8 +159,9 @@ def config_yaz(gta, cw, resources, lang=None):
 def gta_bul(verilen):
     if verilen:
         return verilen if os.path.isdir(verilen) else None
-    c = config_oku().get("gtaFolder")
-    if c and os.path.isdir(c):
+    import yol
+    c, _ = yol.coz("gta")          # config.json + bilinen adaylar, tek kaynak
+    if c:
         return c
     meta = os.path.join(DATA, "assets.meta.json")
     if os.path.exists(meta):
@@ -180,8 +180,9 @@ def gta_bul(verilen):
 def cw_bul(verilen):
     if verilen:
         return verilen if os.path.exists(verilen) else None
-    c = config_oku().get("codeWalker")
-    if c and os.path.exists(c):
+    import yol
+    c, _ = yol.coz("codewalker")   # config.json + bilinen adaylar, tek kaynak
+    if c:
         return c
     meta = os.path.join(DATA, "assets.meta.json")
     if os.path.exists(meta):

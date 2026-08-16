@@ -22,12 +22,7 @@ $ErrorActionPreference = 'Stop'
 if (-not (Test-Path -LiteralPath $XmlPath)) { throw "XML bulunamadi: $XmlPath" }
 if (-not $OutPath) { $OutPath = $XmlPath -replace '\.xml$', '' }
 
-if (-not $CodeWalker) {
-    $CodeWalker = @(
-        "$env:USERPROFILE\Desktop\FiveM\CodeWalker30_dev46\CodeWalker.Core.dll",
-        "$env:USERPROFILE\Desktop\CodeWalker\CodeWalker.Core.dll"
-    ) | Where-Object { Test-Path $_ } | Select-Object -First 1
-}
+$CodeWalker = & "$PSScriptRoot\yol.ps1" codewalker $CodeWalker
 if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll bulunamadi." }
 
 $cwDir = Split-Path $CodeWalker -Parent

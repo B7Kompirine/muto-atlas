@@ -24,7 +24,8 @@ param(
 )
 
 $ErrorActionPreference='Stop'
-$cw = "$env:USERPROFILE\Desktop\FiveM\CodeWalker30_dev46\CodeWalker.Core.dll"
+$cw = & "$PSScriptRoot\yol.ps1" codewalker
+if (-not $cw) { throw "CodeWalker.Core.dll bulunamadi. python assetdb.py yol codewalker ""<yol>""" }
 $script:cwDir = Split-Path $cw -Parent
 [System.AppDomain]::CurrentDomain.add_AssemblyResolve([System.ResolveEventHandler]{
   param($s,$e); $n=($e.Name -split ',')[0]; $p=Join-Path $script:cwDir "$n.dll"

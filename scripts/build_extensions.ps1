@@ -35,30 +35,19 @@ $ErrorActionPreference = 'Stop'
 if (-not $Out) { $Out = Join-Path (Split-Path $PSScriptRoot -Parent) 'data' }
 if (-not (Test-Path -LiteralPath $Out)) { New-Item -ItemType Directory -Path $Out | Out-Null }
 
+$CodeWalker = & "$PSScriptRoot\yol.ps1" codewalker $CodeWalker
 if (-not $CodeWalker) {
-    $cands = @(
-        "$env:USERPROFILE\Desktop\FiveM\CodeWalker30_dev46\CodeWalker.Core.dll",
-        "$env:USERPROFILE\Desktop\CodeWalker\CodeWalker.Core.dll"
-    )
-    $found = $cands | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-    if (-not $found) {
-        $found = Get-ChildItem -Path "$env:USERPROFILE\Desktop","C:\" -Filter 'CodeWalker.Core.dll' `
-                 -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
-    }
-    $CodeWalker = $found
+    # Son care: diskte ara. YAVAS (C:\ altini tarar). Kalicisi icin:
+    #   python assetdb.py yol codewalker "<yol>"
+    $CodeWalker = Get-ChildItem -Path "$env:USERPROFILE\Desktop","C:\" -Filter 'CodeWalker.Core.dll' `
+                    -Recurse -Depth 4 -ErrorAction SilentlyContinue |
+                  Select-Object -First 1 -ExpandProperty FullName
 }
 if (-not $CodeWalker -or -not (Test-Path -LiteralPath $CodeWalker)) {
     throw "CodeWalker.Core.dll bulunamadi. -CodeWalker <yol> ile ver."
 }
 
-if (-not $GtaFolder) {
-    $cands = @(
-        "C:\Program Files\Epic Games\GTAV",
-        "C:\Program Files (x86)\Steam\steamapps\common\Grand Theft Auto V",
-        "C:\Program Files\Rockstar Games\Grand Theft Auto V"
-    )
-    $GtaFolder = $cands | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-}
+$GtaFolder = & "$PSScriptRoot\yol.ps1" gta $GtaFolder
 
 $cwDir = Split-Path $CodeWalker -Parent
 Write-Output "CodeWalker : $CodeWalker"

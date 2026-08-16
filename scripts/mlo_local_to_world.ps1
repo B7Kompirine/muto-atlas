@@ -27,20 +27,9 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-if (-not $CodeWalker) {
-    $CodeWalker = @(
-        "$env:USERPROFILE\Desktop\FiveM\CodeWalker30_dev46\CodeWalker.Core.dll",
-        "$env:USERPROFILE\Desktop\CodeWalker\CodeWalker.Core.dll"
-    ) | Where-Object { Test-Path $_ } | Select-Object -First 1
-}
+$CodeWalker = & "$PSScriptRoot\yol.ps1" codewalker $CodeWalker
 if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll bulunamadi." }
-if (-not $GtaFolder) {
-    $GtaFolder = @(
-        'C:\Program Files\Epic Games\GTAV',
-        'C:\Program Files\Rockstar Games\Grand Theft Auto V',
-        'C:\Program Files (x86)\Steam\steamapps\common\Grand Theft Auto V'
-    ) | Where-Object { Test-Path (Join-Path $_ 'GTA5.exe') } | Select-Object -First 1
-}
+$GtaFolder = & "$PSScriptRoot\yol.ps1" gta $GtaFolder
 if (-not $GtaFolder) { throw "GTA V klasoru bulunamadi." }
 
 $cwDir = Split-Path $CodeWalker -Parent

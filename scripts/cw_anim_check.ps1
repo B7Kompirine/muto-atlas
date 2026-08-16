@@ -27,12 +27,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-if (-not $CodeWalker) {
-    $CodeWalker = @(
-        "$env:USERPROFILE\Desktop\FiveM\CodeWalker30_dev46\CodeWalker.Core.dll",
-        "$env:USERPROFILE\Desktop\CodeWalker\CodeWalker.Core.dll"
-    ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-}
+$CodeWalker = & "$PSScriptRoot\yol.ps1" codewalker $CodeWalker
 if (-not $CodeWalker) { throw "CodeWalker.Core.dll bulunamadi." }
 if (-not (Test-Path -LiteralPath $Ycd)) { throw "ycd bulunamadi: $Ycd" }
 
@@ -132,7 +127,15 @@ $refs = @(
     $CodeWalker,
     (Join-Path $cwDir 'SharpDX.dll'),
     (Join-Path $cwDir 'SharpDX.Mathematics.dll'),
-    'netstandard'
+    'netstandard',
+    # .NET 8+ altinda List<> / Dictionary<> System.Private.CoreLib'den
+    # System.Collections'a TASINDI. Referans verilmezse Add-Type
+    # "CS1069: The type name 'List<>' could not be found" ile duser.
+    'System.Collections',
+    'System.Runtime',
+    # SharpDX .NET Framework'e derlenmis: Vector4 gibi struct'lari
+    # mscorlib'deki ValueType'tan tureniyor -> mscorlib de gerekli.
+    'mscorlib'
 )
 Add-Type -TypeDefinition $src -ReferencedAssemblies $refs -Language CSharp
 

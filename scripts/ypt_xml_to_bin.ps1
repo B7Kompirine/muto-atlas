@@ -28,12 +28,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-if (-not $CodeWalker) {
-    $CodeWalker = @(
-        "$env:USERPROFILE\Desktop\FiveM\CodeWalker30_dev46\CodeWalker.Core.dll",
-        "$env:USERPROFILE\Desktop\CodeWalker\CodeWalker.Core.dll"
-    ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-}
+$CodeWalker = & "$PSScriptRoot\yol.ps1" codewalker $CodeWalker
 if (-not $CodeWalker) { throw "CodeWalker.Core.dll bulunamadi" }
 [Reflection.Assembly]::LoadFrom($CodeWalker) | Out-Null
 
