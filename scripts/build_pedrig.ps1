@@ -1,4 +1,4 @@
-# build_pedrig.ps1 — ped iskeletlerinin REST POSE'unu data/pedrig.json'a yazar.
+﻿# build_pedrig.ps1 — ped iskeletlerinin REST POSE'unu data/pedrig.json'a yazar.
 #
 # NEDEN: skeletons.tsv.gz kemik ADI/TAG/PARENT tutar ama TRANSFORM tutmaz.
 # Rigging icin rest pose sart:

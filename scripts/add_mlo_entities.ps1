@@ -1,4 +1,4 @@
-# add_mlo_entities.ps1 — bir MLO'nun ENTITY LISTESINE yeni obje ekler.
+﻿# add_mlo_entities.ps1 — bir MLO'nun ENTITY LISTESINE yeni obje ekler.
 #
 # NEDEN: MLO ic mekanina disaridan ymap ile prop KONULAMAZ — oda/portal
 # sistemi eler (olculdu). Script'le spawn etmek de harita objesi

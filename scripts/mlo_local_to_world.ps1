@@ -1,4 +1,4 @@
-# mlo_local_to_world.ps1 — bir MLO ic mekanindaki YEREL koordinatlari
+﻿# mlo_local_to_world.ps1 — bir MLO ic mekanindaki YEREL koordinatlari
 # tum dunya yerlesimlerine cevirir.
 #
 # NEDEN: bir MLO'nun icindeki bir noktayi (or. kasa duvarindaki kutu hucresi)

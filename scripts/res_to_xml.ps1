@@ -1,4 +1,4 @@
-# res_to_xml.ps1 — binary .ycd / .yed / .yft / .ydd / .ypt dosyasini XML'e dokur.
+﻿# res_to_xml.ps1 — binary .ycd / .yed / .yft / .ydd / .ypt dosyasini XML'e dokur.
 #
 # NEDEN GEREKLI: Sollumz binary .ycd ve .yed OKUYAMAZ. Import denendiginde
 # sessizce

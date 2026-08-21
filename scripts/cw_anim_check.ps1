@@ -1,4 +1,4 @@
-# cw_anim_check.ps1 — derlenmis bir .ycd'yi OYUNA GIRMEDEN degerlendirir.
+﻿# cw_anim_check.ps1 — derlenmis bir .ycd'yi OYUNA GIRMEDEN degerlendirir.
 #
 # NEDEN: bir animasyonu test etmek icin sunucuya baglanmak pahali — FiveM
 # stream dosyalarini cache'ledigi icin her denemede tam cikis/giris gerekiyor.

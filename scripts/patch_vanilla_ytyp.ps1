@@ -1,4 +1,4 @@
-# patch_vanilla_ytyp.ps1 — vanilla bir .ytyp dosyasinin TAMAMINI kopyalayip
+﻿# patch_vanilla_ytyp.ps1 — vanilla bir .ytyp dosyasinin TAMAMINI kopyalayip
 # icindeki belirli archetype'larin alanlarini degistirir ve AYNI ADLA yazar.
 #
 # NEDEN BU, make_ytyp_override.ps1'DEN FARKLI:

@@ -1,4 +1,4 @@
-# xml_to_res.ps1 — .yft.xml / .ydd.xml / .ydr.xml / .ybn.xml / .ypt.xml /
+﻿# xml_to_res.ps1 — .yft.xml / .ydd.xml / .ydr.xml / .ybn.xml / .ypt.xml /
 # .ytd.xml dosyasini oyuna hazir binary'ye cevirir. res_to_xml.ps1'in TERSIDIR.
 #
 # NEDEN GEREKLI: bir asset'i XML'e dokup elle duzeltip (or. bozuk bir dugumu

@@ -1,4 +1,4 @@
-# build_ymap_lod.ps1 — ymap ROOT entity'lerinin LOD alanlarini indeksler.
+﻿# build_ymap_lod.ps1 — ymap ROOT entity'lerinin LOD alanlarini indeksler.
 #
 # NEDEN AYRI INDEKS: entities.tsv.gz / entities.db "bu obje dunyada NEREDE"
 # sorusuna cevap veriyor ve MLO ic mekanlarini da dunya koordinatina acarak

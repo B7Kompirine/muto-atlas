@@ -1,4 +1,4 @@
-# build_clips.ps1 — .ycd (clip dictionary) dosyalarindan DETAYLI animasyon indeksi.
+﻿# build_clips.ps1 — .ycd (clip dictionary) dosyalarindan DETAYLI animasyon indeksi.
 #
 # Isim listesi (build_anims.py) "hangi animasyonlar var" sorusunu cevaplar.
 # Bu script "hangisi TAM OLARAK dogru" sorusunu cevaplar:

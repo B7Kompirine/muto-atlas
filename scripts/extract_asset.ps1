@@ -1,4 +1,4 @@
-# extract_asset.ps1 — GTA V RPF arsivlerinden dosya cikarir.
+﻿# extract_asset.ps1 — GTA V RPF arsivlerinden dosya cikarir.
 #
 # NEDEN: bir vanilla prop'u temel alip kendi modelimizi yapmak icin once
 # .ydr/.yft/.ytd/.ycd dosyasini elde etmek gerekiyor. CodeWalker GUI'siyle

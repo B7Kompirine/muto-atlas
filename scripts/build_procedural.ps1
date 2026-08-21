@@ -1,4 +1,4 @@
-# build_procedural.ps1 — procedural.meta'yi (prosedurel bitki/obje tablosu)
+﻿# build_procedural.ps1 — procedural.meta'yi (prosedurel bitki/obje tablosu)
 # indeksler.
 #
 # NE ISE YARAR: Sollumz collision materyalindeki 'Procedural ID' alani ile

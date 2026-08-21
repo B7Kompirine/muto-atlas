@@ -1,4 +1,4 @@
-# ydr_anim_denetle.ps1 — animasyonlu (skinned) .ydr icin Bag C + Bag D denetimi.
+﻿# ydr_anim_denetle.ps1 — animasyonlu (skinned) .ydr icin Bag C + Bag D denetimi.
 #
 # NEDEN: Sollumz iki alani sessizce bos/yanlis birakir ve ikisi de oyunda
 # "animasyon oynamiyor" olarak gorunur, hicbir arac uyarmaz:

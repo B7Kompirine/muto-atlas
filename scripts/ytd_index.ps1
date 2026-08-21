@@ -1,4 +1,4 @@
-# ytd_index.ps1 - bir klasordeki tum .ytd'lerin doku ADLARINI listeler (DDS yazmaz).
+﻿# ytd_index.ps1 - bir klasordeki tum .ytd'lerin doku ADLARINI listeler (DDS yazmaz).
 #
 # NEDEN: vanilla harita/prop modellerinde GOMULU doku yoktur; hepsi dis
 # sozluk + gtxd ebeveyn zinciri kullanir. Bir dokunun hangi sozlukte

@@ -1,4 +1,4 @@
-# clip_bones.ps1 — bir klibin hedeflediği KEMIK TAG'lerini cikarir.
+﻿# clip_bones.ps1 — bir klibin hedeflediği KEMIK TAG'lerini cikarir.
 #
 # NEDEN: klip kac kemik animasyonluyor bilmek yetmez; HANGI kemikleri
 # hedefledigi gerekir. O tag listesi, klibi oynatabilecek modeli kesin

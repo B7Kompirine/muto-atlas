@@ -1,4 +1,4 @@
-# make_prop_ymap.ps1 — bir VANILLA prop'un haritadaki tum yerlesimlerini
+﻿# make_prop_ymap.ps1 — bir VANILLA prop'un haritadaki tum yerlesimlerini
 # bulup, ayni konum/donusle KENDI prop'umuzu koyan bir .ymap uretir.
 #
 # NEDEN GEREKLI: script'le uretilen obje (CreateObject) HARITA OBJESI

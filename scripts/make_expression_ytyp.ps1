@@ -1,4 +1,4 @@
-# make_expression_ytyp.ps1 — Expression extension'LI ytyp uretir.
+﻿# make_expression_ytyp.ps1 — Expression extension'LI ytyp uretir.
 #
 # NEDEN AYRI SCRIPT: make_ytyp_override.ps1 nesne modeliyle calisiyor ve
 # Archetype.Extensions'a yazmak SERILESMIYOR — ytyp geri okundugunda

@@ -1,4 +1,4 @@
-# build_archetypes.ps1 — GTA V RPF'lerinden ve custom kaynaklardan archetype indeksi uretir.
+﻿# build_archetypes.ps1 — GTA V RPF'lerinden ve custom kaynaklardan archetype indeksi uretir.
 #
 # Neden: bir prop/kapi/obje ile ilgili kod yazmadan ONCE "bu obje gercekten ne"
 # sorusunun cevabi lazim. specialAttribute, flags, bbox (pivot), assetType ve

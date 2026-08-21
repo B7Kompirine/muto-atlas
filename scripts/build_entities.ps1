@@ -1,4 +1,4 @@
-# build_entities.ps1 — ymap yerlesimlerinden DUNYA konumu indeksi uretir.
+﻿# build_entities.ps1 — ymap yerlesimlerinden DUNYA konumu indeksi uretir.
 #
 # Iki kaynak:
 #   1) ymap root entity'leri            -> dogrudan dunya konumu

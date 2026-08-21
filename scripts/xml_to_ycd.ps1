@@ -1,4 +1,4 @@
-# xml_to_ycd.ps1 — Sollumz'un urettigi .ycd.xml dosyasini oyuna hazir
+﻿# xml_to_ycd.ps1 — Sollumz'un urettigi .ycd.xml dosyasini oyuna hazir
 # binary .ycd'ye cevirir.
 #
 # NEDEN GEREKLI: .ycd, Sollumz'un format saglayici sisteminin DISINDADIR.

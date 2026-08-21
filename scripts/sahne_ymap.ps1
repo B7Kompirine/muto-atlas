@@ -1,4 +1,4 @@
-# sahne_ymap.ps1 - sahne editorunde yerlestirilen objelerden TEK bir .ymap uretir.
+﻿# sahne_ymap.ps1 - sahne editorunde yerlestirilen objelerden TEK bir .ymap uretir.
 #
 # NEDEN AYRI: make_prop_ymap.ps1 bir VANILLA prop'un mevcut yerlesimlerini
 # taklit eder (kaynak model -> hedef model). Burada yerlesimler kullanicinin

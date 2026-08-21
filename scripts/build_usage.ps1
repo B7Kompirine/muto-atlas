@@ -1,4 +1,4 @@
-# build_usage.ps1 — vanilla modellerin GERCEKTE kullandigi shader ve collision
+﻿# build_usage.ps1 — vanilla modellerin GERCEKTE kullandigi shader ve collision
 # materyallerini indeksler.
 #
 # NEDEN: shaders.tsv (249) ve collision_materials.tsv (185) tablolarini

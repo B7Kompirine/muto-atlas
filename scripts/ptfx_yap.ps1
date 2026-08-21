@@ -1,4 +1,4 @@
-# ptfx_yap.ps1 — TEK KOMUTLA ozel partikul efekti uretir ve dagitir.
+﻿# ptfx_yap.ps1 — TEK KOMUTLA ozel partikul efekti uretir ve dagitir.
 #
 # Hattin tamami: doku -> XML -> ikili .ypt -> dogrulama -> stream/
 # Ara adimlarin hicbirini elle calistirmaya gerek yok.

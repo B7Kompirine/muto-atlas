@@ -1,4 +1,4 @@
-# ytd_ara.ps1 - oyundaki TUM .ytd adlarini tarar, jenkins hash ile eslestirir.
+﻿# ytd_ara.ps1 - oyundaki TUM .ytd adlarini tarar, jenkins hash ile eslestirir.
 #
 # NEDEN: arketipin textureDictionary alani hash olarak durur; adi bilinmeden
 # hangi sozlugun cikarilacagi bilinmez.

@@ -1,4 +1,4 @@
-# build_timecycle.ps1 — GTA V TIMECYCLE MODIFIER KATALOGU.
+﻿# build_timecycle.ps1 — GTA V TIMECYCLE MODIFIER KATALOGU.
 #
 # NEDEN: bir prop'un ic mekanda neden koyu gorundugu genellikle prop'ta degil,
 # odanin TIMECYCLE MODIFIER'indadir. Oda `timecycleName` ile bir modifier'a

@@ -1,4 +1,4 @@
-# build_lights.ps1 — GTA V GOMULU ISIK KATALOGU (.ydr / .yft / .ydd).
+﻿# build_lights.ps1 — GTA V GOMULU ISIK KATALOGU (.ydr / .yft / .ydd).
 #
 # NEDEN: isik parametreleri sihirli sayilarla dolu. `TimeFlags = 15728703` bir
 # sayi degil, "saat 20'den 06'ya kadar yanar" demektir; `Flags = 384` bir bit

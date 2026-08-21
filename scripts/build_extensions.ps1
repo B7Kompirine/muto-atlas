@@ -1,4 +1,4 @@
-# build_extensions.ps1 — ytyp ARCHETYPE EXTENSION'larini indeksler.
+﻿# build_extensions.ps1 — ytyp ARCHETYPE EXTENSION'larini indeksler.
 #
 # NEDEN AYRI BIR INDEKS: archetypes.tsv.gz archetype BASINA tek satir tutuyor;
 # extension'lar ise archetype basina 0..N tane. Ayni tabloya sigmaz. Ayrica

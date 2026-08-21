@@ -1,4 +1,4 @@
-# build_cycle.ps1 — hava timecycle dosyalarini oyunun kendi arsivinden cikarir.
+﻿# build_cycle.ps1 — hava timecycle dosyalarini oyunun kendi arsivinden cikarir.
 #
 # NEDEN CIKARIYORUZ, GOMMUYORUZ
 # =============================

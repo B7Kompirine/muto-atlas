@@ -1,4 +1,4 @@
-# build_ptfx.ps1 — GTA V PARTIKUL EFEKT KATALOGU (.ypt dosyalari).
+﻿# build_ptfx.ps1 — GTA V PARTIKUL EFEKT KATALOGU (.ypt dosyalari).
 #
 # NEDEN: ytyp_extensions.tsv.gz "hangi PROP hangi efekti kullaniyor" sorusunu
 # cevapliyor ama efektin KENDISI hakkinda hicbir sey bilmiyor. "amb_steam_vent

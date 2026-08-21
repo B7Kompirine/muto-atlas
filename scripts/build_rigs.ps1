@@ -1,4 +1,4 @@
-# build_rigs.ps1 — ISKELET (kemik) ve EXPRESSION (.yed) indeksi.
+﻿# build_rigs.ps1 — ISKELET (kemik) ve EXPRESSION (.yed) indeksi.
 #
 # NEDEN:
 #  • Prop'lari animasyonla oynatirken kemik ADI ve TAG'i gerekir

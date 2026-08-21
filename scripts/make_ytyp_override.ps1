@@ -1,4 +1,4 @@
-# make_ytyp_override.ps1 — vanilla bir archetype'i kopyalayip TEK alanini
+﻿# make_ytyp_override.ps1 — vanilla bir archetype'i kopyalayip TEK alanini
 # degistirerek override .ytyp uretir.
 #
 # NEDEN: bir prop/kapi yanlis tanimlanmissa (or. kapi olmasi gereken obje

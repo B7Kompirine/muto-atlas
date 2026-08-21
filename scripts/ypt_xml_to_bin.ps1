@@ -1,4 +1,4 @@
-# ypt_xml_to_bin.ps1 — .ypt.xml -> ikili .ypt (CodeWalker hatasi yamanmis).
+﻿# ypt_xml_to_bin.ps1 — .ypt.xml -> ikili .ypt (CodeWalker hatasi yamanmis).
 #
 # ⛔ NEDEN AYRI BETIK: CodeWalker'in XML okuyucusu `FxcFileHash` alanini
 #    HIC YAZMAZ. Olculdu -- bozulmamis bir vanilla dosyayla:

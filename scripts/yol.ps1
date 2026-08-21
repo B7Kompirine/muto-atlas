@@ -1,4 +1,4 @@
-# yol.ps1 - dis arac yollarini data/config.json'dan cozer (PowerShell tarafi).
+﻿# yol.ps1 - dis arac yollarini data/config.json'dan cozer (PowerShell tarafi).
 #
 # NEDEN: ayni yollar betiklere dagilmisti (CodeWalker icin 29, GTA icin 23
 # ayri sabit tahmin). Kullanici araci baska yere kurunca hepsi elle

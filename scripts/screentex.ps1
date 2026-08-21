@@ -1,4 +1,4 @@
-# screentex.ps1 — bir modelin SHADER/DOKU eslesmesini RPF'ten okur.
+﻿# screentex.ps1 — bir modelin SHADER/DOKU eslesmesini RPF'ten okur.
 #
 # NEDEN: DUI'yi bir prop'un ekranina basmak icin AddReplaceTexture(origTxd,
 # origTxn, ...) gerekir. origTxd = texture dictionary adi, origTxn = O

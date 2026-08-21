@@ -1,4 +1,4 @@
-# meta_xml_to_bin.ps1 - .ytyp.xml / .ymap.xml -> oyuna hazir binary.
+﻿# meta_xml_to_bin.ps1 - .ytyp.xml / .ymap.xml -> oyuna hazir binary.
 #
 # NEDEN AYRI BIR ARAC: muto-atlas'taki xml_to_res.ps1 yalniz kaynak (RSC)
 # tiplerini tanir (.yft .ydd .ydr .ybn .ypt .ytd ...); .ytyp ve .ymap orada
