@@ -1,6 +1,6 @@
 # muto-atlas — yetenek durumu ve yol haritası
 
-Son güncelleme: 2026-08-15 · Plugin v2.2.0 (muto) · 35 sorgu · 24 veri katmanı · 63 script
+Son güncelleme: 2026-08-21 · Plugin v2.5.0 (muto) · 38 sorgu · 25 veri katmanı · 83 script · 23 komut
 
 Bu belge üç soruyu ayırır: **ne yapabiliyoruz**, **ne kadar güvenilir**,
 **ne eksik**. Güven oranları keyfi değil; aşağıdaki ölçekten geliyor.
@@ -224,6 +224,19 @@ Her tipin varyant sayısı, `washable` ve `underwater` davranışı yazılı.
 **B · Haritaya gömülü (%85):** reçete + 35 decal shader'ı + render bucket
 ölçümü (%92,3 → bucket 2). **Neden %85:** uçtan uca hiç denenmedi.
 
+**C · Blender'da yüzeye geometri yansıtma (%70) — YENİ.** Üç yöntem
+(ışın ızgarası / kutu / tek eksenli kırpma) ve üçünün de sert sınırı
+ölçüldü: ışın **ışına paralel yüzeye asla vuramaz** (merdivende 4096
+ışının 2732'si boşa), kutu sarar ama desen köşede yeniden başlar, ince
+boru/ızgarada **hiçbiri çalışmaz**. Kırpma `bmesh.ops.bisect_plane` ile
+değil **Sutherland–Hodgman** ile yapılır — bisect açık geometride kırpmaz,
+**yüz siler** (yüz sayısı 637'de sabitken alan 3.553 → 0.941 m²).
+15 sessiz hata belgelendi (UV katman adı, miras alınan alfa, satır 0'ın
+altta olması...).
+**Neden %70:** Blender'da üç yüzey tipinde uçtan uca çalıştırıldı, **oyunda
+denenmedi**. Araç bu depoda değil — MutoLab eklentisinde (§4.7).
+Belge: `references/decal-isik-timecycle-bulgulari.md` · komut `/decal`.
+
 ## 1.14 Özel partikül üretimi — **%90 · OYUNDA DOĞRULANDI**
 
 > Uçtan uca çalışıyor ve **tek komuta indirildi**. Sıfırdan yazılan `.ypt`
@@ -311,6 +324,42 @@ ada bakan sonraki tüm keyframe'leri bir saat kaydırır.
 motor sabiti değil **sunum kalibrasyonudur**; vanilla görüntüyle
 karşılaştırılarak doğrulanmadı, o yüzden parametre bırakıldı.
 
+## 1.17 Timecycle modifier yazma + emissive panel — **%80 · OYUNDA DOĞRULANDI**
+
+Kendi modifier'ını yaz, odanın `timecycleName`'ini ytyp'de değiştir,
+`data_file 'TIMECYCLEMOD_FILE'` ile **kaydet**. ⛔ Kaydedilmezse oyun onu
+hiç aramaz — sessiz. Paylaşılan vanilla modifier'a dokunulmaz
+(`morgue_dark` 6 DLC'de tanımlı, hangisinin kazandığı veriden okunamaz).
+Mood için ölçülen en görünür parametre `postfx_vignetting_intensity`
+(0 → 0.55). Emissive panelin **ışığı yoktur** (parlaklık
+`emissiveMultiplier`), bir odadaki paneller **tek geometriyi paylaşır** ve
+emissive geometri **titreyemez** — flicker bir ışık özelliğidir.
+**Neden %80:** oyunda görüldü ama tek iç mekânda; parametre etkileri
+başka odada ölçülmedi.
+
+## 1.18 Animasyonlu drawable denetimi + `.ycd` vanilla sözleşmesi — **%90 · OYUNDA DOĞRULANDI**
+
+```powershell
+scripts/ydr_anim_denetle.ps1 -Ydr x.ydr [-Duzelt]
+```
+
+⛔ **Sollumz kemik `Flags` alanını yazmaz, sıfır bırakır** — sıfır bayraklı
+kemik hiçbir dönüşüm kabul etmez. Kataloğun en yanıltıcı belirtisi:
+`PlayEntityAnim` **1 döner**, `animTime` 0→0.99 ilerler, faz sayar, **hata
+çıkmaz**, mesh rest pozunda kalır. Vanilla ölçümü: kök **4215**, diğerleri
+**119**.
+
+`.ycd` tarafında Sollumz çıktısı doğrudan kullanılamaz; hat şu sırayla
+işler ve her adımın karşılığı bir betiktir:
+`fix_ycd_xml.py` (`<Hash>`) → `ycd_track2_ekle.py` (Track 2 ölçek) →
+`ycd_kok_kemik_ekle.py` (kök kemik, tag 0) → `yama_ycd.py` (beş alanlık
+sözleşme) → `xml_to_ycd.ps1`.
+
+**Dayanak:** 5 vanilla `des_*` sözlüğü / 27 klip, beş alanda **istisna yok**
+(27/27). `.ytyp`/`.ymap` binary'si `meta_xml_to_bin.ps1` ile yazılır ve
+entity sayısı geri okunarak karşılaştırılır — ölçülen vakada XML turu
+**457 entity → 128** düşürüyordu, araç "başarılı" diyordu.
+
 ---
 
 # 2. NE YAPAMIYORUZ
@@ -324,7 +373,8 @@ karşılaştırılarak doğrulanmadı, o yüzden parametre bırakıldı.
 | Ped fiziği (`.yft` Physics) | Sollumz'un yazdığı ped fiziği **oyunu çökertiyor** — fiziksiz gönderilmeli |
 | Custom iskelet | Motor yalnız kendi ped iskeletini kabul ediyor |
 | Grass batch indeksi | ymap `<GrassInstanceBatches>` düğümü indekslenmedi |
-| Timecycle / ses / navmesh | Hiç dokunulmadı |
+| Ses / navmesh | Hiç dokunulmadı |
+| Oyunda decal projeksiyonu | Blender'da çalışıyor, oyunda denenmedi (§1.13 C) |
 
 ---
 
@@ -421,6 +471,18 @@ yok**. Zararlı olup olmadığı **test edilmedi** — `lodLevel` hepsinde
 | Grass batch | Yalnız video anlatımı; base-game hack'i gerektiriyor |
 | @ma çim | Prosedürel ID tablosu var, **oyunda denenmedi** |
 | Gen9 (Enhanced) | Export doğrulandı, **oyunda yüklenmedi** |
+| Decal projeksiyonu | Blender'da üç yüzeyde çalıştı, **oyunda denenmedi** |
+
+## 4.7 MutoLab ayrı repo olacak — **öncelik: orta**
+
+Blender tarafındaki üretim aracı (decal projeksiyonu dâhil) **MutoLab**
+eklentisinde yaşıyor ve bu depoda değil. muto-atlas bir veri + referans
+deposudur; içine Blender eklentisi kodu **kopyalanmadı** — iki kopya
+kaçınılmaz olarak ayrışır.
+
+**Karar (21.08.2026):** MutoLab kendi deposuna çıkarılacak. O olana kadar
+muto-atlas yalnız **ölçüt** tarafını tutar: `decal-isik-timecycle-bulgulari.md`
+aracın sözleşmesidir, araç değişse de ölçüm burada kalır.
 
 ---
 
@@ -428,10 +490,8 @@ yok**. Zararlı olup olmadığı **test edilmedi** — `lodLevel` hepsinde
 
 | Konu | Neden önemli |
 |---|---|
-| `.ypt` alan şeması | Partikül üretiminin tek eksik parçası |
 | ymap `<GrassInstanceBatches>` | Çim yerleşimi indekste yok |
 | `.ymt` / clip_sets | Movement clipset tarafı yalnız referans dokümanında |
-| Timecycle modifiers | MLO oda atmosferi |
 | Audio (`.awc`, audio occlusion) | Hiç bakılmadı |
 | Navmesh (`.ynv`) | Ped yol bulma; MLO'da kritik |
 | `.ycd` içi tag/property şeması | Referansta var, indekste yok |
