@@ -38,14 +38,14 @@ claude plugin marketplace add B7Kompirine/muto-atlas
 claude plugin install muto-atlas@muto-atlas
 ```
 
-Claude Code'u yeniden başlat. Artık **22 komutun** ve **2 skill'in**
+Claude Code'u yeniden başlat. Artık **23 komutun** ve **2 skill'in**
 (`fivem-natives`, `fivem-assets`) var.
 
 | | |
 |---|---|
 | **Veriyi sorgula** | `/asset` `/native` `/where` `/anim` |
 | **Asset üret** | `/ped` `/retarget` `/clipset` `/yed` `/weapon` `/weaponfx` `/3dnui` `/rayfire` |
-| **Işık & sahne** | `/light` `/scene` |
+| **Işık, decal & sahne** | `/light` `/decal` `/scene` |
 | **Denetle & kur** | `/asset-setup` `/asset-build` `/native-lint` |
 | **Araç yolları** | `/paths` `/codewalker` `/gta` `/server` `/blender` |
 

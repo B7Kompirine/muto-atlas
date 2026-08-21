@@ -1,6 +1,6 @@
 ---
 name: fivem-assets
-description: GTA V/FiveM prop, obje, kapı, animasyon, PED İSKELETİ/KEMİĞİ, YÜZ ANİMASYONU, expression ve ytyp verisine erişim. Bir prop/obje/kapı/animasyon/kemik ile ilgili KOD YAZMADAN ÖNCE bu skill ile gerçek asset verisine bakılır. Kullanıcı bir objeyi hareket ettirmek, kapı açmak/kilitlemek, prop spawn etmek, animasyon oynatmak, ymap/ytyp/MLO ile uğraşmak, ped kemiğiyle iş yapmak, yüz ifadesi/mimik vermek ya da rigging yapmak istediğinde MUTLAKA devreye gir — kullanıcı "skill" demese bile. Model adı geçen (v_ilev_*, prop_*, p_*, ch_prop_*), "kapı açılmıyor", "obje kımıldamıyor", "freeze", "AddDoorToSystem", "TaskPlayAnim", "anim dict", "prop animasyonu", "hangi animasyon", "bu prop var mı" ve ayrıca "kemik", "bone", "SKEL_", "FB_", "PH_R_Hand", "bone tag", "GetPedBoneIndex", "GetPedBoneCoords", "iskelet", "rig", "rigging", "armature", "yüz animasyonu", "mimik", "ifade", "gülümseme", "surat", "facial", "PlayFacialAnim", "SetFacialIdleAnimOverride", "facials@", "expression", ".yed", "blink", "göz kırpma", "kaş", "dudak", "ağız", "viseme", "lipsync" ve ayrıca "retarget", "Sketchfab", "Mixamo", "Rigify", "FBX", "weight paint", "ağırlık boyama", "skinning", "vertex group", "T-pose", "A-pose", "root motion", "mover", "kemik eşleme", "animasyon aktarma", "Blender animasyon", "Sollumz" ve ayrıca "DUI", "3D NUI", "3dnui", "cr-3dnui", "dünyada ekran", "objede ekran", "obje üstünde UI", "CreateDui", "SendDuiMessage", "AddReplaceTexture", "ReplaceTexture", "runtime texture", "CreateRuntimeTxd", "DrawTexturedPoly", "DrawSpritePoly", "render target", "script_rt", "raycast UV", "tıklanabilir ekran", "etkileşimli obje", "ATM ekranı", "keypad UI", "monitör", "laptop ekranı", "kamera monitörü", "tabela", "billboard" ve ayrıca "add-on silah", "addon weapon", "custom weapon", "silah ekleme", "kendi silahım", "silah modeli", "weapons.meta", "weaponarchetypes.meta", "weaponcomponents.meta", "pedpersonality.meta", "vWeaponsToolkit", "WEAPON_", "WAPClip", "AAPClip", "Gun_Main_Bone", "Gun_Trigger_Pr", "Gun_Cock1", "şarjör", "mag", "susturucu", "dürbün", "weapon component", "weapon tint", "GiveWeaponToPed", "str_requestFlush" ve ayrıca "parlayan silah", "glowing gun", "glow", "emissive", "normal_spec_emissive", "wireframe silah", "tel kafes", "silah skini", "weapon skin", "UV animasyon", "UV anim", "animasyonlu silah", "animated weapon", "akan doku", "zincir", "chain", "charm", "silah süsleme", "clip@", "Auto Start Anim", "clip dictionary" ve ayrıca "partikül", "particle", "ptfx", "efekt", "duman", "smoke", "ateş", "fire", "kıvılcım", "spark", "buhar", "steam", "toz", "dust", "su damlası", "sinek", "hamamböceği", "kar", "yaprak", "patlayınca", "kırılınca", "vurulunca", "StartParticleFx", "amb_", "dst_", "brk_", "core.ypt", "fxType", "CExtensionDefParticleEffect" ve ayrıca "LOD", "lod mesafesi", "lodDist", "childLodDist", "SLOD", "uzaktan kaybolma", "titreşiyor", "flicker", "hayalet kopya", "pop-in", "LOD zinciri", "ParentIndex", "LOD Adopt Me", "orphan LOD", "LODTYPES", "ORPHANHD" ve ayrıca "ytyp bayrağı", "ymap bayrağı", "entity flags", "archetype flags", "specialAttribute", "1572872", "18350080", "Enable Door Physics", "Has Anim", "UV anims", "Static entity", "Cast Static Shadows", "extension", "ytyp extension", "Ladder extension", "Buoyancy", "LightShaft", "SpawnPoint", "WindDisturbance", "ProcObject", "Expression extension" ve ayrıca "çim", "grass", "grass batch", "prosedürel", "procedural", "Procedural ID", "@ma collision", "fur grass", "terrain shader", "terrain_cb4", "vertex paint", "zemin dokusu", "nametable", "name table", "hash isim", "Gen8", "Gen9", "GTAV Enhanced", "target_formats", "pymateria", "CWXML" ve ayrıca "araç", "vehicle", "handling", "handlingId", "handling.meta", "modkit", "SetVehicleModKit", "araç ekstra", "SetVehicleExtra", "araç sınıfı", "hangi araç", "araç listesi" ve ayrıca "silah bileşeni", "weapon component", "COMPONENT_", "GiveWeaponComponentToPed", "livery", "AttachBone", "WAPClip", "WAPScop", "mermi tipi", "AmmoType" ve ayrıca "ped meta", "hangi ped", "ped listesi", "MovementClipSet", "SetPedMovementClipset", "ClipDictionaryName", "ExpressionSet", "PedVoiceGroup", "ped tipi", "Pedtype", "hayvan pedi", "animal ped" ve ayrıca "MLO listesi", "iç mekân nerede", "interior konumu", "MLO sürümü", "IPL", "RequestIpl", "RemoveIpl", "ipl adı", "interior yükle" ve ayrıca "loot noktası", "spawn noktası", "ATM nerede", "kamera nerede", "CCTV konumu", "bank konumu", "çöp konteyneri", "sokak lambası", "trafik ışığı", "benzin pompası", "otomat", "vending machine", "dünya nesnesi", "nesne konumu", "yakınımdaki objeler", "rotasyon", "prop rotasyonu" geçen her görevde kullan.
+description: GTA V/FiveM prop, obje, kapı, animasyon, PED İSKELETİ/KEMİĞİ, YÜZ ANİMASYONU, expression ve ytyp verisine erişim. Bir prop/obje/kapı/animasyon/kemik ile ilgili KOD YAZMADAN ÖNCE bu skill ile gerçek asset verisine bakılır. Kullanıcı bir objeyi hareket ettirmek, kapı açmak/kilitlemek, prop spawn etmek, animasyon oynatmak, ymap/ytyp/MLO ile uğraşmak, ped kemiğiyle iş yapmak, yüz ifadesi/mimik vermek ya da rigging yapmak istediğinde MUTLAKA devreye gir — kullanıcı "skill" demese bile. Model adı geçen (v_ilev_*, prop_*, p_*, ch_prop_*), "kapı açılmıyor", "obje kımıldamıyor", "freeze", "AddDoorToSystem", "TaskPlayAnim", "anim dict", "prop animasyonu", "hangi animasyon", "bu prop var mı" ve ayrıca "kemik", "bone", "SKEL_", "FB_", "PH_R_Hand", "bone tag", "GetPedBoneIndex", "GetPedBoneCoords", "iskelet", "rig", "rigging", "armature", "yüz animasyonu", "mimik", "ifade", "gülümseme", "surat", "facial", "PlayFacialAnim", "SetFacialIdleAnimOverride", "facials@", "expression", ".yed", "blink", "göz kırpma", "kaş", "dudak", "ağız", "viseme", "lipsync" ve ayrıca "retarget", "Sketchfab", "Mixamo", "Rigify", "FBX", "weight paint", "ağırlık boyama", "skinning", "vertex group", "T-pose", "A-pose", "root motion", "mover", "kemik eşleme", "animasyon aktarma", "Blender animasyon", "Sollumz" ve ayrıca "DUI", "3D NUI", "3dnui", "cr-3dnui", "dünyada ekran", "objede ekran", "obje üstünde UI", "CreateDui", "SendDuiMessage", "AddReplaceTexture", "ReplaceTexture", "runtime texture", "CreateRuntimeTxd", "DrawTexturedPoly", "DrawSpritePoly", "render target", "script_rt", "raycast UV", "tıklanabilir ekran", "etkileşimli obje", "ATM ekranı", "keypad UI", "monitör", "laptop ekranı", "kamera monitörü", "tabela", "billboard" ve ayrıca "add-on silah", "addon weapon", "custom weapon", "silah ekleme", "kendi silahım", "silah modeli", "weapons.meta", "weaponarchetypes.meta", "weaponcomponents.meta", "pedpersonality.meta", "vWeaponsToolkit", "WEAPON_", "WAPClip", "AAPClip", "Gun_Main_Bone", "Gun_Trigger_Pr", "Gun_Cock1", "şarjör", "mag", "susturucu", "dürbün", "weapon component", "weapon tint", "GiveWeaponToPed", "str_requestFlush" ve ayrıca "parlayan silah", "glowing gun", "glow", "emissive", "normal_spec_emissive", "wireframe silah", "tel kafes", "silah skini", "weapon skin", "UV animasyon", "UV anim", "animasyonlu silah", "animated weapon", "akan doku", "zincir", "chain", "charm", "silah süsleme", "clip@", "Auto Start Anim", "clip dictionary" ve ayrıca "partikül", "particle", "ptfx", "efekt", "duman", "smoke", "ateş", "fire", "kıvılcım", "spark", "buhar", "steam", "toz", "dust", "su damlası", "sinek", "hamamböceği", "kar", "yaprak", "patlayınca", "kırılınca", "vurulunca", "StartParticleFx", "amb_", "dst_", "brk_", "core.ypt", "fxType", "CExtensionDefParticleEffect" ve ayrıca "LOD", "lod mesafesi", "lodDist", "childLodDist", "SLOD", "uzaktan kaybolma", "titreşiyor", "flicker", "hayalet kopya", "pop-in", "LOD zinciri", "ParentIndex", "LOD Adopt Me", "orphan LOD", "LODTYPES", "ORPHANHD" ve ayrıca "ytyp bayrağı", "ymap bayrağı", "entity flags", "archetype flags", "specialAttribute", "1572872", "18350080", "Enable Door Physics", "Has Anim", "UV anims", "Static entity", "Cast Static Shadows", "extension", "ytyp extension", "Ladder extension", "Buoyancy", "LightShaft", "SpawnPoint", "WindDisturbance", "ProcObject", "Expression extension" ve ayrıca "çim", "grass", "grass batch", "prosedürel", "procedural", "Procedural ID", "@ma collision", "fur grass", "terrain shader", "terrain_cb4", "vertex paint", "zemin dokusu", "nametable", "name table", "hash isim", "Gen8", "Gen9", "GTAV Enhanced", "target_formats", "pymateria", "CWXML" ve ayrıca "araç", "vehicle", "handling", "handlingId", "handling.meta", "modkit", "SetVehicleModKit", "araç ekstra", "SetVehicleExtra", "araç sınıfı", "hangi araç", "araç listesi" ve ayrıca "silah bileşeni", "weapon component", "COMPONENT_", "GiveWeaponComponentToPed", "livery", "AttachBone", "WAPClip", "WAPScop", "mermi tipi", "AmmoType" ve ayrıca "ped meta", "hangi ped", "ped listesi", "MovementClipSet", "SetPedMovementClipset", "ClipDictionaryName", "ExpressionSet", "PedVoiceGroup", "ped tipi", "Pedtype", "hayvan pedi", "animal ped" ve ayrıca "MLO listesi", "iç mekân nerede", "interior konumu", "MLO sürümü", "IPL", "RequestIpl", "RemoveIpl", "ipl adı", "interior yükle" ve ayrıca "loot noktası", "spawn noktası", "ATM nerede", "kamera nerede", "CCTV konumu", "bank konumu", "çöp konteyneri", "sokak lambası", "trafik ışığı", "benzin pompası", "otomat", "vending machine", "dünya nesnesi", "nesne konumu", "yakınımdaki objeler", "rotasyon", "prop rotasyonu" ve ayrıca "decal", "graffiti", "leke", "kan izi", "yüzeye yapıştır", "yansıtma", "projeksiyon", "AddDecal", "decal.sps", "render bucket", "Surface Painter", "alfa maskesi", ve ayrıca "timecycle", "timecycle modifier", "karanlık", "loş", "atmosfer", "TIMECYCLEMOD_FILE", "vignette", "postfx", "hava cycle", ve ayrıca "ışık yanmıyor", "TimeFlags", "Flashiness", "flicker", "titreyen ışık", "emissive panel", "emissiveMultiplier", "tavan lambası", "floresan", "ışık ekle", "koni açısı", ve ayrıca "Child Of", "Copy Transforms", "HAS_ANIM", "AUTOSTART_ANIM", "fragment physics bones", "Sollumz Discord", "Rokoko", "Auto Scale", "Mesh Domain", "Face Corner" geçen her görevde kullan.
 ---
 
 # FiveM Asset Verisi — önce bak, sonra kod yaz
@@ -43,6 +43,7 @@ kullanıcıya özetle, sonra koda geç.
 | collision materyali, "hangi malzeme", bayraklar | `assetdb.py mat [<ad>\|--index N]` |
 | **decal** — kan/iz/leke **script'le** (`AddDecal`) | `assetdb.py decal <kan\|mermi\|ayak\|yanık\|yağ\|benzin>` |
 | **decal** — haritaya kalıcı gömülü, "hangi shader" | `assetdb.py shader decal` |
+| **decal** — Blender'da yüzeye **geometri yansıtma** (graffiti, leke, tabela) | `references/decal-isik-timecycle-bulgulari.md` · `/decal` |
 | cam/emissive/terrain/kumaş/araç/su shader'ı | `assetdb.py shader <tür>` |
 | animasyon / klip | `assetdb.py anim <ara>` · `propanim <prop>` |
 | kemik / tag | `assetdb.py bones <model>` · `pedrig.py` |
@@ -512,6 +513,15 @@ python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" where v_ilev_gb_teldr
 extension + .ycd + Lua zinciri. Çalışan yöntem odur; aşağıdaki fragment
 kuralları o zincirin 1. adımıdır.
 
+⚠️ **Ama bu TEK YOL DEĞİL — yolu seç ve ona sadık kal.** Expression
+kullanmayan ikinci bir reçete ölçüldü: **fragment physics bones + `Child Of`
+constraint + ytyp `HAS_ANIM`/`AUTOSTART_ANIM`** →
+`references/sollumz-discord-tutorials.md` §1. Hangi durumda hangisinin doğru
+olduğu **henüz ölçülmedi**; kullanıcıya iki yolu da anlat, birini seç, sonra
+**içinde varyasyon yapma ve ikisini MELEZLEME** — melez asset bir kez üretildi
+ve hiç çalışmadı. ⛔ İki constraint farklıdır: animasyonlu prop → `Child Of` +
+Set Inverse, kırılabilir fragment → `Copy Transforms`.
+
 ## FRAGMENT ÜRETİMİ (zincirin 1. adımı)
 
 Bir prop'un çarpışması kemik animasyonuyla birlikte hareket etsin istiyorsan
@@ -859,7 +869,56 @@ okunarak** doğrulanır. Değer önerirken `--table`'nun ölçülmüş bandını
   aynı içeriktir. Tek ölçüt **geri okumadır**; `--apply` her zaman geri
   okur ve ışık sayısı tutmuyorsa yazmaz.
 
-Tam matematik + timecycle üç katmanı: `references/light-matematigi-ve-onizleme.md`
+- **`Flashiness` (flicker) hiçbir yerde yazmaz**, 72.539 ışığın dağılımından
+  okundu: **15** alarm · **17** tünel · **9** acil durum · **19** hasarlı gemi
+  (68.036'sı 0). ⚠️ Adı "broken light" olan vanilla prop'un flashiness'i
+  **0**'dır — GTA "kırık"ı modelle yapar, titremeyle değil.
+- **Emissive panelin ışığı yoktur** — parlaklık `emissiveMultiplier`'dadır ve
+  bir odadaki paneller **tek geometriyi paylaşır**; birini kırmak için
+  geometriyi bölmek gerekir. Emissive geometri **titreyemez**.
+- **Kendi timecycle modifier'ını `data_file 'TIMECYCLEMOD_FILE'` ile KAYDET** —
+  kaydedilmezse oyun onu hiç aramaz. Paylaşılan vanilla modifier'a dokunma
+  (`morgue_dark` 6 DLC'de tanımlı, hangisinin kazandığı veriden okunamaz).
+
+Tam matematik + timecycle üç katmanı: `references/isik-matematigi-ve-onizleme.md`
+Işık/timecycle/emissive alan bulguları: `references/decal-isik-timecycle-bulgulari.md`
+
+## DECAL — üç ayrı sistem, karıştırma (`/decal`)
+
+"Şuraya kan/graffiti/leke/logo koyalım" üç ayrı işten biridir ve hiçbiri
+diğerinin yerine geçmez:
+
+| istenen | yol |
+|---|---|
+| çalışma anında iz (kan, lastik, mermi, sızıntı) | `AddDecal` → `assetdb.py decal <tür>` (194 tipli tablo) |
+| haritaya **kalıcı gömülü** (graffiti, logo, tabela) | `decal.sps` shader + render bucket **2** → `assetdb.py shader decal` |
+| Blender'da yüzeye **geometri yansıtma** | `references/decal-isik-timecycle-bulgulari.md` |
+
+Yansıtmanın üç yöntemi ölçüldü, üçünün de sert sınırı var:
+
+- **Işın ızgarası ışına paralel yüzeye ASLA vuramaz** — merdivende 4096
+  ışının 2732'si, odanın iç köşesinde 1344'ü boşa gitti.
+- **Kutu yöntemi** sarar (silindirde 39 normal bandı, ışında 2) ama desen
+  köşede yeniden başlar. İnce boru/ızgarada **hiçbiri çalışmaz** — orası
+  boyama işidir (Surface Painter).
+- ⛔ **`bmesh.ops.bisect_plane` açık geometride kırpmaz, YÜZ SİLER** (altı
+  çağrıda yüz sayısı 637'de sabit kalırken alan 3.553 → 0.941 m²). Boolean
+  INTERSECT de güvenilmez. Doğrusu **Sutherland–Hodgman** — çözücüsü yok,
+  başarısızlık modu yok.
+
+Decal görünmüyorsa **sırayla** şuna bak (hepsi sessiz):
+UV katmanının adı materyalinkiyle aynı mı (`"UVMap 0"`) · hedefin eski UV
+katmanı silindi mi · `Color 1` alfası 1.0 mı (kopyalanan geometri hedefinkini
+getirir, ölçülen vakada 0.498) · alfa haritasında **satır 0 görüntünün ALTIDIR**.
+
+⛔ **`object.dimensions` DÖNÜŞÜ İÇERMEZ** (yerel bbox × ölçek) — "en uzun
+ekseni yatır" mantığını bununla kurmak sessizce hiçbir şey yapmaz.
+⛔ **Gizli objede `select_set()` sessizce çalışmaz**: export "successfully"
+der, dosya **0 bayt** çıkar (yedi objeden beşi böyle yazıldı).
+
+Blender aracı bu depoda değil — **MutoLab eklentisi** (`ops/decal`,
+`panels/decal.py`, `props/decal.py`). Bu belge o aracın ölçülmüş
+sözleşmesidir; araç değişirse belge ölçüt olarak kalır.
 
 ## SAHNE — çoklu obje, klip çözümü, ymap (`/scene`)
 

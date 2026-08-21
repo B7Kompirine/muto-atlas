@@ -70,4 +70,4 @@ python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" light <dosya>             # 3.
 - `cycle` katmanı kurulu değilse `build_cycle.ps1`'i öner — **uydurma**.
 
 Tam matematik, üç katmanlı timecycle ve sessiz hata kataloğu:
-`${CLAUDE_PLUGIN_ROOT}/skills/fivem-assets/references/light-matematigi-ve-onizleme.md`
+`${CLAUDE_PLUGIN_ROOT}/skills/fivem-assets/references/isik-matematigi-ve-onizleme.md`

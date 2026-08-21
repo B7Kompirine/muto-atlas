@@ -69,14 +69,14 @@ claude plugin marketplace add B7Kompirine/muto-atlas
 claude plugin install muto-atlas@muto-atlas
 ```
 
-Restart Claude Code. You now have **22 commands** and **2 skills**
+Restart Claude Code. You now have **23 commands** and **2 skills**
 (`fivem-natives`, `fivem-assets`).
 
 | | |
 |---|---|
 | **Ask the data** | `/asset` `/native` `/where` `/anim` |
 | **Author assets** | `/ped` `/retarget` `/clipset` `/yed` `/weapon` `/weaponfx` `/3dnui` `/rayfire` |
-| **Light & scene** | `/light` `/scene` |
+| **Light, decal & scene** | `/light` `/decal` `/scene` |
 | **Check & build** | `/asset-setup` `/asset-build` `/native-lint` |
 | **Tool paths** | `/paths` `/codewalker` `/gta` `/server` `/blender` |
 

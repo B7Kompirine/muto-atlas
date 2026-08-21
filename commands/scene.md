@@ -63,4 +63,4 @@ ve özet çıktısında kare/süre/kemik kanalı sayısı raporlanır.
   doğrulanır ve raporlanır; "gözle izle" isteniyorsa Blender/oyun gerekir.
 
 Işık matematiği ve önizlemenin sınırları:
-`${CLAUDE_PLUGIN_ROOT}/skills/fivem-assets/references/light-matematigi-ve-onizleme.md`
+`${CLAUDE_PLUGIN_ROOT}/skills/fivem-assets/references/isik-matematigi-ve-onizleme.md`
