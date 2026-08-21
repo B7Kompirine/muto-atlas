@@ -3,8 +3,10 @@
 **Kaynak:** Sollumz sunucusu `#tutorials` kanalının tamamı
 (75 mesaj, 28.12.2021 → 13.07.2026), 57 video transkripti + 7 video kare kare.
 **Çıkarım tarihi:** 21.08.2026
-**Ham veri:** `C:\Users\musti\Desktop\FiveM\sollumz-tutorials\`
-(`metin/` transkriptler · `notlar/` konu damıtımları · `index.tsv` tam liste)
+**Ham veri:** yerel çıkarım klasörü, depoya girmez
+(`metin/` transkriptler · `notlar/` konu damıtımları · `index.tsv` tam liste).
+Aşağısı o klasörün damıtılmış hâlidir; ham transkriptler kaynak videoların
+telifine tabi olduğu için burada yer almaz.
 
 > **Bu dosyanın statüsü:** buradakiler **ölçüm değil, topluluk uygulamasıdır.**
 > Atlasın geri kalanı kendi ölçümlerimize dayanır ve **çakışma hâlinde ölçüm
@@ -235,7 +237,8 @@ birlikteyse `HAS_ANIM` + `UV_ANIM` ve autostart gerekmiyor.
 
 ## 7. Konu → ayrıntı haritası
 
-Tam adım adım yordamlar `C:\Users\musti\Desktop\FiveM\sollumz-tutorials\notlar\`:
+Tam adım adım yordamlar yerel çıkarım klasörünün `notlar/` dizinindedir
+(depoya girmez). Konu → dosya eşlemesi:
 
 | konu | dosya |
 |---|---|
