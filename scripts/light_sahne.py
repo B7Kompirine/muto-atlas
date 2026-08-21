@@ -124,7 +124,13 @@ def _kemikler(kok):
     """ad/tag -> dunya matrisi. Zincir ebeveynden cocuga cozulur."""
     bones = kok.find(".//Skeleton/Bones")
     if bones is None:
-        return [], {}
+        # ⛔ ISKELETSIZ DRAWABLE'DA DA AYNI BICIM DONMELI.
+        # Bos dict donunce cagiranlar kmap["tag"] / kmap["idx"] derken
+        # KeyError atiyordu ve hata "IC HATA: KeyError: 'idx'" diye cikip
+        # sebebini gizliyordu. Statik prop'larin cogunda iskelet yoktur
+        # (v_2_bds_mesh_ceiling boyle) -- yani isik duzenleme o dosyalarda
+        # hic calismiyordu.
+        return [], {"tag": {}, "idx": {}}
     ham = []
     for b in bones:
         ham.append({
