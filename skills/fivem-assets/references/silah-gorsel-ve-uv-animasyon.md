@@ -6,6 +6,22 @@ tel kafes görünüm, zincir/charm süslemesi ve **UV animasyonlu skin**.
 Temel hat burada değil — önce `addon-silah-uretimi.md` (komut: `/weapon`).
 Bu belge o hattın çıktısını süsler.
 
+> ⛔ **UV animasyonuna başlamadan önce oku: İKİ UV UZAYI VAR.**
+> Blender UV editöründe `0,0` **sol altta** (V yukarı artar), GTA doku uzayında
+> orijin **sol üstte** (V aşağı artar). Sonucu: Blender'da `+Y` translate oyunda
+> dokuyu **ters yöne** kaydırır. Yön tutmuyorsa keyframe'leri kurcalama.
+> Etiketli bir test dokusu üretmek en hızlı doğrulama.
+>
+> ⛔ **Rotate/Scale UV `0,0` etrafında çalışır**, şeklin merkezi etrafında değil.
+> Adayı 0,0'a taşımak bozar. Doğrusu: **şekli dört parçaya kesip dokunun dört
+> köşesine yerleştirmek.** Bu bir keyframe numarası değil, **dokunun baştan öyle
+> çizilmesi** gerekiyor — sonradan düzeltilemez.
+>
+> ⛔ **Kare 120 = kare 0.** İkisi de bırakılırsa döngü başında görünür takılma
+> olur; animasyon **119'da bitmeli**.
+>
+> Ayrıntı ve Sollumz panel konumları: `sollumz-discord-tutorials.md` §5.
+
 ## KAYNAK VE GÜVENİLİRLİK
 
 | İşaret | Kaynak |

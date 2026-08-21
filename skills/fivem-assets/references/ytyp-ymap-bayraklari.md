@@ -62,6 +62,31 @@ onay listesindeki değerle birebir aynı.
 | 1073741824 | 30 | Is Debug |
 | 2147483648 | 31 | Has Alpha Shadow |
 
+### Pratikte hangi bayrak kombinasyonu — topluluk uygulaması
+Kaynak: `sollumz-discord-tutorials.md`. Bunlar ölçüm değil, çalıştığı görülmüş
+kombinasyonlardır — ama üçü de birden fazla videoda tekrarlanıyor.
+
+| iş | bayraklar |
+|---|---|
+| animasyonlu prop (klip kendiliğinden oynasın) | **`Has Anim` (512) + `Auto Start Anim` (524288)** |
+| UV animasyonlu prop / silah kaplaması | **`UV anims` (1024) + `Auto Start Anim`** |
+| iskelet + UV animasyonu **birlikte** | **`Has Anim` + `UV anims`** — bu durumda `Auto Start Anim` **gerekmiyor** |
+| kırılabilir fragment | **`Dynamic` (131072)**; ops. `Does Not Provide AI/Player Cover` |
+| prop cloth | **`Has Cloth` (33554432) + `Dynamic` + `Double-sided rendering` (65536) + `Use Ambient Scale` (536870912)** |
+| bake edilmiş shadowmap düzlemi | **`Dont Cast Shadows` (8192)** |
+| yansıma proxy'si | archetype flags **0**; iş entity bayraklarında (`only render in reflections` + cast static/dynamic shadow) |
+
+### ⭐ `Time` arketipi — `TimeFlags`'i elle yazmaya gerek yok
+Sollumz'da arketip **`Type` alanı `Base` yerine `Time`** seçilirse panelde
+**24 saatlik onay kutusu ızgarası** (`12:00 AM–1:00 AM` … `11:00 PM–12:00 AM`)
+ve **`Select from … to …`** aralık seçici açılıyor. Bu dosyadaki `TimeFlags`
+sihirli sayısı (ör. `14680095` = 21:00–05:00) oradan üretiliyor.
+
+Saate bağlı prop için tipik alanlar: `HD Texture Distance` **60**,
+`Lod Distance` **60**, ymap **Content Flags `HD (1)` + `Physics (64)` = `65`**.
+Doğrulama: CodeWalker → Lighting → **`Time of day`** kaydırıcısıyla saati değiştir,
+prop aralık içinde görünüp dışında kaybolmalı.
+
 ### Çapraz doğrulama (316.975 arketip)
 
 `clipDictionary` alanı dolu olan **1308** arketip:

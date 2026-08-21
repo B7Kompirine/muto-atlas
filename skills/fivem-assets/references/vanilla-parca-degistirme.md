@@ -3,6 +3,12 @@
 Bir yol dilimini, bir prop'u ya da bir yapı parçasını **kendi modelinle
 değiştirmek** iki ayrı iştir ve ikisi de sessiz hatalarla doludur:
 
+> ⭐ **Topluluk teyidi (`sollumz-discord-tutorials.md` §4):** bir `.ydd` sözlüğünün
+> içindeki objeyi **SİLME, dünyanın altına taşı.** Silmek sözlükteki **diğer bağlı
+> objelerin özelliklerini de bozuyor** ve o bölgenin dokusu bulanık/düşük kaliteli
+> görünmeye başlıyor. Aşağıdaki §1 ile aynı kural, bağımsız kaynaktan.
+> Ayrıca: tek bir `.ydd` değiştirmek için **ytyp/ymap gerekmez.**
+
 1. vanilla olanı **görünmez yapmak** (silmeden — §1)
 2. kendi modelini **vanilla'nın kendi verisinden üretmek** (§3) ve
    **dokularını geri bağlamak** (§4)

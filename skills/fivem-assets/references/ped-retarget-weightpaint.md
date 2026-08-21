@@ -7,6 +7,17 @@ Kaynak: gerçek `.yft` / `.ydd` / `.ycd` verisi üzerinde Blender 5.2 + Sollumz
 ile yapılan ölçümler. **Her sayı ölçümdür.** Kardeş doküman:
 `ped-kemik-yuz-rigging.md` (iskelet + yüz sistemi).
 
+> **Topluluk tarafı:** `sollumz-discord-tutorials.md` §3-§4.
+> Oradan gelen üç sessiz hata bu dosyaya ek olarak geçerlidir:
+> - ⛔ **Rokoko `Auto Scale` açıkken root motion TAMAMEN silinir.**
+> - ⛔ **Retarget'ta tüm `FB_` yüz keyframe'leri silinmeli** — yoksa hikâye
+>   ped'lerinde yumruk atarken yüz içe çöküyor.
+> - ⛔ **Export → Drawable → `Mesh Domain` = `Face Corner`** (`Vertex` yalnız
+>   MP freemode kafaları için; yanlışı sessizce bozuk ped üretir).
+>
+> ⚠️ **Çelişki:** bir topluluk videosu T-pose için kolu **−45°** çeviriyor.
+> Bu dosyadaki **57°** ÖLÇÜMDÜR ve kazanır. Videoya göre düzeltme yapma.
+
 Araç: `scripts/blender_retarget_gta.py` — bu dokümandaki matematiği uygular,
 53 kemik üzerinde test edildi.
 

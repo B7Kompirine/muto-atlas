@@ -6,6 +6,18 @@ birlikte hareket etmesini** sağlayan zincir. Çalışan yöntem budur.
 > Bu reçete kullanıcı tarafından verildi ve daha önce bizzat çalıştırıldı.
 > Tahmin değil. Varyasyon deneme — **birebir uygula.**
 
+> ⚠️ **GÜNCELLEME (21.08.2026): bu TEK YOL DEĞİL.**
+> Sollumz topluluğunda expression kullanmayan, **fragment physics bones +
+> `Child Of` constraint + ytyp `HAS_ANIM`/`AUTOSTART_ANIM`** ile çalışan ikinci
+> bir reçete var (`sollumz-discord-tutorials.md` §1).
+> "Varyasyon deneme" uyarısı hâlâ geçerli — **ama anlamı şu:** bir reçeteyi
+> seçtikten sonra içinde varyasyon yapma, iki reçeteyi **melezleme**.
+> Hangi durumda hangisinin doğru olduğu **henüz ölçülmedi**; kullanıcıya
+> iki yol da anlatılmalı, "tek yol var" denmemeli.
+>
+> ⛔ İki constraint farklıdır: **animasyonlu prop → `Child Of` + Set Inverse**,
+> **kırılabilir fragment → `Copy Transforms` + correct space.**
+
 ---
 
 ## ZİNCİR (5 parça, hepsi gerekli)
