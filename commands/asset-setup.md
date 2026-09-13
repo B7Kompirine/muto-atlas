@@ -6,7 +6,7 @@ allowed-tools: Bash(python:*), Bash(powershell.exe:*), Read, Glob, AskUserQuesti
 
 Argüman: `$ARGUMENTS`
 
-Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `~/.claude/muto-atlas`).
+Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içeren muto-atlas klasörü).
 
 ## ADIM 1 — Durumu gör
 

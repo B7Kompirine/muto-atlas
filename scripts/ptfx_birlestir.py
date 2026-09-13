@@ -23,8 +23,8 @@ Birlestirme = dort sozlugun `<Item>`larini birlestirmek:
    okunur. Birlestirilmis XML'in yaninda butun `.dds` dosyalari bulunmali.
 
 Kullanim:
-  python ptfx_birlestir.py --ad muto_efektler --klasor <dizin>
-  python ptfx_birlestir.py --ad muto_efektler --klasor <dizin> --disla muto_x
+  python ptfx_birlestir.py --ad my_efektler --klasor <dizin>
+  python ptfx_birlestir.py --ad my_efektler --klasor <dizin> --disla my_x
 """
 from __future__ import annotations
 
@@ -114,7 +114,7 @@ def main():
                 if ad in gorulen[d]:
                     # ⛔ SESSIZCE ELEME. Onceki surum ilk gorulen kaydi
                     #    tutup otekini atiyordu; girdi klasorunde kalan
-                    #    ESKI birlesik dosya (`muto_katalog.ypt.xml`)
+                    #    ESKI birlesik dosya (`my_katalog.ypt.xml`)
                     #    boylece karisti ve dogru surumun kazanmasi yalniz
                     #    ALFABETIK SIRAYA kaldi. Sans degil hata olmali.
                     cakisma.setdefault((d, ad), []).append(f)

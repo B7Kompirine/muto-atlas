@@ -2,7 +2,7 @@
 
 **Ne zaman okunur:** bir bina, köprü, yol, kule, iskele çöksün; "sağlam → animasyonlu çöküş → enkaz"; patlama sonrası kalıcı enkaz; collision'ın koreografiyle hareket etmesi.
 **When to read:** destruction, collapse or a choreographed scene — RayFire `des_*` composites, road/bridge/building coming down.
-**Kaynak:** `rayfire-des-uretim.md` (tamamı, 2026-08/09) · **Ölçüm:** vanilla `des_stilthouse` alan alan; `des_mutotest`, `des_crane`, `des_kopru` oyunda
+**Kaynak:** `rayfire-des-uretim.md` (tamamı, 2026-08/09) · **Ölçüm:** vanilla `des_stilthouse` alan alan; `des_mytest`, `des_crane`, `des_kopru` oyunda
 **Önce:** `dallar/map/_dal.md` · gövde › `govde/bayraklar.md`, `govde/arac-tuzaklari.md`
 
 ---
@@ -16,7 +16,7 @@ yapısının **koreografili** yıkılması istendiğinde. Fragment kırılması
 "sağlam hal → oynatılan çöküş animasyonu → enkaz hali" üçlüsüdür.
 
 Kaynak: vanilla `des_stilthouse` **alan alan** açıldı (ytyp, ycd, 8 ydr,
-3 ymap, 6 ybn, yerleştirici ymap) ve birebir kopyası (`des_mutotest`)
+3 ymap, 6 ybn, yerleştirici ymap) ve birebir kopyası (`des_mytest`)
 üretilip oyunda çalıştığı doğrulandı. Buradaki sayıların hiçbiri tahmin
 değildir. Çapraz kontrol: `des_protree`, `des_apartmentblock`,
 `des_tvsmash`, `des_farmhouse`.
@@ -530,7 +530,7 @@ restart yetmez, yoksa bayat asset test edilir.
 5. **`physicsDictionary`'yi doldurmak** — vanilla kökte boştur.
 6. **`rootN`'i ymap'e koymak / elle spawn etmek** → artık RayFire değil.
 7. **Reçeteleri karıştırmak.** Bir turda asset `des_stilthouse`'un skinned
-   mesh'i + `muto_vauldr`'ın fragment ambalajı olmuştu; her iki reçete de
+   mesh'i + `my_vauldr`'ın fragment ambalajı olmuştu; her iki reçete de
    tek başına doğruydu, melez çalışmadı. **Bir reçete seç ve sonuna kadar
    onu uygula.**
 

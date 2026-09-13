@@ -233,8 +233,8 @@ domain'lerinde tanımlanır. Velocity'ye keyframe yazmaya çalışmak `Save()`'i
 **Normal üretim tek komuttur**, ara adımları elle çalıştırma:
 
 ```powershell
-scripts\ptfx_yap.ps1 -Ad muto_spor -Renk 0.2,0.9,0.35 -Hedef <stream klasoru>
-scripts\ptfx_yap.ps1 -Ad muto_x -Gorsel kendi.png -Boyut 0.4 -Yukselme 0.8 -Hedef <k>
+scripts\ptfx_yap.ps1 -Ad my_spor -Renk 0.2,0.9,0.35 -Hedef <stream klasoru>
+scripts\ptfx_yap.ps1 -Ad my_x -Gorsel kendi.png -Boyut 0.4 -Yukselme 0.8 -Hedef <k>
 ```
 
 Doku → XML → ikili → eksik alanları tamamla → doğrula → dağıt.
@@ -547,7 +547,7 @@ doku bağlanmaz**:
     <Name>diffusetex2</Name>       <!-- SAMPLER YUVASI -->
     <Unknown18 value="4" />
     <Unknown3C value="0" />
-    <TextureName>muto_ptfx_soft</TextureName>   <!-- GERCEK doku adi -->
+    <TextureName>my_ptfx_soft</TextureName>   <!-- GERCEK doku adi -->
   </Item>
 </ShaderVars>
 ```
@@ -609,7 +609,7 @@ Oyunda ölçüldü: `stream/` içine konan özel `.ypt`, dosya adıyla named ptf
 asset olarak kaydoluyor.
 
 ```
-[ptvarlik] muto_spore   yuklendi=1
+[ptvarlik] my_spore   yuklendi=1
 [ptcal]    handle=29442   0.6 sn sonra yasiyor = 1
 ```
 

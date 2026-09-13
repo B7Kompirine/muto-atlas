@@ -14,7 +14,7 @@ icin build_custom_ptfx.py kullanilir.
 
 Kullanim:
   python ypt_transplant.py core.ypt.xml --efekt ent_amb_fbi_cinder \\
-      --yeni-ad muto_kelebek2 --doku muto_kelebek2 --klasor <cikti>
+      --yeni-ad my_kelebek2 --doku my_kelebek2 --klasor <cikti>
 """
 from __future__ import annotations
 

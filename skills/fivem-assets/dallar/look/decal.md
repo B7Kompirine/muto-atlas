@@ -11,13 +11,12 @@
 
 Argüman: `$ARGUMENTS`
 
-Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `~/.claude/muto-atlas`).
+Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içeren muto-atlas klasörü).
 
 aşağısı
 
-Sayıların hepsi ölçümdür. Aracın kendisi bu depoda değil — **MutoLab**
-Blender eklentisinde (`ops/decal`, `panels/decal.py`, `props/decal.py`).
-Bu belge o aracın sözleşmesidir; araç değişse de ölçüt burada kalır.
+Sayıların hepsi ölçümdür. Projeksiyon aracının kendisi bu depoda değil; bu belge
+o tür bir aracın sözleşmesidir, araç değişse de ölçüt burada kalır.
 
 ---
 
@@ -30,7 +29,7 @@ yerine geçmez:
 |---|---|
 | çalışma anında iz — kan, lastik, mermi deliği, sızıntı, ayak izi | `AddDecal` (script) |
 | haritaya **kalıcı gömülü** — graffiti, logo, tabela, yol çizgisi | `decal.sps` shader + render bucket **2** |
-| bir modelin yüzeyine **geometri yansıtma** (Blender'da üretim) | projeksiyon decal — MutoLab |
+| bir modelin yüzeyine **geometri yansıtma** (Blender'da üretim) | projeksiyon decal (Blender eklentisi) |
 
 Belirsizse `AskUserQuestion` ile netleştir:
 - İz **kalıcı mı** (haritanın parçası) yoksa oyun sırasında mı oluşacak?
@@ -141,8 +140,7 @@ ekseni yatır" mantığını bununla kurmak sessizce hiçbir şey yapmaz.
 ⛔ **Gizli objede `select_set()` sessizce çalışmaz**: export "successfully"
 der, dosya **0 bayt** çıkar (yedi objeden beşi böyle yazıldı).
 
-Blender aracı bu depoda değil — **MutoLab eklentisi** (`ops/decal`,
-`panels/decal.py`, `props/decal.py`). Bu belge o aracın ölçülmüş
+Blender aracı bu depoda değil. Bu belge o tür bir aracın ölçülmüş
 sözleşmesidir; araç değişirse belge ölçüt olarak kalır.
 
 
@@ -458,7 +456,7 @@ borular **ayrı objelerdir**. **Ölçüm:** aynı kutuda yalnız `bodydrawers`
 
 ### 2m. Ama "görünür her şey" KENDİ DEKORUNU DA KAPSAR
 Filtresiz halde 2×2 m kutuda **20.5 m²** yüzey toplandı — çünkü
-`muto_bds_veins`, önceki decal'ler ve collision kutuları da "görünür mesh".
+`my_mlo_veins`, önceki decal'ler ve collision kutuları da "görünür mesh".
 Decal'in üstüne decal atmak olur. Kendi koleksiyonları elenince **3.88 m²**
 (kutu 4.00) — tek tutarlı katman.
 
@@ -583,7 +581,7 @@ olarak geri koyar. Çözünürlük vertex'ten bağımsız → oda için **doğru
 
 ## ⛔ "Decal beyaz gözüküyor" = dokunun ALFASI yok, adı değil
 
-Ölçüldü (`muto_zem_kan.ydr`): 13 kan decal'inin **8'i** alfası her yerde
+Ölçüldü (`my_zem_kan.ydr`): 13 kan decal'inin **8'i** alfası her yerde
 **255** olan **16×16** bir dokuya bakıyordu. Alfa yoksa kesim de yoktur →
 motor quad'ın **tamamını opak çizer**. Zeminde açık renk dikdörtgenler
 çıkar ve bu "decaller beyaz" diye okunur.
@@ -631,7 +629,7 @@ Zemin karartılmış bir haritada, normal parlaklıkta yazılmış bir decal
 `mh_v_floortiles02_d` = **175** → oran **0.43**.
 
 Morg ölçümü: zemin 55–101 (ort ~78) → decal hedefi **~34**. Bulunan değer
-`muto_duvar_atlas_0` **109.7**, `_1` **94.8** — zeminden *parlak*. Kir
+`my_duvar_atlas_0` **109.7**, `_1` **94.8** — zeminden *parlak*. Kir
 zemini koyultmalı, aydınlatmamalı. Kat sayısı ölçümden çıkar (0.311 /
 0.364), alfaya **dokunulmaz** (şekil orada).
 
@@ -761,7 +759,6 @@ ham PNG olarak paylaşmak lisansı ihlal eder.** Satılacak bir asset'e gireceks
 3. **DXT5** (alfalı) / DXT1 (alfasız) + mip zinciri ile `.ytd`'ye derle.
 4. Arketipin `textureDictionary` alanına `.ytd` adını yaz — boş kalırsa motor
    dokuyu modelin kendi sözlüğünde arar, bulamaz ve **hata vermeden dokusuz çizer**.
-   (Ayrıntı: `muto-decal/OKUBENI.md`)
 
 ## Kaynak bağlantıları
 

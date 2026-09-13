@@ -39,7 +39,7 @@ sürülebilir:
 
 ```lua
 exports['screenshot-basic']:requestClientScreenshot(src,
-    { fileName = 'cache/muto_ptfx/x.jpg', encoding = 'jpg', quality = 0.85 },
+    { fileName = 'cache/my_ptfx/x.jpg', encoding = 'jpg', quality = 0.85 },
     function(err, dosya) ... end)
 ```
 
@@ -146,9 +146,9 @@ animasyonu sağlam.
 teşhislerini **geçersiz kılar**; o testlerin hepsi karıştırılmıştı
 (çift ölçek, referanssız okuma, gece, etiketsiz kutular).
 
-### ⛔ `rm muto_t*` DENEK SİLERKEN ÜRETİMİ DE SİLER
+### ⛔ `rm my_t*` DENEK SİLERKEN ÜRETİMİ DE SİLER
 
-`muto_t1..t5` deneklerini temizleyen glob `muto_toz.ypt`'yi de yakaladı ve
+`my_t1..t5` deneklerini temizleyen glob `my_toz.ypt`'yi de yakaladı ve
 dosya sessizce kayboldu. Dağıtımdan sonra **Lua'nın andığı her varlık adını
 stream içeriğiyle karşılaştır** — bu kapı olmasa oyunda "bir efekt eksik"
 diye tur kaybedilecekti.
@@ -161,8 +161,8 @@ diye tur kaybedilecekti.
 sunucu `Started resource X` yazar, istemcide hiçbir komut kaydolmaz,
 hiçbir print çıkmaz, F8'de hata yoktur.
 
-Bu yüzden `.ypt` dosyaları `muto_ptfx/stream/` içinde (Lua yok), test
-komutları `muto_ptfx_test/` içinde (stream yok). Komut çalışıp efekt
+Bu yüzden `.ypt` dosyaları `my_ptfx/stream/` içinde (Lua yok), test
+komutları `my_ptfx_test/` içinde (stream yok). Komut çalışıp efekt
 gelmiyorsa kusur stream'dedir; komut hiç yoksa kusur Lua'dadır.
 
 `ensure [script]` klasörün tamamını başlatır — cfg'ye satır eklemek
@@ -184,7 +184,7 @@ değildir.
 
 ### ⛔ VARLIK ADINDA BÜYÜK HARF OLMAZ
 
-`muto_gA` adıyla üretilen varlık **yükleniyor** ama
+`my_gA` adıyla üretilen varlık **yükleniyor** ama
 `StartParticleFxLoopedAtCoord` **handle 0** döndürüyor: "efekt kuralı
 bulunamadı". GTA ad hash'lerini küçük harfe çevirerek hesaplar;
 `RequestNamedPtfxAsset` geçer, içerideki efekt kuralının hash'i tutmaz.
@@ -261,7 +261,7 @@ yerine geçmez.
 
 Belirti: `Window Watchdog: FiveM has stopped responding`, crash dump'ta
 `Is Out of memory : No`. Logda **tek bir ptfx hatası yok**, varlık
-`Mounted muto_ptfx` ile sorunsuz yükleniyor.
+`Mounted my_ptfx` ile sorunsuz yükleniyor.
 
 Ölçüldü: 56 efekti birden açmak **1784 eş zamanlı parçacık** demek.
 Üstüne Kenney dokularının alfa kaplaması **%40-70** (eski prosedürel
@@ -286,9 +286,9 @@ başına yanlış yönlendirir:** birleştirmenin bir ÜST sınırı var.
 
 | dosya | efekt | boyut | sonuç |
 |---|---|---|---|
-| `muto_mini2` | 2 | 0.06 MB | **yüklendi** |
-| `muto_mini16` | 16 | 0.39 MB | **yüklendi** |
-| `muto_efektler` | 71 | 1.88 MB | **DONDURDU** |
+| `my_mini2` | 2 | 0.06 MB | **yüklendi** |
+| `my_mini16` | 16 | 0.39 MB | **yüklendi** |
+| `my_efektler` | 71 | 1.88 MB | **DONDURDU** |
 
 Eşik 16 ile 71 arasında. Üretim 18'erlik dört parçaya bölündü.
 

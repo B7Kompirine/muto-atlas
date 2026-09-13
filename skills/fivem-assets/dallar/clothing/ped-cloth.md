@@ -1,8 +1,8 @@
 # Ped cloth — pelerin, etek, duvak: karakterle birlikte süzülen kumaş
 
-**Ne zaman okunur:** ped'in üzerinde **hareketle** dalgalanması gereken kumaş (pelerin, etek, duvak, palto eteği). Prop cloth (`.yft` env cloth) bunu YAPAMAZ: attach edilmiş fragment'ın fizik hızı sıfırdır, sim taşıyıcının hareketini görmez; vanilla `prop_flag_*` bile takılınca öne/yanlara savrulur (ölçüm: superflight, 2026-09, 2 model).
+**Ne zaman okunur:** ped'in üzerinde **hareketle** dalgalanması gereken kumaş (pelerin, etek, duvak, palto eteği). Prop cloth (`.yft` env cloth) bunu YAPAMAZ: attach edilmiş fragment'ın fizik hızı sıfırdır, sim taşıyıcının hareketini görmez; vanilla `prop_flag_*` bile takılınca öne/yanlara savrulur (ölçüm: 2026-09, 2 model).
 **When to read:** cloth on a ped that must react to the ped's motion (cape, skirt, veil). Environment cloth on an attached prop cannot do this.
-**Kaynak:** Sollumz kaynağı `ydr/cloth_char.py`, `ydr/vertex_buffer_builder.py`, `ydd/yddexport.py` (main, 2026-09) · vanilla `csb_bride.yld`/`.ydd` dökümü · **Ölçüm:** kaynak okuma + 1 vanilla dosya + **1 kendi export'umuz** (mutocape pelerin, Blender 5.2 headless, Sollumz 2.9.0, 2026-09: `.ydd` 705 KB + `.yld` 6,5 KB, 221 sim vertex / 13 sabit / 3 kapsül, Diagnostics sıfır uyarı; oyun testi bekliyor).
+**Kaynak:** Sollumz kaynağı `ydr/cloth_char.py`, `ydr/vertex_buffer_builder.py`, `ydd/yddexport.py` (main, 2026-09) · vanilla `csb_bride.yld`/`.ydd` dökümü · **Ölçüm:** kaynak okuma + 1 vanilla dosya + **1 kendi export'umuz** (bir pelerin, Blender 5.2 headless, Sollumz 2.9.0, 2026-09: `.ydd` 705 KB + `.yld` 6,5 KB, 221 sim vertex / 13 sabit / 3 kapsül, Diagnostics sıfır uyarı; oyun testi bekliyor).
 **Önce:** `dallar/clothing/_dal.md` · gövde › `govde/arac-tuzaklari.md` §1
 
 ---

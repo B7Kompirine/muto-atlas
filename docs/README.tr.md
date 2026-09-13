@@ -94,6 +94,100 @@ python scripts/assetdb.py stats
 Yan faydası: herkesin katmanı **kendi oyun sürümünden** gelir. Merkezî bir kopya
 dağıtılsaydı herkes tek bir sürüme mahkûm olurdu.
 
+## Bilgi veritabanı — proje, snippet, etiket
+
+`scripts/build_atlas_db.py` bilgi ağacını tek bir SQLite dosyasına döker: `data/atlas.db`.
+Dosya yerelde üretilir, depoya girmez.
+
+- **Proje adı klasör adından gelir.** Her dal klasörü (`map`, `prop`, `look`, …), gövde (`govde`),
+  kaynaklar (`kaynaklar`) ve `fivem-natives` birer projedir. Kendi notlarını `--source notlarim/`
+  ile ekle; o klasörün her alt klasörü bir proje olur.
+- **Her dosya snippet'lere bölünür:** her başlık bir snippet, kod blokları ayrı snippet. Uzun
+  bölümler boş satırdan bölünür, satır ortasından kesilmez.
+- **Her snippet'i Claude etiketler**, sabit bir sözlükten seçerek (varsayılan `claude-opus-5`;
+  `--model` ve `--effort` ile değişir). Etiketler içerik özetiyle önbelleğe alınır: yeniden
+  üretim — yarıda kesilmiş bir üretimin tekrarı da — yalnız henüz etiketi olmayan snippet'leri
+  gönderir. `claude-opus-5` isteklerinde sunucu tarafı reddetme yedeği (`fallbacks: "default"`)
+  açıktır. `anthropic` paketi ya da kimlik bilgisi yoksa betik bunu söyler ve çevrimdışı anahtar
+  kelime kurallarına geçer.
+- **Tam metin arama** (SQLite FTS5): komut satırından ya da MCP sunucusunun `snippet_search`,
+  `snippet_read` ve `snippet_tags` araçlarıyla.
+- **Çıkış kodları:** 0 bulundu / yazıldı · 1 sonuç yok · 2 veritabanı yok ya da Claude istendi ama
+  kullanılamıyor (hiçbir şey yazılmaz) · 3 veritabanı okunamadı ya da doğrulama tutmadı (eski dosya korunur).
+
+```bash
+python scripts/build_atlas_db.py                         # auto: Claude varsa Claude, yoksa kurallar
+python scripts/build_atlas_db.py --tagger claude         # python -m pip install anthropic + kimlik bilgisi
+python scripts/build_atlas_db.py --source notlarim/      # klasörlerin proje olur
+python scripts/build_atlas_db.py --search "TimeFlags" --project look
+python scripts/build_atlas_db.py --stats
+```
+
+## Diğer yapay zekâ araçları
+
+muto-atlas Claude Code'a bağlı değil. İki yol var; biri ya da ikisi birden kullanılabilir.
+
+### Agent Skills — Codex, ChatGPT masaüstü, Cursor, GitHub Copilot, Gemini CLI
+
+İki skill açık [Agent Skills](https://agentskills.io/specification) biçimindedir. Depoyu klonla,
+veri katmanlarını bir kez kur (yukarıdaki 2. adım), sonra skill'leri aracının klasörüne kur:
+
+```bash
+python scripts/install_skills.py                  # ~/.agents/skills (Codex, ChatGPT masaüstü, Gemini CLI, VS Code Copilot, Cursor)
+python scripts/install_skills.py --tool cursor    # ~/.cursor/skills
+python scripts/install_skills.py --tool copilot --project proje/yolu   # .github/skills
+python scripts/install_skills.py --check          # yalnız denetle, yazma
+```
+
+Kurucu her skill'i kopyalar, Claude Code'un yol değişkenini klonunun mutlak yoluyla değiştirir
+ve kopyayı geri okur. `git pull`'dan sonra yeniden çalıştır; kopyalar kendiliğinden
+güncellenmez. Slash komutları yalnız Claude Code'dadır.
+
+### MCP sunucusu — Cursor, VS Code, Claude Desktop, Codex, Gemini CLI, ChatGPT
+
+`scripts/mcp_server.py` aynı sorguları MCP aracı olarak sunar: asset ve kapı sorgusu, animasyon
+ve partikül adları, bayrak çözme, native doğrulama, bilgi ağacı ve — yalnız yerelde — `doctor`,
+yapısal diff, ışık çözme ve Lua linter. Her sonuç çıkış koduyla ve o kodun anlamıyla başlar.
+`mcp` Python paketi gerekir (1.28 ile denendi): `python -m pip install "mcp>=1.28"`.
+
+Claude Desktop (`claude_desktop_config.json`), Cursor (`~/.cursor/mcp.json`) ve Gemini CLI
+(`~/.gemini/settings.json`) şu biçimi kullanır; VS Code (`.vscode/mcp.json`) aynı girdiyi
+`"mcpServers"` yerine `"servers"` altında ister:
+
+```json
+{
+  "mcpServers": {
+    "muto-atlas": {
+      "command": "python",
+      "args": ["C:/klonun/yolu/muto-atlas/scripts/mcp_server.py"]
+    }
+  }
+}
+```
+
+Codex (`~/.codex/config.toml`):
+
+```toml
+[mcp_servers.muto-atlas]
+command = "python"
+args = ["C:/klonun/yolu/muto-atlas/scripts/mcp_server.py"]
+```
+
+**ChatGPT** yalnız uzaktaki sunuculara (streamable HTTP ya da SSE) Developer mode üzerinden
+bağlanır (Plus, Pro, Business, Enterprise, Education — Settings → Security and login →
+Developer mode). Sunucuyu HTTP modunda çalıştır ve önüne bir HTTPS tüneli koy:
+
+```bash
+python scripts/mcp_server.py --http --port 8765 --allow-host tunel-alan-adin.example.com
+```
+
+Sonra ChatGPT'de `https://tunel-alan-adin.example.com/mcp` adresiyle bir developer-mode
+uygulaması oluştur. ⚠️ HTTP modunda kendi dosyalarını ya da kendi sunucunun haritasını okuyan
+araçlar (`doctor`, `structural_diff`, `light_read`, `lua_lint`, `framework_api`, `lodaudit`)
+kaydedilmez, çünkü tünel sunucuyu kimlik doğrulaması olmadan internete açar. Veri katmanlarını
+sunucu klasörünle kurduysan özel arketip adların yine sorgulanabilir. Bütün araçlar salt okunur
+(`readOnlyHint`) işaretlidir. İşin bitince tüneli kapat.
+
 ## Ne veriyor
 
 24 çevrimdışı veri katmanı:
@@ -309,7 +403,7 @@ Archetype yanlış tanımlıysa (kapı olması gereken obje `specialAttribute=0`
 ```bash
 powershell -File scripts/make_ytyp_override.ps1 `
     -Models v_ilev_gb_teldr -SpecialAttribute 7 `
-    -YtypName muto_fleeca_doors -OutFile "<resource>\stream\muto_fleeca_doors.ytyp"
+    -YtypName my_fleeca_doors -OutFile "<resource>\stream\my_fleeca_doors.ytyp"
 ```
 
 Kaynağı RPF'ten okur, tüm alanları birebir kopyalar, tek değeri değiştirir.

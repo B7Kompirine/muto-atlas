@@ -1,6 +1,8 @@
 ---
 name: fivem-natives
 description: FiveM/GTA V native doğrulama ve arama veritabanı (7191 native, çevrimdışı). Bir FiveM Lua/JS kodu yazarken, düzenlerken veya incelerken native adı, imzası, parametre sırası ya da client/server tarafı söz konusu olduğunda MUTLAKA kullan — kullanıcı istemese bile. Native adını hafızadan yazma; önce doğrula. Tetikleyiciler - FiveM, Cfx, GTA V native, QBCore, QBX, ESX, ox_lib, client.lua/server.lua, fxmanifest, "bu native var mı", "hangi native", "server tarafında çalışır mı", "imzası ne", resmon/performans incelemesi, Lua lint.
+license: MIT
+compatibility: Python 3.10+. The native index is built once by scripts/build_index.py --fetch (network). The scripts live at the muto-atlas repository root, outside this folder - outside Claude Code install with scripts/install_skills.py or use scripts/mcp_server.py.
 ---
 
 # FiveM Native Veritabanı
@@ -59,7 +61,7 @@ Sağlama ve tarih için `python scripts/nativedb.py stats`.
 
 ## Komutlar
 
-Plugin kökü `${CLAUDE_PLUGIN_ROOT}` (kurulu değilse `~/.claude/muto-atlas`).
+`$P` = plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/nativedb.py`'yi içeren muto-atlas klasörü).
 
 ```bash
 # Var mı? Hangi tarafta? — kod yazmadan ÖNCE
@@ -148,8 +150,8 @@ hiçbiri hata fırlatmaz: olmayan event tetiklenir (log bile yok), olmayan expor
 yazılır (modül yok, sessiz).
 
 ```bash
-python scripts/assetdb.py framework <ad>
-python scripts/assetdb.py framework --denetle
+python "$P/scripts/assetdb.py" framework <ad>
+python "$P/scripts/assetdb.py" framework --check
 ```
 
 ⛔ **Otorite kurulu sunucudur, upstream GitHub değil.**

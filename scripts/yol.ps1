@@ -29,9 +29,7 @@ $script:MutoYollar = @{
   codewalker = @{
     anahtar = 'codeWalker'; tip = 'dosya'
     adaylar = @(
-      "$env:USERPROFILE\Desktop\FiveM\CodeWalker30_dev46\CodeWalker.Core.dll",
-      "$env:USERPROFILE\Desktop\CodeWalker\CodeWalker.Core.dll",
-      "$env:USERPROFILE\Desktop\Programlar\CodeWalker\CodeWalker.Core.dll")
+      "$env:USERPROFILE\Desktop\CodeWalker\CodeWalker.Core.dll")
   }
   gta = @{
     anahtar = 'gtaFolder'; tip = 'klasor'

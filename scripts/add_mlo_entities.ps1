@@ -16,7 +16,7 @@
 # Kullanim:
 #   powershell -File add_mlo_entities.ps1 `
 #       -YtypName v_int_10.ytyp -Mlo v_genbank -Part v_10_gen_country_bank `
-#       -Model muto_depobox -CellsJson <...>\depobox_cells_local.json `
+#       -Model my_depobox -CellsJson <...>\depobox_cells_local.json `
 #       -Count 20 -OutDir <...>\stream
 
 param(

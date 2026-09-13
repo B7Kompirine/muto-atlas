@@ -11,7 +11,7 @@
 
 Kullanıcının sorgusu: `$ARGUMENTS`
 
-Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `~/.claude/muto-atlas`).
+Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içeren muto-atlas klasörü).
 
 Işıkla ilgili **her** iş bu komuttan geçer: "lambam çok sönük", "ışık
 yanmıyor", "koni çok geniş", "prop'uma ışık ekle", "bu ışık hangi saatte
@@ -240,7 +240,7 @@ olduğu için zamanla birbirinden ayrışırlar. Morgda kullanılan ağırlıkla
 bozuk tesis hissi çalışan ve bozuk ışıkların **karışımından** gelir.
 Alarm lambaları havuza girmez, kendi tipi vardır (`ALARM`).
 
-Betik: `morg_vanilla/ISIK_CESITLE.ps1`.
+Betik depoda yok.
 
 **İki PowerShell tuzağı burada da çıktı:**
 - `(,19) * 30` ile ağırlıklı havuz kurulmaz — beklenen tekrarı üretmiyor
@@ -281,7 +281,7 @@ vanilla parlaklığına döner. Oran korunarak ölçekle (morgda **0.30×**;
 Ve **aynı turda emissive'i kıs**, yoksa toplam parlaklık artar: ışık
 eklerken panelin kendi parlaklığı düşürülür, net aydınlık aynı kalır ama
 artık gerçek ışık havuzu ve kırpışma vardır. Morgda uygulanan:
-`mh_v_downlight01_d` **8 → 3** (tavan spotu) · `muto_flo_calisan_d`
+`mh_v_downlight01_d` **8 → 3** (tavan spotu) · `my_flo_calisan_d`
 **3 → 1.6** (çalışan floresan) · kırık olanlar zaten 0.
 
 ## Projeksiyonlu ışık (gobo) — Sollumz ile üretim
@@ -404,8 +404,8 @@ tam negatifi. Bu, teşhisin **imzasıdır**: çökme noktası kökün negatifiys
 kesin olarak budur.
 
 - **Işığı söndürmek için GİZLEME.** `intensity = 0` + `flashiness = OFF` yaz.
-- Kapı: `morg_vanilla/ISIK_KAPISI.ps1` — bir dosyadaki ışıkların hepsi tek
-  noktadaysa dağıtımı durdurur. Negatif testle doğrulandı.
+- Kapı: bir dosyadaki ışıkların hepsi tek noktadaysa dağıtımı durduran bir
+  denetim adımı (betiği depoda yok). Negatif testle doğrulandı.
 
 ### ⛔ 2. `light_properties.intensity` saklanan bir alan DEĞİL — `energy` proxy'si
 

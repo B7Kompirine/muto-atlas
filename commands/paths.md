@@ -6,7 +6,7 @@ allowed-tools: Bash(python:*), Read
 
 Kullanıcının sorgusu: `$ARGUMENTS`
 
-Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `~/.claude/muto-atlas`).
+Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içeren muto-atlas klasörü).
 
 Tüm dış yolların **tek kütüğü** `data/config.json`. `data/` .gitignore'da
 olduğu için kişisel yol bilgisi **asla repoya girmez**.

@@ -79,9 +79,6 @@ resource'una dokunan her işte doğru duruş budur:
   model olduğu için gösterilmez — kullanıcı yeni parça yerleştirirken bu
   açıkça söylenir. ("Göstermediğimi söyle" iyi bir desen.)
 
-→ `muto-link`, `muto-escrow-prep`, `muto-analyse` skill'leri bu maddeleri
-kural olarak alabilir.
-
 ### 1c. [dış kaynak] Eşikler — ürün tercihi, ölçüm değil
 
 | Eşik | Değer | Bağlam |
@@ -384,7 +381,7 @@ dokulu olanları tercih et."*
 
 ## 2. Sollumz Discord `#tutorials` çıkarımı (2026-08-21) — yerel `notlar/` haritası
 
-75 mesaj, 57 video transkripti; ham veri **depoya girmez** (`Desktop\FiveM\sollumz-tutorials\`). Damıtılmış maddeler ilgili dal yapraklarına dağıtıldı (ölçüm değil topluluk uygulaması; çakışmada ölçüm kazanır). Konu → yerel dosya:
+75 mesaj, 57 video transkripti; ham veri **depoya girmez**. Damıtılmış maddeler ilgili dal yapraklarına dağıtıldı (ölçüm değil topluluk uygulaması; çakışmada ölçüm kazanır). Konu → yerel dosya:
 
 Tam adım adım yordamlar yerel çıkarım klasörünün `notlar/` dizinindedir
 (depoya girmez). Konu → dosya eşlemesi:

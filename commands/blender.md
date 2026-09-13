@@ -32,29 +32,16 @@ aday listesinde yok. Böyle bir kurulumda yol bir kez elle verilir.
   `GPUStorageBuf` yok; 4.4+ Action API katmanlı. Sürüm farkı betik
   hatalarının ilk şüphelisidir.
 
-## Kurulu eklentiler — kod yazmadan önce buna bak
+## Eklentiler — kod yazmadan önce buna bak
 
-Bir iş için sıfırdan `bpy` kodu yazmadan önce **zaten kurulu bir eklenti onu
-yapıyor mu** diye bak. Kullanıcının kendi yazdıkları (`muto_*`, `MutoLab`)
-GTA hattına göre kurulmuştur; genel bir eklentiden daha uygundur.
+Bir iş için sıfırdan `bpy` kodu yazmadan önce **kullanıcının kurulu bir eklentisi onu
+yapıyor mu** diye sor.
 
-### Kullanıcının kendi eklentileri
-
-| eklenti | ne yapar |
-|---|---|
-| **`muto_decal`** | atlas UV seçimiyle yüz decal'leri, toplu arşiv ve birleştirme |
-| **`muto_edge_decals`** | mesh kenarları boyunca decal geometrisi — katman + UV |
-| **`muto_kablo`** | GTA V için çapraz düzlemli kablo/zincir — eğri **tüpe değil, alfa kesimli kartlara** dönüşür |
-| **`muto_panel_merge`** | dağınık N-panel sekmelerini tek sekmede toplar |
-| **`muto_helper`** | hangi araç nerede + node araçları için `D` tuşu pie menüsü — **hangi aracı arayacağını bilmiyorsan buradan başla** |
-| **`MutoLab`** | fizik ve **fracture** simülasyon araçları (yıkım/kırılma işlerinde) |
-| `decal_gen` · `ornament_generator` · `GeoCables` | kenar decal üretimi · ornament · geometry-nodes kablo |
-
-⚠️ Bunların ürettiği geometri **Sollumz'a girmeden önce** normal kurallara tabidir:
+⚠️ Eklentilerin ürettiği geometri **Sollumz'a girmeden önce** normal kurallara tabidir:
 transform pişer, `Ctrl+A` şart, doku ikinin kuvveti
 (`skills/fivem-assets/govde/arac-tuzaklari.md` §2, `govde/gta-temel.md` §5).
 
-### İşe yarayan üçüncü taraf eklentiler (kurulu)
+### İşe yarayan üçüncü taraf eklentiler
 
 `sollumz` · `sollumz_rdr_dev` ·
 `cell_fracture` · `ZenUV` / `mio3_uv` / `flat_uv_mapper` / `propgon_uv_trim` ·

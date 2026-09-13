@@ -6,7 +6,7 @@ allowed-tools: Bash(python:*), Read
 
 Kullanıcının sorgusu: `$ARGUMENTS`
 
-Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `~/.claude/muto-atlas`).
+Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içeren muto-atlas klasörü).
 
 3.05 milyon dünya yerleşimi indekste. İç mekân (MLO) proplarının konumu
 `mloPos + rotate(localPos, mloRot)` ile hesaplanır — yani Fleeca'nın içindeki

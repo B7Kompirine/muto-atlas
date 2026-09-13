@@ -14,4 +14,4 @@
 
 ## Ayıklanan araç videoları (Sollumz Discord)
 
-Bu içerik atlas'a **bilerek alınmadı**; ihtiyaç olursa yerel çıkarımdan okunur (`Desktop\FiveM\sollumz-tutorials\`): `R5T7stYU3A0` vehicle tint · `w1JUh66MP8I` window tint · `4fHDu6fUw74` siren · `_zH0QaFmFz0` bulletproof glass · `j61xy_BoDNA` shattermap fix · `FZfkuJj5yx0` + `nYeVr126qIk` polis lambaları · `JtAWRNCIT-k` Lola araç yapımı · tuning parça offset düzeltmeleri. `notlar/04` §1 araç kurulumu.
+Bu içerik atlas'a **bilerek alınmadı**; ihtiyaç olursa yerel çıkarımdan okunur: `R5T7stYU3A0` vehicle tint · `w1JUh66MP8I` window tint · `4fHDu6fUw74` siren · `_zH0QaFmFz0` bulletproof glass · `j61xy_BoDNA` shattermap fix · `FZfkuJj5yx0` + `nYeVr126qIk` polis lambaları · `JtAWRNCIT-k` Lola araç yapımı · tuning parça offset düzeltmeleri. `notlar/04` §1 araç kurulumu.

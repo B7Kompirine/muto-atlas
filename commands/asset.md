@@ -6,7 +6,7 @@ allowed-tools: Bash(python:*), Read
 
 Kullanıcının sorgusu: `$ARGUMENTS`
 
-Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `~/.claude/muto-atlas`).
+Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içeren muto-atlas klasörü).
 
 Bu komut **ytyp gerçeğini** verir: `specialAttribute`, `flags`, `assetType`,
 bounding box (pivot/menteşe konumu), fizik ve doku sözlüğü. Native denemekle

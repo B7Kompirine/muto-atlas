@@ -6,7 +6,7 @@ allowed-tools: Bash(python:*), Read
 
 Kullanıcının sorgusu: `$ARGUMENTS`
 
-Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `~/.claude/muto-atlas`).
+Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içeren muto-atlas klasörü).
 
 312.748 klip `.ycd`'den çıkarıldı — **gerçek süre ve kemik sayısı** ile.
 **Animasyon adı asla uydurulmaz**; burada yoksa yoktur.

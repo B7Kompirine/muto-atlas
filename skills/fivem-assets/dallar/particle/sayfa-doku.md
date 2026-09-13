@@ -114,7 +114,7 @@ Hangi alan olduğu **henüz bulunamadı**.
 Donör **tek emitterli** olmalı ve `C4`'ü bizim sayfamızla eşleşmeli.
 
 ```bash
-python ypt_transplant.py core.ypt.xml --efekt veh_respray_smoke     --yeni-ad muto_duman --doku muto_duman --klasor .     --renk 0.62 0.60 0.58 --boyut-carpan 1.0
+python ypt_transplant.py core.ypt.xml --efekt veh_respray_smoke     --yeni-ad my_duman --doku my_duman --klasor .     --renk 0.62 0.60 0.58 --boyut-carpan 1.0
 ```
 
 `core.ypt`'te **120 tek emitterli animasyonlu donör** var; çoğu `C4=48`

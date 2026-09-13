@@ -365,7 +365,7 @@ for skill in ("fivem-assets", "fivem-natives"):
 # uc farkli sayi yaziyordu (README 28 / README.tr 24 / help.md 24) ama gercek
 # setup.py'nin len(KATMANLAR)'i = 27 idi. Sayiyi diskten uret, belgeyle karsilastir.
 _belge = {}
-for _f in ("README.md", "YETENEK-DURUMU.md", os.path.join("docs", "README.tr.md")):
+for _f in ("README.md", os.path.join("docs", "README.tr.md")):
     if os.path.exists(os.path.join(A, _f)):
         _belge[_f] = read(os.path.join(A, _f))
 _hepsi = "\n".join(_belge.values())

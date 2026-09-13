@@ -6,7 +6,7 @@ allowed-tools: Bash(powershell.exe:*), Bash(python:*), Read
 
 Argüman: `$ARGUMENTS`
 
-Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `~/.claude/muto-atlas`).
+Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içeren muto-atlas klasörü).
 
 Ne zaman gerekir: sunucuya **yeni MLO / custom prop / ytyp** eklendiğinde, ya da
 GTA V güncellendiğinde. Vanilla veri değişmediği sürece tekrar kurmaya gerek yok.

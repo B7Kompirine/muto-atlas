@@ -17,10 +17,10 @@ Vanilla'dan okunan katman alanlari:
    `Unknown14`      -> katman omur/yogunluk carpani (0.7 - 1.0)
 
 Kullanim:
-  python ptfx_kompoze.py --ad muto_patlama --klasor <dizin> \\
-      --katman muto_ark_carpmasi:0:1.0 \\
-      --katman muto_alev_topu:0.034:1.2 \\
-      --katman muto_duman:0.10:1.4
+  python ptfx_kompoze.py --ad my_patlama --klasor <dizin> \\
+      --katman my_ark_carpmasi:0:1.0 \\
+      --katman my_alev_topu:0.034:1.2 \\
+      --katman my_duman:0.10:1.4
 """
 from __future__ import annotations
 

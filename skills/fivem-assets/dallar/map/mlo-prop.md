@@ -41,7 +41,7 @@ En güvenli işlem: dosya boyutu değişmez, MLO yapısına dokunulmaz.
 
 ```
 patch_vanilla_ytyp.ps1 -YtypName v_int_10.ytyp `
-  -SwapEntity @('v_ilev_gb_teldr=muto_teldr','v_ilev_gb_vauldr=muto_vauldr') `
+  -SwapEntity @('v_ilev_gb_teldr=my_teldr','v_ilev_gb_vauldr=my_vauldr') `
   -OutDir <...>\stream
 ```
 
@@ -51,7 +51,7 @@ patch_vanilla_ytyp.ps1 -YtypName v_int_10.ytyp `
 
 ```
 add_mlo_entities.ps1 -YtypName v_int_10.ytyp -Mlo v_genbank `
-  -Part v_10_gen_country_bank -Model muto_depobox `
+  -Part v_10_gen_country_bank -Model my_depobox `
   -CellsJson <...>.json -Count 20 -Room bankvault -OutDir <...>\stream
 ```
 
@@ -109,13 +109,13 @@ eklenir — Sollumz hiçbirini yazmaz:
 
 ```xml
 <Clips><Item>
-  <Hash>muto_depobox_open</Hash>            ← klip hash'i
-  <Name>pack:/muto_depobox_open</Name>       ← pack:/ NORMAL, dokunma
+  <Hash>my_depobox_open</Hash>            ← klip hash'i
+  <Name>pack:/my_depobox_open</Name>       ← pack:/ NORMAL, dokunma
   <Tags /> <Properties />
-  <AnimationHash>muto_depobox_open</AnimationHash>
+  <AnimationHash>my_depobox_open</AnimationHash>
 </Item></Clips>
 <Animations><Item>
-  <Hash>muto_depobox_open</Hash>            ← ANIMASYON hash'i
+  <Hash>my_depobox_open</Hash>            ← ANIMASYON hash'i
   <Unknown1C>hash_22E95D79</Unknown1C>      ← Sollumz hash_00000001 yazar
 </Item></Animations>
 ```
@@ -282,7 +282,7 @@ shader'ı ile geometri koyarsan model **tamamen siyah** çıkar.
 
 **Sebep:** foliage shader'ları aydınlatmayı **doğal/güneş** yolundan alır. MLO
 içinde doğal ambient sıfıra yakındır (`morgue_dark` 0.154, ondan türetilmiş
-`muto_bds_dark` **0.045**), yapay ambient (0.300) ise foliage tarafından
+`my_mlo_dark` **0.045**), yapay ambient (0.300) ise foliage tarafından
 okunmaz → ışık yok → siyah.
 
 **Çözüm:** iç mekân geometrisi için `normal.sps` / `normal_spec.sps`
@@ -322,8 +322,8 @@ her şey **çöpe gider**. Uyarı yalnızca **sunucu logundadır**, oyunda hiçb
 belirti yoktur:
 
 ```
-Warning: muto-morg exists in more than one place
-([harita]\muto-morg is used, the duplicate is [script]\muto-morg)
+Warning: my-resource exists in more than one place
+([harita]\my-resource is used, the duplicate is [script]\my-resource)
 ```
 
 **Kural: “oyunda görünmüyor” dendiğinde İLK BAKILACAK YER SUNUCU LOGUDUR**,

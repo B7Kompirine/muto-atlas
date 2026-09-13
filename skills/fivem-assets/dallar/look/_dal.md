@@ -59,7 +59,7 @@ kullanım; morg MLO oyunda; motorun shader kaynağı port edildi.
 
 ### Decal ve parallax
 - **Decal üç sistemdir:** `AddDecal` (script, 194 tip, doku **gri maske** — rengi `rCoef/gCoef/bCoef` verir) · `decal.sps` + bucket 2
-  (haritaya gömülü) · Blender projeksiyon (MutoLab). Işın ızgarası paralel yüzeye vuramaz; kutu köşede yeniden başlar; ince boru/ızgara
+  (haritaya gömülü) · Blender projeksiyon (eklenti depoda yok). Işın ızgarası paralel yüzeye vuramaz; kutu köşede yeniden başlar; ince boru/ızgara
   boyama işi. `bisect_plane` yüz siler → Sutherland–Hodgman.
 - **Parallax içerik uydurmaz** (diffuse'a boyalı), animasyon değildir, silüet kırmaz; `normal_spec_pxm` 218 kullanım varsayılan,
   `globalAnimUV` yok; delik için `heightBias` negatif; vanilla iç mekânda parallax **yok**.

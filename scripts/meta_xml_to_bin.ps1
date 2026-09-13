@@ -26,7 +26,6 @@ if (-not $OutPath) { $OutPath = $XmlPath -replace '\.xml$', '' }
 
 if (-not $CodeWalker) {
     $CodeWalker = @(
-        "$env:USERPROFILE\Desktop\FiveM\CodeWalker30_dev46\CodeWalker.Core.dll",
         "$env:USERPROFILE\Desktop\CodeWalker\CodeWalker.Core.dll"
     ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 }

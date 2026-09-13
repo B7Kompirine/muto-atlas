@@ -19,7 +19,7 @@ HAT:
       "Texture file not found" ile coker)
 
 Kullanim:
-  python build_custom_ptfx.py --ad muto_spore --doku muto_ptfx_soft \\
+  python build_custom_ptfx.py --ad my_spore --doku my_ptfx_soft \\
       --klasor <cikti> --renk 0.2 0.9 0.35 --omur 2.5 --boyut 0.35 --oran 25
 """
 from __future__ import annotations
@@ -464,7 +464,7 @@ def uret_xml(ad, doku, renk, omur, boyut, oran, hiz, yaricap,
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--ad", required=True, help="efekt/asset adi, orn. muto_spore")
+    ap.add_argument("--ad", required=True, help="efekt/asset adi, orn. my_spore")
     ap.add_argument("--doku", required=True, help="DDS dosya adi (uzantisiz)")
     ap.add_argument("--klasor", required=True, help="XML ve DDS'in birlikte durdugu klasor")
     ap.add_argument("--renk", nargs=3, type=float, default=[0.2, 0.9, 0.35],

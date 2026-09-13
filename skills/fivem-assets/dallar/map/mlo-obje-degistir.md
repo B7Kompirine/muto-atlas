@@ -88,7 +88,7 @@ Sollumz "Unsupported file format" / "DECOMPRESS_FAILED" der.
 
 ### Adım 3 — Blender'da KENDİ ADIMIZLA yeniden kur
 
-Sollumz ile import → adı `muto_xxx` yap → export.
+Sollumz ile import → adı `my_xxx` yap → export.
 
 - **Normal kapı** istiyorsan: drawable yeterli. Pivotun menteşede
   olduğunu doğrula. Collision (BoundComposite) mesh'in içinde kalmalı.
@@ -147,7 +147,7 @@ Aynı obje birden fazla MLO'da olabilir — **hepsini** değiştir.
 
 ```
 powershell -Command "& patch_vanilla_ytyp.ps1 -YtypName 'v_int_10.ytyp' `
-  -SwapEntity @('v_ilev_gb_teldr=muto_teldr','v_ilev_gb_vauldr=muto_vauldr') `
+  -SwapEntity @('v_ilev_gb_teldr=my_teldr','v_ilev_gb_vauldr=my_vauldr') `
   -OutDir '<...>\stream'"
 ```
 
@@ -160,7 +160,7 @@ powershell -Command "& patch_vanilla_ytyp.ps1 -YtypName 'v_int_10.ytyp' `
 Beklenen çıktı:
 ```
 [*] imza  : arch=51 mlo=2 rooms=7 portals=7 entities=427
-[+] MLO v_genbank: entity v_ilev_gb_teldr -> muto_teldr
+[+] MLO v_genbank: entity v_ilev_gb_teldr -> my_teldr
 [*] yazilan imza: arch=51 mlo=2 rooms=7 portals=7 entities=427
     dogrulama: yeni model 2 entity'de, eski model 0 entity'de kaldi
 ```
@@ -348,7 +348,7 @@ ymap / spawn olmadan, o MLO haritada kaç yerde varsa hepsinde birden.
 
 ```
 patch_vanilla_ytyp.ps1 -YtypName v_int_10.ytyp `
-  -SwapEntity @('v_ilev_gb_teldr=muto_teldr','v_ilev_gb_vauldr=muto_vauldr') `
+  -SwapEntity @('v_ilev_gb_teldr=my_teldr','v_ilev_gb_vauldr=my_vauldr') `
   -OutDir <...>\stream
 ```
 

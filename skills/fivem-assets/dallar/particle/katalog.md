@@ -12,8 +12,8 @@
 `duman · ates · alev_topu · toz · buhar · kivilcim · sicrama · kor · sis ·
 kabarcik · parca · halka · elektrik · kan · yaprak`
 
-Dağıtım: `resources/[script]/muto_ptfx/stream/` (33 `.ypt`; 15'i aile,
-gerisi teşhis izi). Tezgâh ayrı kaynakta: `muto_ptfx_test`.
+Dağıtım: `resources/[script]/my_ptfx/stream/` (33 `.ypt`; 15'i aile,
+gerisi teşhis izi). Tezgâh ayrı kaynakta: `my_ptfx_test`.
 
 ### ⛔ BU BÖLÜMÜN ESKİ HÂLİ YANLIŞTI
 
@@ -23,8 +23,8 @@ geri okunarak ölçüldü (`res_to_xml.ps1` → `AnimateTexture/UnknownC4`):
 
 | dosya | `C4` | doku | değerlendirme |
 |---|---:|---:|---|
-| `muto_n4` (kontrol, 4×4) | **15** | 1024 | doğru |
-| `muto_n7` (kontrol, 7×7) | **48** | 1024 | doğru (eski hâl) |
+| `my_n4` (kontrol, 4×4) | **15** | 1024 | doğru |
+| `my_n7` (kontrol, 7×7) | **48** | 1024 | doğru (eski hâl) |
 | **15 ailenin HEPSİ** | **0** | **512** | ⛔ |
 
 ### ⛔ AÇIK KUSUR: ailelerin `C4`'ü 0
@@ -34,7 +34,7 @@ geri okunarak ölçüldü (`res_to_xml.ps1` → `AnimateTexture/UnknownC4`):
 4×4 sayfa için **15** olmalı.
 
 İki bağımsız kaynak aynı şeyi söylüyor: kuralın kendisi (§1e "`UnknownC4`
-**15** yazılır") ve kontrol varlığı `muto_n4` (C4=15). Aileler 19:32'de
+**15** yazılır") ve kontrol varlığı `my_n4` (C4=15). Aileler 19:32'de
 yeniden üretilirken bu adım yazılmamış.
 
 Doku çözünürlüğü de 512 (§1e'nin 4×4 ızgarası 512'yi 128 px hücreye tam
@@ -213,10 +213,10 @@ vanilla kendi başına havuzu patlatırdı. `RequestNamedPtfxAsset` de dosya
 adını alır.
 
 Sonuç: **"efekt başına bir dosya" savurganlıktır.** 35 aile 35 slot yerine
-**1** slot harcayabilir. Ölçüldü: 35 dosya → tek `muto_efektler.ypt`
+**1** slot harcayabilir. Ölçüldü: 35 dosya → tek `my_efektler.ypt`
 (1.49 MB), doğrulama 35/35 zincir ve zarf sağlam.
 
-Araç: `ptfx_birlestir.py --ad muto_efektler --klasor <dizin>`
+Araç: `ptfx_birlestir.py --ad my_efektler --klasor <dizin>`
 
 ### Birleştirmenin dört bağı
 
@@ -229,9 +229,9 @@ Araç: `ptfx_birlestir.py --ad muto_efektler --klasor <dizin>`
   dışarıdan okunur. Birleştirilmiş XML'in yanında bütün `.dds` dosyaları
   bulunmalı, yoksa derleme sessizce dokusuz çıkar.
 - **Birleştirmeden sonra VARLIK adı ≠ EFEKT adı.** Artık
-  `RequestNamedPtfxAsset('muto_efektler')` +
-  `UseParticleFxAssetNextCall('muto_efektler')` +
-  `StartParticleFx*('muto_duman', …)`.
+  `RequestNamedPtfxAsset('my_efektler')` +
+  `UseParticleFxAssetNextCall('my_efektler')` +
+  `StartParticleFx*('my_duman', …)`.
 - ⛔ **Varlık adına göre tutulan her kayıt SESSİZCE BOZULUR.** Harness
   handle'ları `acik[varlik]` ile saklıyordu; birleşmeden sonra bütün
   efektlerin varlığı aynı olduğu için her yeni efekt öncekinin handle'ını
@@ -256,7 +256,7 @@ sorunuymuş gibi görünüyor, oysa parametre yanlış.
 ## 14. Katalog tamamlandı — 56 aile, ölçülmüş dört yeni tuzak
 
 Sekiz grup, **56 / 56** kapıdan geçti; 15 üretim sprite'ıyla birlikte
-**71 efekt tek `.ypt`de** (`muto_efektler.ypt`, 2.94 MB, 1 havuz slotu).
+**71 efekt tek `.ypt`de** (`my_efektler.ypt`, 2.94 MB, 1 havuz slotu).
 İkiliden geri okundu: 71/71 zincir, doku ve zarf sağlam.
 
 Katalogun 58 ailesinden **ikisi bilerek dışarıda**, ikisi de katalogun
@@ -269,7 +269,7 @@ verir; gerekçe spec'te yazılı.
 
 `liquid_splash_petrol` **iki** doku ister: `ptfx_gloop_n` (NORMAL MAP) +
 `ptfx_gloop` (renk). Transplant tek sprite'ı **ikisine birden** yazar ve
-shader yanlış ışıklanır. Kapı bunu *"doku adı ['muto_roket','muto_roket']"*
+shader yanlış ışıklanır. Kapı bunu *"doku adı ['my_roket','my_roket']"*
 diye yakaladı. Ölçüldü: 231 uygun donörün **6'sı** çok dokulu; çoğunun tek
 dokulu bir ikizi var (`petrol → liquid_splash_water`, aynı ömür bandı).
 `ptfx_donor_ara.py` artık bunları eliyor.
@@ -302,7 +302,7 @@ yerinde çakar.
 
 ### ⛔ Birleştirmeye eski birleşik çıktıyı sokma
 
-`muto_katalog.ypt.xml` (önceki turun 20'lik birleşiği) girdi klasöründe
+`my_katalog.ypt.xml` (önceki turun 20'lik birleşiği) girdi klasöründe
 kalmıştı ve yeniden birleştirmeye karıştı; içindeki **hareket yazılmadan
 önceki** sürümler dedup'ta yalnız alfabetik sıra sayesinde elendi. Şansa
 bırakılacak şey değil — birleştirmeden önce klasörü temizle ve
@@ -351,5 +351,5 @@ o karakterlere göre yeniden yaz → tekrar karşılaştır.
 - Kıvılcım yağmuru: benek değil **ince parlak çizgi** (motion blur hissi),
   uçlarda dallanma.
 
-Temel 15'in spriteı değişince `ptfx_hepsi/muto_<ad>.dds` de tazelenmeli —
+Temel 15'in spriteı değişince `ptfx_hepsi/my_<ad>.dds` de tazelenmeli —
 katalog kurucusu onları üretmez, birleştirici hazır DDS'i alır.

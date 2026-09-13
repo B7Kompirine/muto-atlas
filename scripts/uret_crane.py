@@ -120,7 +120,7 @@ def yaz(el, yol):
 os.makedirs(CIKTI, exist_ok=True)
 yaz(uret_ytyp(), os.path.join(CIKTI, 'des_crane.ytyp.xml'))
 # ⛔ START IMAP ASLA BOS OLMAZ. 0 entity'li CMapData motoru cokertiyor
-# (ACCESS_VIOLATION, null+0x11). Olculdu: calisan des_mutotest_start'ta 1 entity var.
+# (ACCESS_VIOLATION, null+0x11). Olculdu: calisan des_mytest_start'ta 1 entity var.
 yaz(uret_ymap('des_crane_start', [('des_crane_saglam', 400)], 1, 65),
     os.path.join(CIKTI, 'des_crane_start.ymap.xml'))
 yaz(uret_ymap('des_crane_end', [('des_crane_enkaz', 400)], 1, 65),

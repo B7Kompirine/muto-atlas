@@ -520,9 +520,9 @@ def zarf_onar(s):
 
 
 def kur(aile, donor, sprite, renk, ovr, neden, hareket, dizin):
-    ad = "muto_" + aile
+    ad = "my_" + aile
     # ⛔ SPRITE'I PAYLASMA -- HER AILEYE KENDI TOHUMU.
-    #    Onceki surum `muto_<sprite>.dds`yi kopyaliyordu: `duman`,
+    #    Onceki surum `my_<sprite>.dds`yi kopyaliyordu: `duman`,
     #    `cokme_tozu`, `duvar_cokme`, `egzoz_dumani`, `hava_patlamasi`
     #    PIKSEL PIKSEL ayni cikti. Ayni ureticiyi farkli tohum ve farkli
     #    omur ani (`t`) ile cagirmak, ayni MALZEMEYI koruyup deseni

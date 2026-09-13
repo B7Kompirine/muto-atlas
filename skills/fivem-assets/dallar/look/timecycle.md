@@ -2,7 +2,7 @@
 
 **Ne zaman okunur:** "neden karanlık", "iç mekân aydınlık kalıyor", "zemin ıslak gibi parlıyor", mood için modifier, `TIMECYCLEMOD_FILE`.
 **When to read:** the room is dark or washed out, a weather cycle, a wet map, applying a timecycle modifier to an MLO.
-**Kaynak:** `isik.md` 'Timecycle katmanı', 'ıslak', 'MLO odası' · `decal.md` §5 · morg_vanilla notları (2026-08) · **Ölçüm:** 1.087 modifier + 17 hava cycle'ı (`timecycle.tsv.gz`); v_coroner oda bayrakları; casino vault / facility 111
+**Kaynak:** `isik.md` 'Timecycle katmanı', 'ıslak', 'MLO odası' · `decal.md` §5 · morg MLO notları (2026-08) · **Ölçüm:** 1.087 modifier + 17 hava cycle'ı (`timecycle.tsv.gz`); v_coroner oda bayrakları; casino vault / facility 111
 **Önce:** `_dal.md` · gövde › `govde/arac-tuzaklari.md` §1-2
 
 ---
@@ -60,7 +60,7 @@ Hangisinin kazandığı DLC yükleme sırasına bağlı ve **veriden okunamaz.**
 ### Şema (vanilla'dan kopyalandı, uydurulmadı)
 ```xml
 <timecycle_modifier_data version="1.000000">
-  <modifier name="muto_bds_dark" numMods="44" userFlags="0">
+  <modifier name="my_mlo_dark" numMods="44" userFlags="0">
     <natural_ambient_multiplier>0.045 0.000</natural_ambient_multiplier>
     ...
   </modifier>
@@ -70,8 +70,8 @@ Eleman metni `"deger1 deger2"`. `numMods` gerçek eleman sayısıyla tutmalı.
 
 ### FiveM kaydı ŞART
 ```lua
-files { 'data/timecycle_mods_muto.xml' }
-data_file 'TIMECYCLEMOD_FILE' 'data/timecycle_mods_muto.xml'
+files { 'data/timecycle_mods_custom.xml' }
+data_file 'TIMECYCLEMOD_FILE' 'data/timecycle_mods_custom.xml'
 ```
 Kaydedilmezse oyun modifier'ı **aramaz**, oda vanilla'da kalır.
 
@@ -149,7 +149,7 @@ içinde `EnableSync` çağır.
 
 Mekanizma: `Config.DynamicWeather = true` → hava 10 dakikada bir değişir →
 döngü düzenli olarak `RAIN`/`THUNDER`'a girer. "15 dakikada bir geri geliyor"
-şikâyetinin süresi tam olarak budur. Uygulama: `muto-morg/kuru_morg.lua`.
+şikâyetinin süresi tam olarak budur.
 
 
 ## MLO odasına dışarıdan ışık girmesi = ODA BAYRAĞI, geometri değil

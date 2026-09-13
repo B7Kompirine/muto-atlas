@@ -3,10 +3,8 @@
 """ptfx_sim.py — bir `.ypt` efektini SIMULE edip animasyonlu GIF uretir.
 
 ⛔ NE OLDUGU KONUSUNDA NET OL: bu motorun kendisi DEGIL, motorun
-   belgelenmis alan anlamlarini oynatan bir MODEL. RAGE Tools da ayni seyi
-   yapiyor (shader yorumu: "The CPU sim evaluates size / colour / rotation
-   from the asset's own keyframe curves"). Guclu bir vekil, kesin kanit
-   degil -- son soz oyunda.
+   belgelenmis alan anlamlarini oynatan bir MODEL. Guclu bir vekil, kesin
+   kanit degil -- son soz oyunda.
 
    Ama dosya seviyesi denetimin yakalayamadigi seyi yakalar: "71/71 zincir
    saglam" derken oyunda 38 efekt gorunmuyordu. Bu simulasyon o hatayi

@@ -81,7 +81,7 @@ public static class ExtensionIndexer
     // Custom ytyp'te archetype adi ve Expression'in exprDict/expr alanlari HASH
     // olarak durur; CodeWalker onlari ancak JenkIndex'te varsa cozer.
     //
-    // OLCULDU: bu adim ilk surumde YOKTU ve muto_depobox.ytyp'in 5 Expression'i
+    // OLCULDU: bu adim ilk surumde YOKTU ve my_depobox.ytyp'in 5 Expression'i
     // '2590473487' gibi cikti -- asset saglamdi, indeks korduo. '.yed' de
     // besleniyor cunku Expression extension'i sozluk adini oradan alir.
     static void SeedNames(string folder, ref int seeded)

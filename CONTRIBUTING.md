@@ -93,6 +93,12 @@ branch → trunk; true for one category → that `_dal.md`; true for one task �
 
    It catches what never raises an error: broken links, a leaf missing from its
    branch table, drifted counters, a `.ps1` without a BOM.
+5. If you changed the knowledge tree, rebuild the database offline and find your snippet:
+
+   ```bash
+   python scripts/build_atlas_db.py --tagger rules
+   python scripts/build_atlas_db.py --search "a word from your change"
+   ```
 
 Beyond that there is no automated test suite. The measurement in your pull
 request is the test.

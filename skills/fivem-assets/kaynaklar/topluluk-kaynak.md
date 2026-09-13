@@ -2,7 +2,7 @@
 
 **Kaynak notu — kural değil.** Kanalın tamamı: **12.09.2022 → 12.06.2026,
 110 mesaj**, 53 ek indirildi. Ham döküm ve dosyalar:
-`Desktop\FiveM\sollumz-discord-resources\` (`_manifest.tsv` = dosya → CDN linki;
+yerel indirme klasörü (`_manifest.tsv` = dosya → CDN linki;
 linkler ~24 saatte bayatlar).
 
 ⛔ Buradaki hiçbir sayı **ölçüm değildir** — topluluk iddiasıdır. Bir değeri

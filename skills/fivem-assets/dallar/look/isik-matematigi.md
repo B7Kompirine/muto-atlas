@@ -128,7 +128,7 @@ lineer koni). O yüzden önizleme kendi geçişini çizer, Sollumz ışıkların
 doğrudan okuyarak.
 
 ```python
-import sys; sys.path.append(r"~/.claude/muto-atlas/scripts")
+import sys; sys.path.append(r"${CLAUDE_PLUGIN_ROOT}/scripts")
 import blender_light_preview as lp
 lp.enable()
 lp.load_timecycle("w_clear", hour=19)

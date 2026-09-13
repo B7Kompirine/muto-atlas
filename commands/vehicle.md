@@ -6,7 +6,7 @@ allowed-tools: Bash(python:*), Read, Glob, Grep
 
 Argüman: `$ARGUMENTS`
 
-Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `~/.claude/muto-atlas`).
+Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içeren muto-atlas klasörü).
 
 ## Bu bir DAL komutudur (ince dal)
 

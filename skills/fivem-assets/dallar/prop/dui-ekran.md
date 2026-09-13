@@ -379,7 +379,7 @@ Kendi tüketicimizi yazarken uyulacaklar:
 
 ## 8. SUNUCU OTORİTESİ — DUI tamamen istemci tarafıdır
 
-Bu bölüm muto-* scriptleri için bağlayıcıdır.
+Bu bölüm etkileşimli ekran kuran her script için bağlayıcıdır.
 
 - `CreateDui` ve tüm cr-3dnui export'ları **client-only**. Panel bir dünya
   objesi değildir; **hiç senkronize edilmez**. Başka oyuncu senin panelini
@@ -496,7 +496,7 @@ tona oturmaz hem de sonradan tamamen değiştirilir — iki kez iş olur.
 
 ---
 
-## 11. HIZLI REÇETE — muto-* scriptlerinde yeni bir etkileşimli ekran
+## 11. HIZLI REÇETE — bir scripte yeni etkileşimli ekran
 
 1. `screentex.ps1 -Model <model>` → ekran dokusu **var mı**?
    - Varsa ve o modelden sahnede **tek** örnek varsa → C yolu (ReplaceTexture)

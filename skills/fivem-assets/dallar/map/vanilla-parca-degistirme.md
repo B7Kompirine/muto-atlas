@@ -2,7 +2,7 @@
 
 **Ne zaman okunur:** haritadaki bir yol dilimini, prop'u, yapı parçasını gizleyip yerine kendi modelini koyacaksın; "yakından temiz uzaktan duruyor", Z-fighting, beyaz yüzey, harita collision'ı gitti.
 **When to read:** replacing a vanilla road, prop or structure with your own model; recovering its textures; custom split normals.
-**Kaynak:** `vanilla-parca-degistirme.md` (tamamı, 2026-08) · `yol-yikim/OLCUMLER.md` (2026-09-01, çalışılmış örnek) · **Ölçüm:** hw1_27 vinç + fwy_01/dt1_rd1 otoyol; entities.db ile doğrulanmış LOD zinciri ve `hei_` ikizleri
+**Kaynak:** `vanilla-parca-degistirme.md` (tamamı, 2026-08) · bir yol yıkımı çalışması (2026-09-01) · **Ölçüm:** hw1_27 vinç + fwy_01/dt1_rd1 otoyol; entities.db ile doğrulanmış LOD zinciri ve `hei_` ikizleri
 **Önce:** `dallar/map/_dal.md` · gövde › `govde/bayraklar.md`, `govde/arac-tuzaklari.md`
 
 ---
@@ -335,7 +335,7 @@ geri çek ve **çok-gruplu vertex = 0** olduğunu doğrula.
 
 ## Çalışılmış örnek — 10 m'lik yol yarığı (`dt1_rd1_r1_28`, 2026-09-01)
 
-Bir vanilla yol parçasını değiştirirken **önce çıkarılması gereken** taban verinin tamamı; aynı sırayı kendi hedefin için tekrarla. Proje: yol-yikim v2.
+Bir vanilla yol parçasını değiştirirken **önce çıkarılması gereken** taban verinin tamamı; aynı sırayı kendi hedefin için tekrarla.
 
 ### Hedef (kullanıcı kararı)
 
@@ -442,7 +442,7 @@ stream ediyor. FiveM'de biri kazanir, hangisi belirsiz.
 
 | ymap | cakisan kaynak |
 |---|---|
-| `dt1_rd1.ymap`, `hei_dt1_rd1.ymap` | `[harita]/muto-mutotest-map` |
+| `dt1_rd1.ymap`, `hei_dt1_rd1.ymap` | `[harita]/my-test-map` |
 | `hei_dt1_rd1_strm_6.ymap` | `[script]/crux_bennysautos/crux_crucialfix` |
 
 ### CodeWalker.Core — dogru property adlari (bu oturumda olculdu)

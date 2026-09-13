@@ -10,8 +10,8 @@
 #   powershell -File make_ytyp_override.ps1 `
 #       -Models v_ilev_gb_teldr,v_ilev_gb_vauldr `
 #       -SpecialAttribute 7 `
-#       -YtypName muto_fleeca_doors `
-#       -OutFile "<...>\stream\muto_fleeca_doors.ytyp"
+#       -YtypName my_fleeca_doors `
+#       -OutFile "<...>\stream\my_fleeca_doors.ytyp"
 
 param(
     [Parameter(Mandatory=$true)][string[]] $Models,

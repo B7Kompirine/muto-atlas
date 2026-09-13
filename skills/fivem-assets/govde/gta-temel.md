@@ -213,7 +213,7 @@ ayrıca `core.ypt`'nin 107 gömülü partikül dokusu.
 - `SET_ENTITY_DISTANCE_CULLING_RADIUS` ve kardeşleri **resmî olarak
   deprecated**, "known, unfixable issues" deniyor — kullanma.
 
-**Ölçüm:** muto sunucusu, 2026-09-08, FXServer build 3258, 2.1 GB / 2140 stream
+**Ölçüm:** bir test sunucusu, 2026-09-08, FXServer build 3258, 2.1 GB / 2140 stream
 dosyası / 78 kaynak. Kaynaklar: `docs.fivem.net/docs/server-manual/server-commands`,
 `citizenfx/fivem` issue #3812 · #3384, forum 5385215.
 

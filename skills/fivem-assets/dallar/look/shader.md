@@ -58,7 +58,7 @@ GTA PBR değildir: 249 shader'da roughness/gloss/metallic/AO sampler'ı **0**; v
 
 ## "Bu yüzeyin dokusu yok" ≠ doku eksik
 
-Ölçüldü: JS kapağının dokusu (`muto_js_kapi_d`) **vardı ve doğruydu** —
+Ölçüldü: JS kapağının dokusu (`my_js_kapi_d`) **vardı ve doğruydu** —
 256×256, gerçek bir morg çekmecesi atlası (kapak yüzeyi + kilit/kulp).
 Kapının UV'si de doğru bölgeyi örnekliyordu. Kusur **kontrasttaydı**:
 

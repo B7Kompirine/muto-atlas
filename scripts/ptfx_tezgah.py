@@ -52,8 +52,8 @@ def _sunucu_resources():
 
 
 _RES = _sunucu_resources()
-# Tezgah kaynagi (`muto_ptfx_test`) sunucuda ayrica kurulu olmalidir; depoda yoktur.
-KAYNAK = os.path.join(_RES, "[script]", "muto_ptfx_test") if _RES else ""
+# Tezgah kaynagi (`my_ptfx_test`) sunucuda ayrica kurulu olmalidir; depoda yoktur.
+KAYNAK = os.path.join(_RES, "[script]", "my_ptfx_test") if _RES else ""
 ISTEK = os.path.join(KAYNAK, "is", "istek.json")
 SONUC = os.path.join(KAYNAK, "is", "sonuc.json")
 # Sunucunun `fileName` yolunu neye gore cozdugu pesinen bilinmez; sonuc
@@ -90,8 +90,8 @@ def is_gonder(adimlar, zaman_asimi=180):
     raise TimeoutError(
         "sunucu %d sn icinde cevap vermedi.\n"
         "  · oyunda bagli misin?\n"
-        "  · `ensure muto_ptfx_test` calisti mi (server.lua yeni)?\n"
-        "  · konsolda '[muto_ptfx] is alindi' yaziyor mu?" % zaman_asimi)
+        "  · `ensure my_ptfx_test` calisti mi (server.lua yeni)?\n"
+        "  · konsolda '[my_ptfx] is alindi' yaziyor mu?" % zaman_asimi)
 
 
 def b64_coz(yol_bagil):
@@ -235,21 +235,21 @@ def rapor(sonuc):
 TANI = [
     {"ad": "referans", "varlik": "core", "efekt": "exp_grd_grenade_smoke",
      "olcek": 1.0, "mesafe": 3.5},
-    {"ad": "tani_2x2", "varlik": "muto_no2", "olcek": 1.0, "mesafe": 3.5},
-    {"ad": "tani_7x7", "varlik": "muto_no7", "olcek": 1.0, "mesafe": 3.5},
+    {"ad": "tani_2x2", "varlik": "my_no2", "olcek": 1.0, "mesafe": 3.5},
+    {"ad": "tani_7x7", "varlik": "my_no7", "olcek": 1.0, "mesafe": 3.5},
 ]
 
 # Izgara x cozunurluk carpani. Calisan (2x2@256) ile bozuk (7x7@1024)
 # arasinda IKI degisken vardi; dort kose ikisini ayirir.
 IZGARA = [
-    {"ad": "gA_2x2_256",  "varlik": "muto_g1", "olcek": 1.0, "mesafe": 3.5},
-    {"ad": "gB_2x2_1024", "varlik": "muto_g2", "olcek": 1.0, "mesafe": 3.5},
-    {"ad": "gC_7x7_256",  "varlik": "muto_g3", "olcek": 1.0, "mesafe": 3.5},
-    {"ad": "gD_7x7_1024", "varlik": "muto_g4", "olcek": 1.0, "mesafe": 3.5},
+    {"ad": "gA_2x2_256",  "varlik": "my_g1", "olcek": 1.0, "mesafe": 3.5},
+    {"ad": "gB_2x2_1024", "varlik": "my_g2", "olcek": 1.0, "mesafe": 3.5},
+    {"ad": "gC_7x7_256",  "varlik": "my_g3", "olcek": 1.0, "mesafe": 3.5},
+    {"ad": "gD_7x7_1024", "varlik": "my_g4", "olcek": 1.0, "mesafe": 3.5},
     # Donor ile izgarayi ayiran son iki hucre:
     #   g5  = bizim kopyamiz (C4=48) + VANILLA'nin kendi 7x7 dokusu
     #   ref7= oyunun KENDI 7x7 efekti, dosya gondermiyoruz
-    {"ad": "g5_7x7_vanilla_doku", "varlik": "muto_g5", "olcek": 1.0, "mesafe": 3.5},
+    {"ad": "g5_7x7_vanilla_doku", "varlik": "my_g5", "olcek": 1.0, "mesafe": 3.5},
     {"ad": "ref7_oyunun_kendi", "varlik": "core", "efekt": "veh_respray_smoke",
      "olcek": 1.0, "mesafe": 3.5},
 ]
@@ -267,7 +267,7 @@ def main():
         adimlar = IZGARA
     else:
         adimlar = TANI if a.mod == "tani" else [
-            {"ad": x, "varlik": "muto_" + x, "olcek": 1.0, "mesafe": 4.0} for x in URETIM]
+            {"ad": x, "varlik": "my_" + x, "olcek": 1.0, "mesafe": 4.0} for x in URETIM]
     s = is_gonder(adimlar)
     if s.get("hata"):
         print("SUNUCU HATASI: %s" % s["hata"])

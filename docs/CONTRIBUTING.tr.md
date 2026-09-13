@@ -93,6 +93,12 @@ gövdeye; tek kategoriye aitse o `_dal.md`'ye; tek göreve özgüyse yaprağa.
 
    Hiç hata vermeyen kusurları yakalar: kırık bağlantı, dal tablosunda olmayan
    yaprak, kaymış sayaç, BOM'suz `.ps1`.
+5. Bilgi ağacını değiştirdiysen veritabanını çevrimdışı yeniden üret ve snippet'ini bul:
+
+   ```bash
+   python scripts/build_atlas_db.py --tagger rules
+   python scripts/build_atlas_db.py --search "değişikliğindeki bir kelime"
+   ```
 
 Bunun dışında otomatik test paketi yok. Pull request'teki ölçüm, testin kendisidir.
 

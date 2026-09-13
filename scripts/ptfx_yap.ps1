@@ -5,10 +5,10 @@
 #
 # ORNEKLER
 #   # yumusak yuvarlak sprite, yesil, yukari suzulen
-#   .\ptfx_yap.ps1 -Ad muto_spor -Renk 0.2,0.9,0.35 -Hedef <stream klasoru>
+#   .\ptfx_yap.ps1 -Ad my_spor -Renk 0.2,0.9,0.35 -Hedef <stream klasoru>
 #
 #   # kendi PNG'inden (gri maske: siyah zemin, sekil alfada)
-#   .\ptfx_yap.ps1 -Ad muto_kelebek -Gorsel kelebek.png -Renk 0.15,0.6,1 `
+#   .\ptfx_yap.ps1 -Ad my_kelebek -Gorsel kelebek.png -Renk 0.15,0.6,1 `
 #       -Boyut 0.4 -Omur 6 -Oran 4 -Yukselme 0.8 -Hedef <stream klasoru>
 #
 # ⛔ SINIR: sprite sheet (kare kare animasyon) GOMULU dokuda calismiyor.

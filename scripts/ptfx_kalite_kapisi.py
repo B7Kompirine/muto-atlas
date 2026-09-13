@@ -153,7 +153,7 @@ def main():
     for kayit in GRUPLAR[a.grup]:
         aile, donor, sprite, renk, ovr, neden = kayit[:6]
         hareket = kayit[6] if len(kayit) > 6 else {}
-        ad = "muto_" + aile
+        ad = "my_" + aile
         yol = os.path.join(CIKTI, ad + ".ypt.xml")
         if not os.path.exists(yol):
             print("  DOSYA YOK %-18s" % aile)

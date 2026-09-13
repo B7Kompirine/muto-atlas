@@ -78,7 +78,7 @@ v_coroner/abattoir). Proje adı kural değil, kaynak notudur.
 
 | istenen | dosya | durum — kaynak |
 |---|---|---|
-| Vanilla parçayı kendi modelimle değiştir (yol, prop, yapı) | vanilla-parca-degistirme.md | ölçüldü — vanilla-parca-degistirme · yol-yikim OLCUMLER |
+| Vanilla parçayı kendi modelimle değiştir (yol, prop, yapı) | vanilla-parca-degistirme.md | ölçüldü — vanilla-parca-degistirme |
 | Yıkım / çökme / koreografili sahne — tek yaprak | yikim.md | ölçüldü — rayfire-des-uretim |
 | MLO objesini değiştir (entity swap) | mlo-obje-degistir.md | ölçüldü — mlo-obje-degistirme · eski SKILL |
 | MLO'ya kendi prop'unu / drawable'ını koy | mlo-prop.md | ölçüldü — mlo-prop-uretim-hatti · mlo-drawable-export |

@@ -2,7 +2,7 @@
 #
 # MIMARI (referans §11): kalici geometri durum imap'ine KONMAZ.
 #   start   des_kopru_saglam        kirilan dilimin saglam hali   (kapanir)
-#   end     des_kopru_muto_enkaz    enkaz                          (acilir)
+#   end     des_kopru_anim_enkaz    enkaz                          (acilir)
 #   placer  des_kopru (composite) + des_kopru_kalan               (HEP ACIK)
 #
 # Onceki kurulumda start'ta 205x154 m'lik TUM kopru vardi; tetiklenince
@@ -17,8 +17,8 @@ CIKTI = sys.argv[1] if len(sys.argv) > 1 else "."
 # Blender'da vertex'lerden olculdu (bound_box BAYAT olabiliyor, ona guvenme)
 KUTU = {
     # animasyonlu: kutu animasyonun TAMAMINI kapsar (31 karede tarandi + 0.6 pay)
-    "des_kopru_muto":       ((-53.98, -29.37, -0.60), (29.65, 40.30, 30.98)),
-    "des_kopru_muto_enkaz": ((-53.40, -28.80,  0.00), (29.10, 39.70, 30.40)),
+    "des_kopru_anim":       ((-53.98, -29.37, -0.60), (29.65, 40.30, 30.98)),
+    "des_kopru_anim_enkaz": ((-53.40, -28.80,  0.00), (29.10, 39.70, 30.40)),
     # z tavani 33.7: sokak lambalari (9.3 m) modele katildi
     "des_kopru_saglam":     ((-44.75, -28.77,  0.18), (28.38, 37.69, 33.70)),
     "des_kopru_kalan":      ((-102.53, -77.19, 3.13), (102.53, 77.19, 32.11)),
@@ -36,7 +36,7 @@ def met(a, tag, v=""): ET.SubElement(a, tag).text = v
 
 # physicsDictionary: gomulu Bound Composite tasiyan arketiplerde MODEL ADI yazilir.
 # Bos birakilirsa .ydr'deki collision motor tarafindan hic baglanmaz.
-FIZIK = {'des_kopru_saglam', 'des_kopru_muto_enkaz'}   # gomulu Bound tasiyanlar
+FIZIK = {'des_kopru_saglam', 'des_kopru_anim_enkaz'}   # gomulu Bound tasiyanlar
 
 def arketip(ana, ad, flags, lod, klip):
     mn, mx = KUTU[ad]; c, r = kure(mn, mx)
@@ -54,8 +54,8 @@ def arketip(ana, ad, flags, lod, klip):
 def uret_ytyp():
     r = ET.Element('CMapTypes'); ET.SubElement(r, 'extensions')
     ar = ET.SubElement(r, 'archetypes')
-    arketip(ar, 'des_kopru_muto',       536871424, 600, 'des_kopru')   # Has Anim + Use Ambient Scale
-    arketip(ar, 'des_kopru_muto_enkaz',        32, 600, '')
+    arketip(ar, 'des_kopru_anim',       536871424, 600, 'des_kopru')   # Has Anim + Use Ambient Scale
+    arketip(ar, 'des_kopru_anim_enkaz',        32, 600, '')
     arketip(ar, 'des_kopru_saglam',            32, 600, '')
     arketip(ar, 'des_kopru_kalan',             32, 900, '')            # kalici, uzaktan da gorunur
     met(r, 'name', 'des_kopru')
@@ -74,8 +74,8 @@ def uret_ytyp():
     an = ET.SubElement(it, 'Animations', {'itemType': 'CCompEntityAnims'})
     ai = ET.SubElement(an, 'Item')
     met(ai, 'AnimDict', 'des_kopru')
-    met(ai, 'AnimName', 'des_kopru_muto')          # = AnimatedModel = arketip adi
-    met(ai, 'AnimatedModel', 'des_kopru_muto')
+    met(ai, 'AnimName', 'des_kopru_anim')          # = AnimatedModel = arketip adi
+    met(ai, 'AnimatedModel', 'des_kopru_anim')
     deg(ai, 'punchInPhase', 0); deg(ai, 'punchOutPhase', 1)
     ET.SubElement(ai, 'effectsData', {'itemType': 'CCompEntityEffectsData'})
     return r
@@ -134,7 +134,7 @@ yaz(uret_ytyp(), os.path.join(CIKTI, 'des_kopru.ytyp.xml'))
 # start ASLA bos olmaz (0 entity'li CMapData motoru cokertir: null+0x11)
 yaz(uret_ymap('des_kopru_start',  [('des_kopru_saglam', -1)], 1, 577),
     os.path.join(CIKTI, 'des_kopru_start.ymap.xml'))
-yaz(uret_ymap('des_kopru_end',    [('des_kopru_muto_enkaz', -1)], 1, 65),
+yaz(uret_ymap('des_kopru_end',    [('des_kopru_anim_enkaz', -1)], 1, 65),
     os.path.join(CIKTI, 'des_kopru_end.ymap.xml'))
 # placer: composite + KALICI geometri
 yaz(uret_ymap('des_kopru_placer', [('des_kopru', 100), ('des_kopru_kalan', 700)], 0, 65),

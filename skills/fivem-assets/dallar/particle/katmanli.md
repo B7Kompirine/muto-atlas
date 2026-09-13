@@ -40,7 +40,7 @@ eğrisi** yazmaktır (örnek: `bang_metal_dust`):
 Yani `InterpolationInterval` **zaman ekseni**, `Red/Green` o andaki
 min/max doğum hızıdır.
 
-**Ölçülen çalışan yapılandırma** (`muto_e2`): 4 emitter, gecikmeler
+**Ölçülen çalışan yapılandırma** (`my_e2`): 4 emitter, gecikmeler
 **0 / 0.2 / 0.4 / 0.6 sn**, her emitter `w=0.08`'de saçar `0.10`'da susar,
 parçacık ömrü **0.30 sn**, her aşamanın kendi tek-kare dokusu, `C4=0`.
 

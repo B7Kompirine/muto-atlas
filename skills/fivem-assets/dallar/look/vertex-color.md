@@ -2,7 +2,7 @@
 
 **Ne zaman okunur:** kendi modelin iç mekânda parlıyor/aydınlık; `Color 1` kanalları ne; R/G hedef değerleri; decal'da yeşillik.
 **When to read:** interior ambient shading through vertex colours; the measured meaning of each channel; fake bounce light.
-**Kaynak:** `isik.md` vertex color bölümleri + 'iç mekân kuralı' (morg_vanilla ölçümü, 2026-08) · **Ölçüm:** facility 66 dosya, vault, v_coroner kabuğu; 105 dosya geri okumayla
+**Kaynak:** `isik.md` vertex color bölümleri + 'iç mekân kuralı' (morg MLO ölçümü, 2026-08) · **Ölçüm:** facility 66 dosya, vault, v_coroner kabuğu; 105 dosya geri okumayla
 **Önce:** `_dal.md` · gövde › `govde/arac-tuzaklari.md` §1-2 · vanilla iç mekân bantları `dallar/map/vanilla-ic-mekan.md` §4
 
 ---
@@ -236,7 +236,7 @@ Yani **R yön kararıdır, G sanatsal değerdir** — G'yi tek sayıya çakma.
 **`R == G` ve ikisi de >200 ⇒ mesh hiç boyanmamış** (Blender/Sollumz
 varsayılan beyazı). Ayırt edici olan eşitliktir: gerçekten boyanmış bir
 mesh'te R ve G bağımsızdır. Kendi eklediğin modelleri bu testle tara —
-ölçüldü: kendi `muto_*` modellerimizin **9'undan 8'i** R=G=225-255'te
+ölçüldü: kendi `my_*` modellerimizin **9'undan 8'i** R=G=225-255'te
 duruyordu, oysa üstünde durdukları kabuk R=12.7 idi. Kusur "R yüksek"
 değil, **modelin konulduğu haritayla uyuşmaması**.
 

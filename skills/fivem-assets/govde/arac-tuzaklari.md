@@ -281,7 +281,7 @@ doğal bir yaprak yoksa bu dosyanın sonundaki **Ayrıntı** bölümündedir.
   `--factory-startup` ile koş (tek kopya: register → unregister → register temiz). Aşağıdaki "kapanırken unregister hatası"nın bir
   kaynağı olabilir; kilitlenmeyle ilişkisi ölçülmedi. Açık oturumda yeni kodu yüklemek: `addon_utils.disable(ad)` → `sys.modules`'tan
   `ad` ve alt modüllerini sil → `addon_utils.enable(ad, default_set=True)`; Scene `PointerProperty` değerleri korunur.
-  **Ölçüm:** Blender 5.2.1, muto_ped_rig 0.2.0, 2026-09-12; headless iki koşu (tercihli: traceback, factory: temiz) + canlı oturumda
+  **Ölçüm:** Blender 5.2.1, bir rig eklentisi, 2026-09-12; headless iki koşu (tercihli: traceback, factory: temiz) + canlı oturumda
   yeniden yükleme (14 modül silindi, etiketler yeni, 5 sahne ayarı aynı).
 - ⛔ **Kaydedilmemiş sahnede `render.filepath` GÖRELİ yolu sürücü köküne çözülür, cwd'ye DEĞİL.** Aynı betikte Python `open()` göreli
   yolu kabuğun cwd'sinden (proje) okur; `render.filepath = "out/video/frames_ws/0000.png"` ise `C:\out\video\frames_ws\0000.png`'ye
@@ -329,22 +329,11 @@ doğal bir yaprak yoksa bu dosyanın sonundaki **Ayrıntı** bölümündedir.
 - ⛔ **`blender -b --python <yol>` 260 karakteri aşan yolda betiği HİÇ
   çalıştırmaz, çıkış kodu yine 0.** Log'da tek satır `OSError: Python file "…"
   could not be opened: No such file or directory`, gerisi normal açılış ve
-  "Blender quit". Sebep yol **uzunluğu**; 8.3 kısa ad (`SUPERU~1`) değil.
+  "Blender quit". Sebep yol **uzunluğu**; 8.3 kısa ad (ör. `KULLAN~1`) değil.
   Claude'un scratchpad yolu tek başına bu sınırı aşar → betiği kısa yola koy
   (`%TEMP%\claude\<iş>\`). Ölçüt exit kodu değil, **betiğin yazdığı çıktı
   dosyasının varlığı**. **Ölçüm:** Blender 5.2.1, 272 karakterlik yol FAIL,
   aynı betik kısa yolda OK, 8.3 adlı kısa yol OK, 2026-09-11.
-- ⛔ **Bu makinede yeni eklentinin N sekmesi "yok" görünür: kullanıcı addon'u
-  `muto_plugins` her VIEW_3D/UI üst panelini `Plugins` sekmesine taşır ve
-  `poll`'unu sarmalar.** Tablosunda adı geçmeyen sekme `Tools` grubuna düşer;
-  Plugins'te o grup seçili değilse panel çizilmez. Eklenti etkin, panel kayıtlı,
-  hata yok — sessiz. **Yalnız `bl_category`'yi geri yazmak YETMEZ:** sarmalayıcı
-  poll sınıfta kalır, sekme yine çıkmaz. Kalıcı yol: `muto_plugins.py` içindeki
-  `DOKUNMA`'ya sekme adı; açık oturumda timer içinde
-  `muto_plugins._geri_al(cls)`. Ölçüt: `cls.bl_category` VE
-  `cls.__dict__.get("poll")` modülü `muto_plugins` değil. **Ölçüm:** Blender
-  5.2.1, `muto_ped_rig` `MPR_PT_main`, 2026-09-12; kategori geri yazıldı →
-  kullanıcı yine göremedi; `_geri_al` + DOKUNMA → poll yok, kategori Muto Rig.
 - ⛔ **`bpy.ops.object.mode_set` çağıranın BAĞLAM objesine uygulanır.** İçinde `view_layer.objects.active = arm` yapıp EDIT → OBJECT
   geçen fonksiyon dışarıdan `temp_override(object=mesh, active_object=mesh)` altında çağrılınca iskelet **EDIT'te kalır** — hata yok,
   ama EDIT'teki iskeletin pozu mesh'i **hiç deforme etmez**. Yalnız override'ı iskelete çevirmek de yetmedi (aktif obje başkayken EDIT'ten
@@ -413,7 +402,7 @@ doğal bir yaprak yoksa bu dosyanın sonundaki **Ayrıntı** bölümündedir.
   → `dallar/map/lod.md`
 - **Property adları — yanlış ad `$null` döner, hata vermez** (bkz. §4): Bound `BoxMin`/`BoxMax`
   (`BoundingBoxMin/Max` değil), Drawable `DrawableModels`/`AllModels` (`DrawableModelsHigh` değil);
-  `ShaderGroup.Shaders` foreach'te `NotImplementedException` → `.data_items`. Ölçüldü: yol-yikim, 2026-09-01.
+  `ShaderGroup.Shaders` foreach'te `NotImplementedException` → `.data_items`. Ölçüldü: bir yol yıkımı çalışması, 2026-09-01.
 - **CodeWalker taşınabilir `.exe` ise computer-use onu bulamaz** → GUI
   basamağını ajan süremez, kullanıcıya tarif verir.
 
@@ -482,7 +471,7 @@ doğal bir yaprak yoksa bu dosyanın sonundaki **Ayrıntı** bölümündedir.
   **Ölçüm:** Blender 5.2.1 numpy 2.3.4 ↔ sistem Python numpy 2.5.1, 2026-09-12; 3 mesh girdisi: varsayılan sırayla 3,37 ↔ 3,26 cm ve
   bir vakada başarı ↔ hata; `kind="stable"` ile iki ortam 6 haneye kadar aynı.
 - **`"stream$f.ydr"` tek parça gider**, dosya bulunamaz → yolu değişkenle ayrı kur.
-- **`rm muto_t*` denek silerken üretimi de siler** — joker aralığını önce `ls`.
+- **`rm my_t*` denek silerken üretimi de siler** — joker aralığını önce `ls`.
 - **İndirilen ses tepe −25…−29 dB olabilir** → `volumedetect` ölç, normalize et.
 
 ---
