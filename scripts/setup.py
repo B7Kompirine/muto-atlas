@@ -57,11 +57,11 @@ ROOT = os.path.dirname(HERE)
 DATA = os.path.join(ROOT, "data")
 PY = sys.executable or "python"
 
-# Aday listesi TEK YERDE: yol.py. Burada ikinci bir kopya tutulursa biri
+# Aday listesi TEK YERDE: paths.py. Burada ikinci bir kopya tutulursa biri
 # guncellenip digeri unutulur -- CodeWalker icin 29, GTA icin 23 kopya vardi.
-from yol import KAYITLI as _YOL_KAYITLI  # noqa: E402
+from paths import REGISTERED as _REGISTERED_PATHS  # noqa: E402
 
-GTA_ADAYLARI = _YOL_KAYITLI["gta"][3]
+GTA_ADAYLARI = _REGISTERED_PATHS["gta"][3]
 
 # (dosya, kademe, aciklama, uretim komutu)
 KATMANLAR = [
@@ -169,8 +169,8 @@ def config_yaz(gta, cw, resources, lang=None):
 def gta_bul(verilen):
     if verilen:
         return verilen if os.path.isdir(verilen) else None
-    import yol
-    c, _ = yol.coz("gta")          # config.json + bilinen adaylar, tek kaynak
+    import paths
+    c, _ = paths.resolve("gta")          # config.json + bilinen adaylar, tek kaynak
     if c:
         return c
     meta = os.path.join(DATA, "assets.meta.json")
@@ -190,8 +190,8 @@ def gta_bul(verilen):
 def cw_bul(verilen):
     if verilen:
         return verilen if os.path.exists(verilen) else None
-    import yol
-    c, _ = yol.coz("codewalker")   # config.json + bilinen adaylar, tek kaynak
+    import paths
+    c, _ = paths.resolve("codewalker")   # config.json + bilinen adaylar, tek kaynak
     if c:
         return c
     meta = os.path.join(DATA, "assets.meta.json")

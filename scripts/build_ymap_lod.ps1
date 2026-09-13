@@ -12,7 +12,7 @@
 #
 # Zincir ymap DOSYALARINI asar:  X.ymap -> X_lod.ymap -> X_slod.ymap
 # CodeWalker'daki karsiligi: entity 'LOD Hierarchy' sekmesi (ParentIndex +
-# NumChildren). Ayrinti: skills/fivem-assets/govde/bayraklar.md
+# NumChildren). Ayrinti: skills/fivem-assets/trunk/flags.md
 #
 # Kullanim:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File build_ymap_lod.ps1
@@ -29,12 +29,12 @@ $ErrorActionPreference = 'Stop'
 if (-not $Out) { $Out = Join-Path (Split-Path $PSScriptRoot -Parent) 'data' }
 if (-not (Test-Path -LiteralPath $Out)) { New-Item -ItemType Directory -Path $Out | Out-Null }
 
-$CodeWalker = & "$PSScriptRoot\yol.ps1" codewalker $CodeWalker
+$CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
 if (-not $CodeWalker -or -not (Test-Path -LiteralPath $CodeWalker)) {
     throw "CodeWalker.Core.dll bulunamadi. -CodeWalker <yol> ile ver."
 }
 
-$GtaFolder = & "$PSScriptRoot\yol.ps1" gta $GtaFolder
+$GtaFolder = & "$PSScriptRoot\paths.ps1" gta $GtaFolder
 if (-not $GtaFolder) { throw "GTA V klasoru bulunamadi. -GtaFolder <yol> ile ver." }
 
 $cwDir = Split-Path $CodeWalker -Parent

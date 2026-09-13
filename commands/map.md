@@ -10,7 +10,7 @@ Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içe
 
 ## Bu bir DAL komutudur
 
-1. **Önce dalı oku:** `${CLAUDE_PLUGIN_ROOT}/skills/fivem-assets/dallar/map/_dal.md`
+1. **Önce dalı oku:** `${CLAUDE_PLUGIN_ROOT}/skills/fivem-assets/branches/map/_branch.md`
    — MLO içi/dışı, extent, LOD zinciri + `hei_`, ymap sürümleri, RayFire'ın üç varlığı, çimin dört sistemi.
 2. Argümandan **tek yaprağı** seç: vanilla parça · yıkım · MLO swap · MLO'ya prop · LOD · iç mekân ölçüsü · çim.
    Tarif belirsizse (*"duvar kırılsın"*, *"kapı patlasın"*) `AskUserQuestion`: harita parçası mı script prop'u mu ·

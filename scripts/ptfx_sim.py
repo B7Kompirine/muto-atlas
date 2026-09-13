@@ -37,7 +37,7 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ptfx_kalite_kapisi import bloklari, kfp, kfp_govde, zarf  # noqa: E402
+from ptfx_quality_gate import bloklari, kfp, kfp_govde, zarf  # noqa: E402
 
 
 def v3(blok, ad, vars=(0.0, 0.0, 0.0)):

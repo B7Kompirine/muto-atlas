@@ -33,10 +33,10 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$CodeWalker = & "$PSScriptRoot\yol.ps1" codewalker $CodeWalker
+$CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
 if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll bulunamadi." }
 
-$GtaFolder = & "$PSScriptRoot\yol.ps1" gta $GtaFolder
+$GtaFolder = & "$PSScriptRoot\paths.ps1" gta $GtaFolder
 if (-not $GtaFolder) { throw "GTA V klasoru bulunamadi." }
 
 if (-not (Test-Path $Out)) { New-Item -ItemType Directory -Path $Out -Force | Out-Null }

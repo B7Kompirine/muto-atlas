@@ -37,17 +37,17 @@ istiyor.
 
 | Yol | Oraya ne girer |
 |---|---|
-| `skills/fivem-assets/SKILL.md` + `govde/` | Gövde: **her** dalda geçerli kurallar — motor değişmezleri, araç tuzakları, doğrulama merdiveni, bayraklar, kemik tag'i |
-| `skills/fivem-assets/dallar/<dal>/_dal.md` | Bir dal: kategorinin geniş kuralları ve yaprak tablosu |
-| `skills/fivem-assets/dallar/<dal>/<yaprak>.md` | Tek bir görev. Yeni yaprak dalının `_dal.md` tablosuna yazılmalı, yoksa onu hiçbir şey okumaz |
-| `skills/fivem-assets/kaynaklar/` | Dış araçlar ve topluluk kaynakları hakkında notlar — kaynak, kural değil |
+| `skills/fivem-assets/SKILL.md` + `trunk/` | Gövde: **her** dalda geçerli kurallar — motor değişmezleri, araç tuzakları, doğrulama merdiveni, bayraklar, kemik tag'i |
+| `skills/fivem-assets/branches/<branch>/_branch.md` | Bir dal: kategorinin geniş kuralları ve yaprak tablosu |
+| `skills/fivem-assets/branches/<branch>/<leaf>.md` | Tek bir görev. Yeni yaprak dalının `_branch.md` tablosuna yazılmalı, yoksa onu hiçbir şey okumaz |
+| `skills/fivem-assets/sources/` | Dış araçlar ve topluluk kaynakları hakkında notlar — kaynak, kural değil |
 | `skills/fivem-natives/` | Native'ler, framework API ve Lua tuzakları |
 | `commands/*.md` | Slash komutları; her biri ayrı dosya, başında `description:` satırı |
 | `scripts/` | Python ve PowerShell araçları |
 | `data/*.tsv` | Depoda yalnız elle yazılmış üç tablo durur. `data/` içindeki geri kalan her şey yerelde üretilir ve gitignore'dadır |
 
 Bir bulgu **bir kez**, geçerli olduğu en geniş yere yazılır: her dalda geçerliyse
-gövdeye; tek kategoriye aitse o `_dal.md`'ye; tek göreve özgüyse yaprağa.
+gövdeye; tek kategoriye aitse o `_branch.md`'ye; tek göreve özgüyse yaprağa.
 
 ## Asla commit'leme
 
@@ -88,7 +88,7 @@ gövdeye; tek kategoriye aitse o `_dal.md`'ye; tek göreve özgüyse yaprağa.
 4. Eklentinin kendi denetimini çalıştır. `0` ile çıkmalı:
 
    ```bash
-   python scripts/denetle_plugin.py
+   python scripts/audit_plugin.py
    ```
 
    Hiç hata vermeyen kusurları yakalar: kırık bağlantı, dal tablosunda olmayan

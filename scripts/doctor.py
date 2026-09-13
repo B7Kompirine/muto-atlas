@@ -40,8 +40,8 @@ import sys
 import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from doctor_ortak import FATAL, SIRA, SILENT, WARN, Rapor, _tr  # noqa: E402
-from doctor_kontroller import DENETCI  # noqa: E402
+from doctor_common import FATAL, SIRA, SILENT, WARN, Rapor, _tr  # noqa: E402
+from doctor_checks import DENETCI  # noqa: E402
 from res_xml import RES_EXT, toplu_kok_oku  # noqa: E402
 
 

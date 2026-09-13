@@ -37,17 +37,17 @@ Many open questions only need someone with the game and one evening.
 
 | Path | What goes there |
 |---|---|
-| `skills/fivem-assets/SKILL.md` + `govde/` | The trunk: rules that hold in **every** branch — engine invariants, tool traps, the verification ladder, flags, bone tags |
-| `skills/fivem-assets/dallar/<branch>/_dal.md` | One branch: its category-wide rules and the table of its leaves |
-| `skills/fivem-assets/dallar/<branch>/<leaf>.md` | One task. A new leaf must be listed in its branch's `_dal.md` table, or nothing will ever read it |
-| `skills/fivem-assets/kaynaklar/` | Notes on outside tools and community resources — sources, not rules |
+| `skills/fivem-assets/SKILL.md` + `trunk/` | The trunk: rules that hold in **every** branch — engine invariants, tool traps, the verification ladder, flags, bone tags |
+| `skills/fivem-assets/branches/<branch>/_branch.md` | One branch: its category-wide rules and the table of its leaves |
+| `skills/fivem-assets/branches/<branch>/<leaf>.md` | One task. A new leaf must be listed in its branch's `_branch.md` table, or nothing will ever read it |
+| `skills/fivem-assets/sources/` | Notes on outside tools and community resources — sources, not rules |
 | `skills/fivem-natives/` | Natives, framework API and Lua pitfalls |
 | `commands/*.md` | Slash commands, one file each, with a `description:` front-matter line |
 | `scripts/` | Python and PowerShell tools |
 | `data/*.tsv` | Only the three hand-written tables are tracked. Everything else in `data/` is generated locally and gitignored |
 
 A finding is written **once**, in the widest place where it holds: true in every
-branch → trunk; true for one category → that `_dal.md`; true for one task → the leaf.
+branch → trunk; true for one category → that `_branch.md`; true for one task → the leaf.
 
 ## Never commit
 
@@ -88,7 +88,7 @@ branch → trunk; true for one category → that `_dal.md`; true for one task �
 4. Run the plugin's own check. It must exit `0`:
 
    ```bash
-   python scripts/denetle_plugin.py
+   python scripts/audit_plugin.py
    ```
 
    It catches what never raises an error: broken links, a leaf missing from its

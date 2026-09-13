@@ -47,7 +47,7 @@ body:
     id: where
     attributes:
       label: "Which file should it go in? (optional) · Hangi dosyaya girmeli? (isteğe bağlı)"
-      placeholder: "skills/fivem-assets/govde/bayraklar.md"
+      placeholder: "skills/fivem-assets/trunk/flags.md"
   - type: input
     id: build
     attributes:

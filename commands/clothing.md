@@ -10,7 +10,7 @@ Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içe
 
 ## Bu bir DAL komutudur
 
-1. **Önce dalı oku:** `${CLAUDE_PLUGIN_ROOT}/skills/fivem-assets/dallar/clothing/_dal.md`
+1. **Önce dalı oku:** `${CLAUDE_PLUGIN_ROOT}/skills/fivem-assets/branches/clothing/_branch.md`
    — iki UV map, `Colour 0/1`, Mesh Domain, gömülü doku kuralı, doku adlandırması, `_r` maskesi, Render Flags.
 2. Argümandan **tek yaprağı** seç: freemode kıyafet · ped prop · doku varyantı.
 3. ⚠️ Bu dal **video kaynaklı, ölçülmedi** — kullanıcıya bunu söyle; sayı verirken `assetdb.py` ile doğrula.

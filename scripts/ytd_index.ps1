@@ -8,12 +8,12 @@
 #   pwsh ytd_index.ps1 -Roots @('C:\cikarilan\ytd') -Cikti idx.tsv
 # Cikti: her satir  "<doku adi>	<ytd dosya adi>"
 #
-# Ayrinti: dallar/map/vanilla-parca-degistirme.md §4
+# Ayrinti: branches/map/vanilla-part-replacement.md §4
 
 param([Parameter(Mandatory=$true)][string[]]$Roots,[Parameter(Mandatory=$true)][string]$Out,
       [string]$CodeWalker)
 $ErrorActionPreference='Stop'
-$CodeWalker = & "$PSScriptRoot\yol.ps1" codewalker $CodeWalker
+$CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
 # Guard: Add-Type -Path $null "argument is null" der ve sebep kaybolur.
 if(-not $CodeWalker -or -not (Test-Path $CodeWalker)){ throw "CodeWalker.Core.dll bulunamadi. -CodeWalker ile yol ver." }
 Add-Type -Path $CodeWalker

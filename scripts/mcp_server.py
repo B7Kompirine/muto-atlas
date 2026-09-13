@@ -53,7 +53,7 @@ INSTRUCTIONS = (
     "to scripts/setup.py - never fill the gap with a guess.\n"
     "3. Decode magic numbers with flags_decode instead of copying them.\n"
     "4. For build rules (Sollumz, ytyp/ymap, LOD, lights, particles, clothing) call atlas_map, read the branch "
-    "_dal.md with atlas_read, then ONE leaf. Do not read every file.\n"
+    "_branch.md with atlas_read, then ONE leaf. Do not read every file.\n"
     "5. Take native signatures from native_show, not from memory.\n"
     "6. To find what the knowledge base already says about a topic, call snippet_search (data/atlas.db) and "
     "snippet_read before reading whole files."
@@ -211,8 +211,8 @@ def _rel(p):
 
 
 def atlas_map() -> str:
-    """Map of the knowledge tree: trunk files, branches and leaves with their titles. Start here, then read the branch _dal.md, then ONE leaf."""
-    lines = ["Routing: open the branch _dal.md first, then one leaf. Do not read every file.", ""]
+    """Map of the knowledge tree: trunk files, branches and leaves with their titles. Start here, then read the branch _branch.md, then ONE leaf."""
+    lines = ["Routing: open the branch _branch.md first, then one leaf. Do not read every file.", ""]
     for p in _md_files():
         title = ""
         with io.open(p, encoding="utf-8", errors="replace") as fh:

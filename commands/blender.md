@@ -39,7 +39,7 @@ yapıyor mu** diye sor.
 
 ⚠️ Eklentilerin ürettiği geometri **Sollumz'a girmeden önce** normal kurallara tabidir:
 transform pişer, `Ctrl+A` şart, doku ikinin kuvveti
-(`skills/fivem-assets/govde/arac-tuzaklari.md` §2, `govde/gta-temel.md` §5).
+(`skills/fivem-assets/trunk/tool-pitfalls.md` §2, `trunk/gta-fundamentals.md` §5).
 
 ### İşe yarayan üçüncü taraf eklentiler
 
@@ -52,7 +52,7 @@ transform pişer, `Ctrl+A` şart, doku ikinin kuvveti
 
 Kanalda paylaşılan, **kurulu olmayan** araçlar (Vertex Color Master, geonodes
 decal/terrain, `blender_rayfirev`, FakeBones) →
-`skills/fivem-assets/kaynaklar/topluluk-kaynak.md`.
+`skills/fivem-assets/sources/community-resources.md`.
 
 **Ölçüm:** `AppData\Roaming\Blender Foundation\Blender\*\extensions\` ve
 `\scripts\addons\` taraması, 2026-09-06.

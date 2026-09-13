@@ -254,7 +254,7 @@ def cmd_mlo(yol):
 
 
 def calistir(args):
-    from doctor_ortak import _tr
+    from doctor_common import _tr
 
     if not os.path.exists(TSV):
         print(f"ERROR: {TSV} yok.", file=sys.stderr)

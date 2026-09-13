@@ -81,7 +81,7 @@ EXPRS = os.path.join(DATA, "expressions.tsv.gz")
 # olculen kullanim NEYIN oyle etiketlendigini soyler.
 #
 # Tam tablo + capraz dogrulama:
-#   skills/fivem-assets/govde/bayraklar.md
+#   skills/fivem-assets/trunk/flags.md
 SPECIAL = {
     0:  ("None", "Duz obje. Oyunun KAPI SISTEMI bu objeyi tanimaz."),
     1:  ("Deprecated - Unused", "Motorda hicbir sey yapmaz; eski dosyalarla "
@@ -2087,10 +2087,10 @@ def cmd_cycle(args):
     return cycle.calistir(args)
 
 
-def cmd_yol(args):
-    """Dis arac yollari. 0 hepsi var | 1 eksik/bulunamadi | 2 gecersiz yol."""
-    import yol
-    return yol.calistir(args)
+def cmd_path(args):
+    """External tool paths. 0 all found | 1 missing / not found | 2 invalid path."""
+    import paths
+    return paths.run(args)
 
 
 def cmd_light(args):
@@ -2109,8 +2109,8 @@ def cmd_light(args):
 
 def cmd_diff(args):
     """Yapisal diff. 0 fark yok | 1 fark var | 2 dosya okunamadi."""
-    import yapisal_diff
-    return yapisal_diff.calistir(args)
+    import structural_diff
+    return structural_diff.calistir(args)
 
 
 def main():
@@ -2334,13 +2334,13 @@ def main():
 
     s = sub.add_parser("path", aliases=["yol"],
                        help="external tool paths: show / set (codewalker, gta, ...)")
-    s.add_argument("ad", nargs="?", metavar="NAME",
+    s.add_argument("name", nargs="?", metavar="NAME",
                    help="codewalker | gta | server | blender | <any name you choose>")
-    s.add_argument("deger", nargs="?", metavar="PATH",
+    s.add_argument("value", nargs="?", metavar="PATH",
                    help="new path (omit to just show it)")
-    s.add_argument("--remove", "--sil", dest="sil", action="store_true",
+    s.add_argument("--remove", "--sil", dest="remove", action="store_true",
                    help="drop the stored entry")
-    s.set_defaults(func=cmd_yol)
+    s.set_defaults(func=cmd_path)
 
     s = sub.add_parser("light", help="decode and edit the lights embedded in a .ydr/.yft")
     s.add_argument("path", nargs="?", help=".ydr / .yft / .xml")

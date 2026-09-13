@@ -9,9 +9,9 @@ etiketler ve FTS5 ile aranabilir yapar. Uretilen dosya (data/atlas.db)
 depoya girmez; herkes kendi kopyasindan uretir.
 
 Proje = klasor adi:
-  skills/fivem-assets/dallar/<dal>/      -> <dal>
-  skills/fivem-assets/govde/ + SKILL.md  -> govde
-  skills/fivem-assets/kaynaklar/         -> kaynaklar
+  skills/fivem-assets/branches/<branch>/      -> <dal>
+  skills/fivem-assets/trunk/ + SKILL.md  -> govde
+  skills/fivem-assets/sources/         -> kaynaklar
   skills/<baska-skill>/                  -> <baska-skill>
   --source DIR ile eklenen DIR/<klasor>/ -> <klasor>
 
@@ -242,7 +242,7 @@ def split_markdown(text):
         if code is not None:
             if code["close"].match(line):
                 flush_code(code)
-                prose.append((code["start"], n, f"[{code['lang'] or 'kod'}: {len(code['lines'])} satır]", False))
+                prose.append((code["start"], n, f"[{code['lang'] or 'code'}: {len(code['lines'])} line{'s' if len(code['lines']) != 1 else ''}]", False))
                 code = None
             else:
                 code["lines"].append((n, n, line))
@@ -275,11 +275,11 @@ def project_of(rel, label):
     parts = rel.split("/")
     if label == "skills":
         if parts[0] == "fivem-assets":
-            if len(parts) >= 4 and parts[1] == "dallar":
+            if len(parts) >= 4 and parts[1] == "branches":
                 return parts[2]
-            if len(parts) >= 3 and parts[1] in ("govde", "kaynaklar"):
+            if len(parts) >= 3 and parts[1] in ("trunk", "sources"):
                 return parts[1]
-            return "govde"
+            return "trunk"
         return parts[0]
     return parts[0].lower() if len(parts) > 1 else label.lower()
 

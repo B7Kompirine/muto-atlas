@@ -10,6 +10,6 @@ Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içe
 
 ## Bu bir DAL komutudur (ince dal)
 
-1. **Önce dalı oku:** `${CLAUDE_PLUGIN_ROOT}/skills/fivem-assets/dallar/vehicle/_dal.md` — araç kemiklerinde ad sabittir.
-2. Sorgula: `assetdb.py vehicle <ad>` · `bones <model>`. Kemik adı tahmin edilmez, `govde/kemik-tag.md` §2'den kopyalanır.
+1. **Önce dalı oku:** `${CLAUDE_PLUGIN_ROOT}/skills/fivem-assets/branches/vehicle/_branch.md` — araç kemiklerinde ad sabittir.
+2. Sorgula: `assetdb.py vehicle <ad>` · `bones <model>`. Kemik adı tahmin edilmez, `trunk/bone-tags.md` §2'den kopyalanır.
 3. Araç modelleme/kurulum ölçülmedi — kullanıcıya söyle; topluluk videoları yerel çıkarımda.

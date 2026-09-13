@@ -31,11 +31,11 @@ $ErrorActionPreference = 'Stop'
 if (-not $Out) { $Out = Join-Path (Split-Path $PSScriptRoot -Parent) 'data' }
 if (-not (Test-Path -LiteralPath $Out)) { New-Item -ItemType Directory -Path $Out | Out-Null }
 
-$CodeWalker = & "$PSScriptRoot\yol.ps1" codewalker $CodeWalker
+$CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
 if (-not $CodeWalker -or -not (Test-Path -LiteralPath $CodeWalker)) {
     throw "CodeWalker.Core.dll bulunamadi."
 }
-$GtaFolder = & "$PSScriptRoot\yol.ps1" gta $GtaFolder
+$GtaFolder = & "$PSScriptRoot\paths.ps1" gta $GtaFolder
 if (-not $GtaFolder) { throw "GTA V klasoru bulunamadi." }
 
 $cwDir = Split-Path $CodeWalker -Parent

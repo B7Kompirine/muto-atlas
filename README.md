@@ -66,12 +66,12 @@ Some answers are not a row in a table — they are a number you only get by meas
 vanilla and your own output side by side. Those live in the `fivem-assets` skill as a
 **trunk / branch / leaf** tree, so a task loads one branch and one leaf, not 30 files:
 
-- **Trunk** (`SKILL.md` + `govde/`) — rules that hold everywhere: engine invariants,
+- **Trunk** (`SKILL.md` + `trunk/`) — rules that hold everywhere: engine invariants,
   the tool-trap catalogue (Sollumz, Blender, CodeWalker, PowerShell, FiveM runtime),
   the verification ladder, flag tables, bone-tag rules.
-- **Branches** (`dallar/<branch>/_dal.md`, one slash command each) — category-wide rules:
+- **Branches** (`branches/<branch>/_branch.md`, one slash command each) — category-wide rules:
   `map` · `prop` · `clothing` · `particle` · `look` · `vehicle`.
-- **Leaves** (`dallar/<branch>/<leaf>.md`, 31 of them) — one task each, named by what is
+- **Leaves** (`branches/<branch>/<leaf>.md`, 31 of them) — one task each, named by what is
   wanted, never by the project it came from. "Road collapse", "bridge collapse" and
   "explosion" are one leaf: destruction.
 
@@ -94,7 +94,7 @@ Both say plainly what was measured, what was inferred, and what was never checke
 The plugin also checks **itself**:
 
 ```bash
-python scripts/denetle_plugin.py     # exit 1 if anything is broken
+python scripts/audit_plugin.py     # exit 1 if anything is broken
 ```
 
 It catches the failures that never raise an error: a command pointing at a

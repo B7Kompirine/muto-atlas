@@ -38,7 +38,7 @@ import tempfile
 import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import light_sahne  # noqa: E402
+import light_scene  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RES_TO_XML = os.path.join(HERE, "res_to_xml.ps1")
@@ -60,7 +60,7 @@ SIRA = [
     "ShadowNearClip", "CoronaIntensity", "CoronaZBias", "Direction", "Tangent",
     "ConeInnerAngle", "ConeOuterAngle", "Extent", "ProjectedTextureHash",
 ]
-TAMSAYI = set(light_sahne.ALANLAR_I)
+TAMSAYI = set(light_scene.ALANLAR_I)
 
 
 def _ps(betik, *arg):
@@ -108,7 +108,7 @@ def _lights_dugumu(kok):
 
 
 def uygula(path, isiklar, yedekle=True):
-    """isiklar: light_sahne.oku()'nun dondurdugu bicimde sozluk listesi."""
+    """isiklar: light_scene.oku()'nun dondurdugu bicimde sozluk listesi."""
     path = os.path.abspath(path)
     ad = os.path.basename(path)
     with tempfile.TemporaryDirectory(prefix="isikedit_") as td:
@@ -141,7 +141,7 @@ def uygula(path, isiklar, yedekle=True):
 
         # DOGRULAMA: tek gecerli olcut geri okumadir (boyut degil).
         try:
-            geri = light_sahne.oku(gecici)
+            geri = light_scene.oku(gecici)
         except (RuntimeError, ValueError) as e:
             raise RuntimeError("compiled but could NOT be read back: %s" % e)
         if len(geri["isiklar"]) != len(isiklar):
@@ -201,7 +201,7 @@ def calistir(args):
         print("ERROR: no such file: %s" % yol, file=sys.stderr)
         return 2
     try:
-        sahne = light_sahne.oku(yol)
+        sahne = light_scene.oku(yol)
     except (RuntimeError, ValueError) as e:
         print("ERROR: %s" % e, file=sys.stderr)
         return 2

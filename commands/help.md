@@ -11,7 +11,7 @@ Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içe
 ## Yap
 
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/scripts/komutlar.py" $ARGUMENTS
+python "${CLAUDE_PLUGIN_ROOT}/scripts/list_commands.py" $ARGUMENTS
 ```
 
 Bu betik listeyi **`commands/*.md` frontmatter'ından okur** — elle yazılmış bir
@@ -47,5 +47,5 @@ komutunu ver: `python scripts/setup.py` ya da `/asset-setup`.
 | iş | komut |
 |---|---|
 | veri katmanı durumu | `python scripts/setup.py --plan` |
-| plugin bütünlük denetimi (kırık atıf, yetim referans, BOM) | `python scripts/denetle_plugin.py` |
-| tek satırlık komut listesi (script/dokümantasyon için) | `python scripts/komutlar.py --duz` |
+| plugin bütünlük denetimi (kırık atıf, yetim referans, BOM) | `python scripts/audit_plugin.py` |
+| tek satırlık komut listesi (script/dokümantasyon için) | `python scripts/list_commands.py --duz` |

@@ -13,27 +13,27 @@ Bir bilgi bir kez yazılır, geçerli olduğu en geniş yere.
 
 ## AĞAÇ — gövde / dal / yaprak
 
-- **Gövde** — bu dosya + `govde/`: **GTA V'in kendi kuralları** (veri modeli, dosya
+- **Gövde** — bu dosya + `trunk/`: **GTA V'in kendi kuralları** (veri modeli, dosya
   tipleri, hash, koordinat, **doku/DDS**, streaming, kaynak formatı, istemci/sunucu),
   bizim çalışma disiplinimiz, araç tuzakları, doğrulama merdiveni, bayraklar, kemik tag'i.
   **Ölçüt:** bir madde her dalda ve her yaprakta geçerli değilse gövdeye girmez.
-- **Dal** — `dallar/<dal>/_dal.md`: o kategorinin geniş kuralları + yaprak listesi.
-- **Yaprak** — `dallar/<dal>/<yaprak>.md`: yalnız o göreve özgü olan.
+- **Dal** — `branches/<branch>/_branch.md`: o kategorinin geniş kuralları + yaprak listesi.
+- **Yaprak** — `branches/<branch>/<leaf>.md`: yalnız o göreve özgü olan.
   Yaprak *istenen şeyle* tanımlanır; "yol yıkımı / köprü yıkımı / patlama" tek yapraktır.
 
-**Kullanım:** konu geçince önce dalı aç (`_dal.md`), sonra tek yaprağı.
+**Kullanım:** konu geçince önce dalı aç (`_branch.md`), sonra tek yaprağı.
 Bütün dosyaları tarama; keyword → dal → yaprak.
 
 | dal | komut | dosya | anahtar kelimeler |
 |---|---|---|---|
-| Harita | `/map` | `dallar/map/_dal.md` | ymap, ytyp, MLO, vanilla parça, yıkım, RayFire, LOD, extent, çim |
-| Prop | `/prop` | `dallar/prop/_dal.md` | prop, kapı, kımıldamıyor, fragment, ham paket, DUI, NUI HUD, ox_target |
-| Kıyafet | `/clothing` | `dallar/clothing/_dal.md` | giysi, freemode component, skintone, ped prop, şapka |
-| Partikül | `/particle` | `dallar/particle/_dal.md` | ptfx, .ypt, efekt, duman, flipbook, emitter, katalog |
-| Görünüm | `/look` | `dallar/look/_dal.md` | shader, doku, parallax, ışık, TimeFlags, decal, timecycle, emissive, bake |
-| Araç | `/vehicle` | `dallar/vehicle/_dal.md` | araç kemiği, handling, modkit, siren |
+| Harita | `/map` | `branches/map/_branch.md` | ymap, ytyp, MLO, vanilla parça, yıkım, RayFire, LOD, extent, çim |
+| Prop | `/prop` | `branches/prop/_branch.md` | prop, kapı, kımıldamıyor, fragment, ham paket, DUI, NUI HUD, ox_target |
+| Kıyafet | `/clothing` | `branches/clothing/_branch.md` | giysi, freemode component, skintone, ped prop, şapka |
+| Partikül | `/particle` | `branches/particle/_branch.md` | ptfx, .ypt, efekt, duman, flipbook, emitter, katalog |
+| Görünüm | `/look` | `branches/look/_branch.md` | shader, doku, parallax, ışık, TimeFlags, decal, timecycle, emissive, bake |
+| Araç | `/vehicle` | `branches/vehicle/_branch.md` | araç kemiği, handling, modkit, siren |
 
-Tam anahtar kelime listesi her `_dal.md`'nin başında.
+Tam anahtar kelime listesi her `_branch.md`'nin başında.
 
 ### ⛔ Yönlendirme KELİMEYLE değil SINIFLA yapılır
 
@@ -41,7 +41,7 @@ Anahtar kelimeler **hızlandırıcıdır, sözlük değildir.** Kelime kümesi s
 (*kepenk · tabela · çeşme*), sınıf kümesi kapalı: **6 dal.**
 
 1. Kelime tutuyorsa → dal belli, aç.
-2. Tutmuyorsa **dur değil**: `dallar/<dal>/_dal.md` başındaki
+2. Tutmuyorsa **dur değil**: `branches/<branch>/_branch.md` başındaki
    **`Bu dala ne düşer:`** tanımına bak, cümleyi **sınıflandır**.
    *"Kepenk açılsın"* → kepenk bir kapı nesnesidir → `/prop`.
 3. Listeye kelime eklemek **istisnadır**: yalnız sık geçen ve tanımdan da
@@ -53,13 +53,13 @@ Sınıf tanımından da çıkmıyorsa → **sor.**
 
 | dosya | ne zaman |
 |---|---|
-| `govde/gta-temel.md` | **motorun kendi sözleşmesi** — archetype/entity/drawable ayrımı, dosya tipleri, joaat, koordinat/birim, **doku ve DDS kuralları**, streaming, RSC7, istemci/sunucu, render kovası |
-| `govde/arac-tuzaklari.md` | Sollumz · Blender · CodeWalker · PowerShell · Python/Lua · FiveM çalışma zamanı — bir araç beklenmedik davranınca **önce buraya** |
-| `govde/dogrulama-merdiveni.md` | bir asset'i oyuna sokmadan doğrulama: Blender ölç → geri oku → CodeWalker headless → render → GUI → oyun |
-| `govde/bayraklar.md` | ytyp/ymap/collision bayrakları, `specialAttribute` 21 değer, 14 extension tipi, nametable |
-| `govde/kemik-tag.md` | araç / silah / ped kemiklerinde **ad mı sabit, tag mi sabit** |
-| `kaynaklar/dis-arac.md` | *(kural değil, kaynak notu)* dış araçların ölçülebilen kısmı; [doğrulandı]/[çürütüldü] etiketleri; alet envanteri |
-| `kaynaklar/topluluk-kaynak.md` | *(kural degil, kaynak notu)* Sollumz Discord `#resources` tam dokumu — hazir sablon/rig/arac indeksi, `bloodfx.dat` alanlari |
+| `trunk/gta-fundamentals.md` | **motorun kendi sözleşmesi** — archetype/entity/drawable ayrımı, dosya tipleri, joaat, koordinat/birim, **doku ve DDS kuralları**, streaming, RSC7, istemci/sunucu, render kovası |
+| `trunk/tool-pitfalls.md` | Sollumz · Blender · CodeWalker · PowerShell · Python/Lua · FiveM çalışma zamanı — bir araç beklenmedik davranınca **önce buraya** |
+| `trunk/verification-ladder.md` | bir asset'i oyuna sokmadan doğrulama: Blender ölç → geri oku → CodeWalker headless → render → GUI → oyun |
+| `trunk/flags.md` | ytyp/ymap/collision bayrakları, `specialAttribute` 21 değer, 14 extension tipi, nametable |
+| `trunk/bone-tags.md` | araç / silah / ped kemiklerinde **ad mı sabit, tag mi sabit** |
+| `sources/external-tools.md` | *(kural değil, kaynak notu)* dış araçların ölçülebilen kısmı; [doğrulandı]/[çürütüldü] etiketleri; alet envanteri |
+| `sources/community-resources.md` | *(kural degil, kaynak notu)* Sollumz Discord `#resources` tam dokumu — hazir sablon/rig/arac indeksi, `bloodfx.dat` alanlari |
 
 ## ⛔ VERİ EKSİKSE TAHMİN ETME
 
@@ -87,13 +87,13 @@ yani kapı değil. `assetdb.py door v_ilev_gb_teldr` bunu baştan söylerdi.
 
 1. **Ölçüm > tahmin.** Bir sayı (tag, bayrak, süre, lodDist, `fxName`) tahmin
    edilmez, sorgulanır. Dış araçtan gelen sayı **iddiadır**, `[doğrulandı]`
-   etiketi yoksa önce ölç (`kaynaklar/dis-arac.md`).
+   etiketi yoksa önce ölç (`sources/external-tools.md`).
 2. **Aracın göstermemesi, o şeyin yok olduğu anlamına gelmez.** CodeWalker
    `.yed` bytecode'unu yazamaz, PowerShell olmayan property'de `$null.Length=0`
    döner, Sollumz binary'yi "0.0 saniyede" içe alır — üçü de "yok" sanıldı.
 3. **Aracın hata vermemesi, işin doğru olduğu anlamına gelmez.** Bu depodaki
    hataların neredeyse hepsi sessizdir: dosya oluşur, "success" yazar, oyunda
-   hiçbir şey olmaz. Hepsi `govde/arac-tuzaklari.md`'de.
+   hiçbir şey olmaz. Hepsi `trunk/tool-pitfalls.md`'de.
 4. **Ekran görüntüsü ölçüm değildir.** Bir şeyin bozuk olduğunu söylemeden önce
    oku: pikseli, dosyayı, geri okumayı. (Bir turda üç kez görüntüye bakıp yanlış
    teşhis kondu.)
@@ -133,10 +133,10 @@ yani kapı değil. `assetdb.py door v_ilev_gb_teldr` bunu baştan söylerdi.
 - **Sihirli sayı kopyalanmaz, çözülür:** `assetdb.py flags <sayı> [--entity]`.
   `1572872` = LOD in Parented YMAP + Cast Static/Dynamic → ymap için; `18350080`
   = Dont Render In Reflections + iki gölge biti → MLO entity için. Karıştırmak
-  objeyi sessizce yok eder. → `govde/bayraklar.md`
+  objeyi sessizce yok eder. → `trunk/flags.md`
 - **Kemik: ad mı sabit, tag mi?** Script tarafı (`GetEntityBoneIndexByName`)
   **adı**, dosya tarafı (`.ycd`/`.yed`/`specialAttribute`) **tag'i** kullanır.
-  `GetPedBoneIndex` TAG alır. → `govde/kemik-tag.md`
+  `GetPedBoneIndex` TAG alır. → `trunk/bone-tags.md`
 - **bbox animasyonun tamamını kapsamalı — iki ayrı yerde:** `.ydr`'nin kendi
   `BoundingBox`/`Sphere`'i **ve** ytyp arketip kutusu. Biri düzeltilince öbürü
   rest kalırsa obje uzakta titrer ve kaybolur.
@@ -152,9 +152,9 @@ yani kapı değil. `assetdb.py door v_ilev_gb_teldr` bunu baştan söylerdi.
 - **DUI/NUI istemci tarafıdır** — şifre/kod/fiyat karşılaştırması sunucuda.
 - **Doku: DDS zorunlu, her iki kenar ikinin kuvveti, DXT + mip zinciri.** PNG sessizce
   atlanır, ikinin kuvveti olmayan doku titrer, DXT1 alfa taşımaz (delikler kapanır).
-  → `govde/gta-temel.md` §5
+  → `trunk/gta-fundamentals.md` §5
 - **Archetype (ne) ≠ entity (nerede) ≠ drawable (nasıl görünür)** — üçü ayrı dosyada;
-  ytyp'yi düzeltmek o modeli kullanan **her yeri** etkiler. → `govde/gta-temel.md` §1
+  ytyp'yi düzeltmek o modeli kullanan **her yeri** etkiler. → `trunk/gta-fundamentals.md` §1
 - **Klip adı = prop model adı** (eşya animasyonu tespiti). Süre tahmin edilmez,
   indeksten alınır.
 
@@ -189,7 +189,7 @@ ytyp'lerinden üretilir; yeniden kurmak `/asset-build`.
 ## DOĞRULAMA MERDİVENİ — oyun en son çare
 
 **Bir basamakta yakalanabilecek hatayı alt basamağa taşıma.**
-Tam reçete `govde/dogrulama-merdiveni.md`.
+Tam reçete `trunk/verification-ladder.md`.
 
 | ne doğrulanacak | basamak |
 |---|---|
@@ -197,7 +197,7 @@ Tam reçete `govde/dogrulama-merdiveni.md`.
 | shader/bucket, kemik tag, hiyerarşi, `<Hash>`, klip sayısı | `res_to_xml.ps1` + vanilla ile yapısal diff |
 | "gözle doğru duruyor mu" | Blender render → kullanıcıya **dosya** gönder |
 | vanilla asset, dünya yerleşimi, MLO düzeni | CodeWalker GUI (elle, kullanıcı sürer) |
-| script, fizik, gerçek görünüm, streaming, resmon | **oyun** — partikül için tezgâh `scripts/ptfx_tezgah.py` |
+| script, fizik, gerçek görünüm, streaming, resmon | **oyun** — partikül için tezgâh `scripts/ptfx_bench.py` |
 
 ## GÖRSEL GEREKTİĞİNDE — üretme, öner ve prompt ver
 

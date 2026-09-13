@@ -28,7 +28,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$CodeWalker = & "$PSScriptRoot\yol.ps1" codewalker $CodeWalker
+$CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
 if (-not $CodeWalker) { throw "CodeWalker.Core.dll bulunamadi" }
 [Reflection.Assembly]::LoadFrom($CodeWalker) | Out-Null
 

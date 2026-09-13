@@ -30,7 +30,7 @@ if ($Dir) {
 }
 if ($Path.Count -eq 0) { throw "Dosya verilmedi. -Path veya -Dir kullan." }
 
-$CodeWalker = & "$PSScriptRoot\yol.ps1" codewalker $CodeWalker
+$CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
 if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll bulunamadi." }
 
 $cwDir = Split-Path $CodeWalker -Parent

@@ -29,7 +29,7 @@ $ErrorActionPreference = 'Stop'
 if (-not $Out) { $Out = Join-Path (Split-Path $PSScriptRoot -Parent) 'data' }
 if (-not (Test-Path $Out)) { New-Item -ItemType Directory -Path $Out -Force | Out-Null }
 
-$CodeWalker = & "$PSScriptRoot\yol.ps1" codewalker $CodeWalker
+$CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
 if (-not $CodeWalker) {
     # Son care: diskte ara. YAVAS (C:\ altini tarar). Kalicisi icin:
     #   python assetdb.py yol codewalker "<yol>"
@@ -39,7 +39,7 @@ if (-not $CodeWalker) {
 }
 if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll bulunamadi. -CodeWalker <yol> ile ver." }
 
-$GtaFolder = & "$PSScriptRoot\yol.ps1" gta $GtaFolder
+$GtaFolder = & "$PSScriptRoot\paths.ps1" gta $GtaFolder
 if (-not $GtaFolder) { throw "GTA V klasoru bulunamadi. -GtaFolder <yol> ile ver." }
 
 $cwDir = Split-Path $CodeWalker -Parent

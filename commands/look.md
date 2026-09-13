@@ -10,7 +10,7 @@ Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içe
 
 ## Bu bir DAL komutudur
 
-1. **Önce dalı oku:** `${CLAUDE_PLUGIN_ROOT}/skills/fivem-assets/dallar/look/_dal.md`
+1. **Önce dalı oku:** `${CLAUDE_PLUGIN_ROOT}/skills/fivem-assets/branches/look/_branch.md`
    — shader = program + kova, doku DXT kuralları, ışık kemiğe bağlı / TimeFlags / Flashiness enum / gobo Tangent,
    karanlığın üç katmanı, vertex color bucket 0, decal üç sistem, parallax üç gerçek.
 2. Argümandan **tek yaprağı** seç: shader · parallax · ışık · ışık matematiği · timecycle · vertex color · emissive · decal.

@@ -10,7 +10,7 @@ Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içe
 
 ## Bu bir DAL komutudur
 
-1. **Önce dalı oku:** `${CLAUDE_PLUGIN_ROOT}/skills/fivem-assets/dallar/particle/_dal.md`
+1. **Önce dalı oku:** `${CLAUDE_PLUGIN_ROOT}/skills/fivem-assets/branches/particle/_branch.md`
    — `fxName` ≠ `.ypt` adı, `FxcFileHash`, keyframe yuvaları, ölçekler (yüzde vs 1.0), sayfa/`C4`, havuz 400.
 2. Argümandan **tek yaprağı** seç: hazır efekt · sıfırdan `.ypt` · katalog · katmanlı · dağıtım/ölçüm.
 3. Kod yazmadan sorgula: `assetdb.py fx <ad> --exact` · `ptfx <prop|efekt>` · `ptfx --type 4`.

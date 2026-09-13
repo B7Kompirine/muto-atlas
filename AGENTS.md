@@ -11,10 +11,10 @@ data instead of guessing. It ships three ways: as a Claude Code plugin, as porta
 
 | path | what it is |
 |---|---|
-| `skills/fivem-assets/SKILL.md` + `govde/` | the trunk: rules that hold in every branch |
-| `skills/fivem-assets/dallar/<branch>/_dal.md` | one branch: its rules and the table of its leaves |
-| `skills/fivem-assets/dallar/<branch>/<leaf>.md` | one task |
-| `skills/fivem-assets/kaynaklar/` | notes on outside tools — sources, not rules |
+| `skills/fivem-assets/SKILL.md` + `trunk/` | the trunk: rules that hold in every branch |
+| `skills/fivem-assets/branches/<branch>/_branch.md` | one branch: its rules and the table of its leaves |
+| `skills/fivem-assets/branches/<branch>/<leaf>.md` | one task |
+| `skills/fivem-assets/sources/` | notes on outside tools — sources, not rules |
 | `skills/fivem-natives/` | the native database skill |
 | `commands/*.md` | Claude Code slash commands |
 | `scripts/` | Python and PowerShell tools: `assetdb.py`, `nativedb.py`, `lint_lua.py`, `setup.py`, … |
@@ -33,7 +33,7 @@ data instead of guessing. It ships three ways: as a Claude Code plugin, as porta
 4. **Never commit game data, generated layers or personal paths.** Tool locations come from
    the path registry (`assetdb.py path`), never from a hard-coded path.
 5. **A finding is written once, in the widest place where it holds:** trunk, branch
-   `_dal.md`, or leaf. A new leaf must be listed in its branch's leaf table.
+   `_branch.md`, or leaf. A new leaf must be listed in its branch's leaf table.
 6. **User-facing script messages** go through `scripts/i18n.py` with `en` and `tr` entries.
 7. **PowerShell scripts run on Windows PowerShell 5.1:** save them as UTF-8 with BOM when
    they contain non-ASCII characters.
@@ -53,7 +53,7 @@ add other tool-specific syntax to skill bodies.
 ## Before you finish
 
 ```bash
-python scripts/denetle_plugin.py        # must exit 0
+python scripts/audit_plugin.py        # must exit 0
 python scripts/install_skills.py --check
 python scripts/mcp_server.py --list-tools
 python scripts/build_atlas_db.py --tagger rules   # if you touched the knowledge tree

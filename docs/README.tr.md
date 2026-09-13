@@ -337,7 +337,7 @@ Adlar **Sollumz 2.9 kaynağından** (`ytyp/properties/ytyp.py:53`), kapı yetene
 door physics taşıyor. `assetdb.py door` artık bayrağı da raporluyor.
 
 Tam tablo (21 değer) + entity/archetype bit tabloları + extension tipleri:
-`skills/fivem-assets/govde/bayraklar.md`
+`skills/fivem-assets/trunk/flags.md`
 
 ## Bayrak çözme
 
