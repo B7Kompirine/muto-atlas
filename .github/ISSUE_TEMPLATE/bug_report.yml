@@ -1,0 +1,63 @@
+name: Bug / silent failure
+description: A wrong answer, a crash, or something that failed without an error · Yanlış cevap, çökme ya da hata vermeden başarısız olan bir şey
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English or Turkish is fine. · Türkçe ya da İngilizce yazabilirsin.
+
+        Silent failures are the most valuable reports here — "no error, but nothing happened" counts.
+        En değerli rapor sessiz hatadır — "hata yok ama hiçbir şey olmadı" da sayılır.
+  - type: textarea
+    id: command
+    attributes:
+      label: "What did you run? · Ne çalıştırdın?"
+      description: "The exact command or slash command, with its arguments. · Komutun ya da slash komutunun argümanlarıyla tam hali."
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: "What happened? · Ne oldu?"
+      description: "Full output, including the exit code (`$LASTEXITCODE` in PowerShell, `$?` in bash). · Çıkış kodu dahil tam çıktı."
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: "What did you expect, and why? · Ne bekliyordun, neden?"
+      description: "If you know the correct answer, say how you know it (in-game test, CodeWalker, a vanilla file). · Doğru cevabı biliyorsan nereden bildiğini yaz."
+    validations:
+      required: true
+  - type: textarea
+    id: stats
+    attributes:
+      label: "Output of `assetdb.py stats` · `assetdb.py stats` çıktısı"
+      description: "Shows which data layers are installed; a missing layer explains many \"not found\" results. · Hangi veri katmanlarının kurulu olduğunu gösterir."
+      render: text
+  - type: input
+    id: plugin-version
+    attributes:
+      label: "muto-atlas version · muto-atlas sürümü"
+      placeholder: "2.5.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: game-build
+    attributes:
+      label: "Game build · Oyun sürümü"
+      options:
+        - "GTA V Legacy"
+        - "GTA V Enhanced"
+        - "Not relevant · İlgisiz"
+    validations:
+      required: true
+  - type: input
+    id: tools
+    attributes:
+      label: "Tool versions · Araç sürümleri"
+      description: "Only the ones involved. · Yalnız işin içinde olanlar."
+      placeholder: "Blender 4.2, Sollumz 2.9, CodeWalker 30, FiveM b3258"

@@ -324,9 +324,17 @@ These are not style preferences; each one was learned from a silent failure.
   was written.
 - **Missing translations print the key**, never an empty string, so gaps stay visible.
 
+## Contributing
+
+Corrections, new measurements and bug reports are welcome — in **English or
+Turkish**. Start with [CONTRIBUTING.md](CONTRIBUTING.md)
+([Türkçe](docs/CONTRIBUTING.tr.md)). Issues labelled
+[`good first issue`](https://github.com/B7Kompirine/muto-atlas/labels/good%20first%20issue)
+are a good place to begin.
+
 ## License
 
-MIT — see [LICENSE](LICENSE). Code only.
+MIT — see [LICENSE](LICENSE). Code only; [NOTICE.md](NOTICE.md) explains how game data is handled.
 
 No GTA V data is distributed here. GTA V and its assets are property of Rockstar Games.
 This project is not affiliated with Rockstar Games, Take-Two Interactive, or Cfx.re.

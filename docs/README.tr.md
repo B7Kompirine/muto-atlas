@@ -336,3 +336,15 @@ quaternion) bağımsız ölçümle doğrulandı:
 |---|---|
 | indeks | `(145.4186, -1041.8130, 29.6426)` |
 | oyun içi ölçüm | `(145.4186, -1041.8125, 29.6426)` |
+
+## Katkı
+
+Düzeltme, yeni ölçüm ve hata bildirimi **Türkçe ya da İngilizce** kabul edilir.
+Önce [katkı rehberini](CONTRIBUTING.tr.md) oku. `good first issue` etiketli
+maddeler başlamak için uygundur:
+https://github.com/B7Kompirine/muto-atlas/labels/good%20first%20issue
+
+## Lisans
+
+MIT — bkz. [LICENSE](../LICENSE). Yalnız kod içindir; oyun verisinin nasıl
+ele alındığı [NOTICE.md](../NOTICE.md)'de yazılı. Bu depoda GTA V verisi dağıtılmaz.
