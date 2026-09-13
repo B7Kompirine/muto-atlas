@@ -1,21 +1,21 @@
-﻿# build_entities.ps1 — ymap yerlesimlerinden DUNYA konumu indeksi uretir.
+﻿# build_entities.ps1 - builds a WORLD position index from ymap placements.
 #
-# Iki kaynak:
-#   1) ymap root entity'leri            -> dogrudan dunya konumu
-#   2) MLO instance + MLO archetype     -> ic mekan proplarinin dunya konumu
-#      world = mloPos + rotate(localPos, mloRot)   [ham quaternion; dogrulandi]
+# Two sources:
+#   1) ymap root entities                -> world position directly
+#   2) MLO instance + MLO archetype      -> world position of interior props
+#      world = mloPos + rotate(localPos, mloRot)   [raw quaternion; verified]
 #
-# Dogrulama: v_ilev_gb_teldr @ Legion Square = (145.4186, -1041.8130, 29.6426)
-# Bu, sunucudaki bagimsiz olcumle (145.4186, -1041.8125, 29.6426) ortusuyor.
+# Verification: v_ilev_gb_teldr @ Legion Square = (145.4186, -1041.8130, 29.6426)
+# This matches the independent measurement on the server (145.4186, -1041.8125, 29.6426).
 #
-# Kullanim:
+# Usage:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File build_entities.ps1 `
-#       [-GtaFolder <yol>] [-CodeWalker <dll>] [-Out <data>] [-All]
+#       [-GtaFolder <path>] [-CodeWalker <dll>] [-Out <data>] [-All]
 #
-# -All verilmezse LOD/SLOD ve arazi parcalari atlanir (indeks ~10x kucuk,
-#  script yazarken lazim olan proplar korunur).
+# Without -All, LOD/SLOD and terrain pieces are skipped (index ~10x smaller,
+#  the props needed when writing scripts are kept).
 #
-# Cikti: data/entities.tsv.gz
+# Output: data/entities.tsv.gz
 
 param(
     [string] $GtaFolder,
@@ -29,24 +29,24 @@ $ErrorActionPreference = 'Stop'
 if (-not $Out) { $Out = Join-Path (Split-Path $PSScriptRoot -Parent) 'data' }
 if (-not (Test-Path $Out)) { New-Item -ItemType Directory -Path $Out -Force | Out-Null }
 
-$CodeWalker = & "$PSScriptRoot\yol.ps1" codewalker $CodeWalker
+$CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
 if (-not $CodeWalker) {
-    # Son care: diskte ara. YAVAS (C:\ altini tarar). Kalicisi icin:
-    #   python assetdb.py yol codewalker "<yol>"
+    # Last resort: search the disk. SLOW (scans under C:\). To make it permanent:
+    #   python assetdb.py path codewalker "<path>"
     $CodeWalker = Get-ChildItem -Path "$env:USERPROFILE\Desktop","C:\" -Filter 'CodeWalker.Core.dll' `
                     -Recurse -Depth 4 -ErrorAction SilentlyContinue |
                   Select-Object -First 1 -ExpandProperty FullName
 }
-if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll bulunamadi. -CodeWalker <yol> ile ver." }
+if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll not found. Pass it with -CodeWalker <path>." }
 
-$GtaFolder = & "$PSScriptRoot\yol.ps1" gta $GtaFolder
-if (-not $GtaFolder) { throw "GTA V klasoru bulunamadi. -GtaFolder <yol> ile ver." }
+$GtaFolder = & "$PSScriptRoot\paths.ps1" gta $GtaFolder
+if (-not $GtaFolder) { throw "GTA V folder not found. Pass it with -GtaFolder <path>." }
 
 $cwDir = Split-Path $CodeWalker -Parent
 Write-Output "CodeWalker : $CodeWalker"
 Write-Output "GTA V      : $GtaFolder"
-Write-Output "Mod        : $(if($All){'TUM entity'}else{'filtreli (LOD/arazi haric)'})"
-Write-Output "Cikti      : $Out"
+Write-Output "Mode       : $(if($All){'ALL entities'}else{'filtered (LOD/terrain excluded)'})"
+Write-Output "Output     : $Out"
 
 $script:cwDir = $cwDir
 [System.AppDomain]::CurrentDomain.add_AssemblyResolve([System.ResolveEventHandler]{
@@ -70,8 +70,8 @@ public static class EntityIndexer
 {
     class Local { public string Name; public Vector3 Pos; }
 
-    // LOD / arazi / kaplama parcalari: script yazarken hicbir zaman
-    // sorgulanmaz ama indeksin %90'ini kaplar.
+    // LOD / terrain / cover pieces: never queried when writing
+    // scripts, but they take up 90% of the index.
     static bool Skip(string n)
     {
         if (string.IsNullOrEmpty(n)) return true;
@@ -89,7 +89,7 @@ public static class EntityIndexer
         var man = new RpfManager();
         var t0 = DateTime.Now;
         man.Init(gtaFolder, s => { }, s => { }, false, true);
-        Console.WriteLine("[*] RPF taramasi: {0:0.0} sn", (DateTime.Now - t0).TotalSeconds);
+        Console.WriteLine("[*] RPF scan: {0:0.0} s", (DateTime.Now - t0).TotalSeconds);
 
         var ytyps = new List<RpfFileEntry>();
         var ymaps = new List<RpfFileEntry>();
@@ -103,7 +103,7 @@ public static class EntityIndexer
             }
         Console.WriteLine("[*] ytyp={0}  ymap={1}", ytyps.Count, ymaps.Count);
 
-        // ── 1) MLO archetype -> ic entity'lerin LOKAL konumlari ─────
+        // -- 1) MLO archetype -> LOCAL positions of interior entities ---
         var mloLocals = new Dictionary<uint, List<Local>>();
         var mloNames = new Dictionary<uint, string>();
         int mloArch = 0, mloEnt = 0;
@@ -136,9 +136,9 @@ public static class EntityIndexer
             }
             catch { }
         }
-        Console.WriteLine("[*] MLO archetype={0}  ic entity={1}", mloArch, mloEnt);
+        Console.WriteLine("[*] MLO archetypes={0}  interior entities={1}", mloArch, mloEnt);
 
-        // ── 2) ymap -> root entity + MLO instance genisletme ────────
+        // -- 2) ymap -> root entities + MLO instance expansion ----------
         var outPath = Path.Combine(outFolder, "entities.tsv.gz");
         long root = 0, mlo = 0, skipped = 0;
         int okY = 0, errY = 0;
@@ -180,7 +180,7 @@ public static class EntityIndexer
                             List<Local> locals;
                             if (!mloLocals.TryGetValue(ced.archetypeName.Hash, out locals)) continue;
                             var mloPos = ced.position;
-                            // Ham quaternion dogru konvansiyon (bilinen koordinatla dogrulandi)
+                            // The raw quaternion is the right convention (verified with a known coordinate)
                             var q = new Quaternion(ced.rotation.X, ced.rotation.Y, ced.rotation.Z, ced.rotation.W);
                             string interior;
                             if (!mloNames.TryGetValue(ced.archetypeName.Hash, out interior)) interior = ced.archetypeName.ToString();
@@ -199,18 +199,18 @@ public static class EntityIndexer
         }
 
         var mb = new FileInfo(outPath).Length / 1024.0 / 1024.0;
-        Console.WriteLine("[*] ymap OK={0} hata={1}", okY, errY);
+        Console.WriteLine("[*] ymap OK={0} errors={1}", okY, errY);
         Console.WriteLine("[+] {0}  ({1:0.0} MB)", outPath, mb);
-        Console.WriteLine("[+] root={0}  mlo={1}  atlanan={2}  toplam={3}  sure={4:0.0} sn",
+        Console.WriteLine("[+] root={0}  mlo={1}  skipped={2}  total={3}  time={4:0.0} s",
             root, mlo, skipped, root + mlo, (DateTime.Now - t1).TotalSeconds);
     }
 }
 '@
 
-# 'System.Collections'/'System.Runtime'/'System.Console' SART: PowerShell 7 (.NET 8+)
-# altinda bu tipler netstandard'dan FORWARD edilmis durumda; referans verilmezse
-# Add-Type "CS1069: type has been forwarded" / "CS0103: Console does not exist"
-# ile coker. Windows PowerShell 5.1'de sorun cikmaz, PS7'de her seferinde cikar.
+# 'System.Collections'/'System.Runtime'/'System.Console' are REQUIRED: under PowerShell 7 (.NET 8+)
+# these types are FORWARDED from netstandard; without a reference
+# Add-Type crashes with "CS1069: type has been forwarded" / "CS0103: Console does not exist".
+# Windows PowerShell 5.1 has no problem with it; PS7 fails every time.
 $refs = @($CodeWalker, (Join-Path $cwDir 'SharpDX.dll'), (Join-Path $cwDir 'SharpDX.Mathematics.dll'), 'netstandard',
           'System.Collections', 'System.Runtime', 'System.Linq', 'System.Console', 'System.IO.Compression', 'System.Text.RegularExpressions')
 Add-Type -TypeDefinition $src -ReferencedAssemblies $refs -Language CSharp

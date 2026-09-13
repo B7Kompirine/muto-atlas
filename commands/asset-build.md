@@ -1,86 +1,86 @@
 ---
 description: Rebuild the archetype/animation indexes (after adding a new MLO or prop)
-argument-hint: [sunucu resources yolu]
+argument-hint: [server resources path]
 allowed-tools: Bash(powershell.exe:*), Bash(python:*), Read
 ---
 
-Argüman: `$ARGUMENTS`
+Argument: `$ARGUMENTS`
 
-Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `~/.claude/muto-atlas`).
+Plugin root: `${CLAUDE_PLUGIN_ROOT}` (if it cannot be found, the muto-atlas folder that contains `scripts/assetdb.py`).
 
-Ne zaman gerekir: sunucuya **yeni MLO / custom prop / ytyp** eklendiğinde, ya da
-GTA V güncellendiğinde. Vanilla veri değişmediği sürece tekrar kurmaya gerek yok.
+When it is needed: when a **new MLO / custom prop / ytyp** is added to the server, or
+when GTA V is updated. As long as the vanilla data does not change, there is no need to rebuild.
 
-## 1. Archetype indeksi (ytyp → prop/kapı gerçeği)
+## 1. Archetype index (ytyp → prop/door truth)
 
 ```bash
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/build_archetypes.ps1" -ExtraFolders "<sunucu resources yolu>"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/build_archetypes.ps1" -ExtraFolders "<server resources path>"
 ```
 
-- GTA V klasörünü ve CodeWalker.Core.dll'i kendi bulur; bulamazsa
-  `-GtaFolder` / `-CodeWalker` ile verilir.
-- `-ExtraFolders` verilmezse sadece vanilla indekslenir.
-- Süre ~20 sn, çıktı `data/archetypes.tsv.gz`.
+- It finds the GTA V folder and CodeWalker.Core.dll by itself; if it cannot, pass them with
+  `-GtaFolder` / `-CodeWalker`.
+- Without `-ExtraFolders` only vanilla is indexed.
+- Takes ~20 s, output `data/archetypes.tsv.gz`.
 
-**Ön koşul:** CodeWalker (CodeWalker.Core.dll) ve GTA V kurulu olmalı. Yoksa
-kullanıcıya söyle; bu adım atlanırsa custom prop'lar sorgulanamaz.
+**Prerequisite:** CodeWalker (CodeWalker.Core.dll) and GTA V must be installed. If they are not,
+tell the user; if this step is skipped, custom props cannot be queried.
 
-## 2. Dünya konumu indeksi (ymap + MLO iç mekân)
+## 2. World position index (ymap + MLO interior)
 
 ```bash
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/build_entities.ps1"
 python "${CLAUDE_PLUGIN_ROOT}/scripts/build_entities_db.py"
 ```
 
-- İlk adım ~50 sn, `entities.tsv.gz` (~40 MB) üretir.
-- İkinci adım ~20 sn, `entities.db` (~214 MB, indeksli) üretir.
-  `--drop-tsv` ile ara dosya silinir.
-- `-All` verilmezse LOD/arazi parçaları atlanır; script yazarken lazım olan
-  proplar korunur. Her şey isteniyorsa `-All` ekle (indeks ~10x büyür).
+- The first step takes ~50 s and produces `entities.tsv.gz` (~40 MB).
+- The second step takes ~20 s and produces `entities.db` (~214 MB, indexed).
+  `--drop-tsv` deletes the intermediate file.
+- Without `-All`, LOD/terrain pieces are skipped; the props you need when writing a script
+  are kept. If you want everything, add `-All` (the index grows ~10x).
 
-## 3. Animasyon detayı, iskelet ve expression
+## 3. Animation detail, skeleton and expression
 
 ```bash
-# klipler: gerçek süre + iz + kemik sayısı (.ycd), ~3 dk
+# clips: real duration + tracks + bone count (.ycd), ~3 min
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/build_clips.ps1"
 
-# iskelet (.ydr/.yft) + expression (.yed) — en uzun adım
+# skeleton (.ydr/.yft) + expression (.yed) — the longest step
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/build_rigs.ps1"
 ```
 
-## 4. Animasyon / prop / senaryo isim listesi
+## 4. Animation / prop / scenario name list
 
 ```bash
 python "${CLAUDE_PLUGIN_ROOT}/scripts/build_anims.py"
 ```
 
-İnternet ister (DurtyFree/gta-v-data-dumps). Daha önce indirilmişse
-`--offline` ile önbellekten kurar.
+Needs internet (DurtyFree/gta-v-data-dumps). If the files were downloaded before,
+`--offline` builds from the cache.
 
-## 5. Işık + timecycle
+## 5. Light + timecycle
 
 ```bash
-# timecycle modifier'ları (~1 sn) — "iç mekân neden karanlık"
+# timecycle modifiers (~1 s) — "why is the interior dark"
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/build_timecycle.ps1"
 
-# gömülü ışıklar — GTA'nın BÜTÜN .ydr/.yft/.ydd dosyaları taranır, UZUN sürer
+# embedded lights — ALL of GTA's .ydr/.yft/.ydd files are scanned, takes a LONG time
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/build_lights.ps1"
 ```
 
-`build_lights.ps1` 171k dosya tarar ve makineye göre **bir saati bulabilir**.
-Süreyi önceden ölçmek için `-Ornek 600` ile çalıştır: örneklem modu tahmini
-yazar ve **dosya yazmaz** (yarım veri kalıcı olmasın diye).
+`build_lights.ps1` scans 171k files and **can take an hour**, depending on the machine.
+To measure the duration first, run it with `-Sample 600`: sample mode prints an estimate
+and **writes no file** (so that partial data does not persist).
 
-İkisi de opsiyoneldir. Kurulu değillerse `light --table` ve `timecycle`
-uydurma değer döndürmez, çıkış kodu **2** verir.
+Both are optional. If they are not installed, `light --table` and `timecycle`
+return no invented values; they exit with code **2**.
 
-## 6. Doğrula
+## 6. Verify
 
 ```bash
 python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" stats
 python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" where v_ilev_gb_teldr
 ```
 
-Beklenen: ~316k archetype, ~269k anim klip, ~3.05M dünya yerleşimi ve
-`v_ilev_gb_teldr` için 6 Fleeca konumu. Kullanıcıya custom archetype sayısını
-söyle — 0 ise `-ExtraFolders` yolu yanlıştır.
+Expected: ~316k archetypes, ~269k anim clips, ~3.05M world placements and
+6 Fleeca locations for `v_ilev_gb_teldr`. Tell the user the custom archetype count
+— if it is 0, the `-ExtraFolders` path is wrong.

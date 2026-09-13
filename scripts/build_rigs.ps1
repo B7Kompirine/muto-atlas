@@ -1,17 +1,17 @@
-﻿# build_rigs.ps1 — ISKELET (kemik) ve EXPRESSION (.yed) indeksi.
+﻿# build_rigs.ps1 - SKELETON (bone) and EXPRESSION (.yed) index.
 #
-# NEDEN:
-#  • Prop'lari animasyonla oynatirken kemik ADI ve TAG'i gerekir
+# WHY:
+#  - Animating props needs the bone NAME and TAG
 #    (GetEntityBoneIndexByName, AttachEntityToEntity bone index, PlayEntityAnim).
-#    Hangi prop'un kemigi var, adi ne — sadece .ydr/.yft iskeletinde yazar.
-#  • .yed = Expression Dictionary. Prosedurel kemik hareketi (yay/spring,
-#    lookAt, carpismaya tepki) buradan gelir. "Collision ile animasyon
-#    oynatma" dedigin sey bu katman.
+#    Which prop has a bone and what it is called is written only in the .ydr/.yft skeleton.
+#  - .yed = Expression Dictionary. Procedural bone motion (spring,
+#    lookAt, reaction to collision) comes from here. What you call "playing an animation
+#    with collision" is this layer.
 #
-# Kullanim:
+# Usage:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File build_rigs.ps1 [-GtaFolder x] [-CodeWalker y] [-Out z]
 #
-# Cikti: data/skeletons.tsv.gz  ve  data/expressions.tsv.gz
+# Output: data/skeletons.tsv.gz  and  data/expressions.tsv.gz
 
 param(
     [string] $GtaFolder,
@@ -24,23 +24,23 @@ $ErrorActionPreference = 'Stop'
 if (-not $Out) { $Out = Join-Path (Split-Path $PSScriptRoot -Parent) 'data' }
 if (-not (Test-Path $Out)) { New-Item -ItemType Directory -Path $Out -Force | Out-Null }
 
-$CodeWalker = & "$PSScriptRoot\yol.ps1" codewalker $CodeWalker
+$CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
 if (-not $CodeWalker) {
-    # Son care: diskte ara. YAVAS (C:\ altini tarar). Kalicisi icin:
-    #   python assetdb.py yol codewalker "<yol>"
+    # Last resort: search the disk. SLOW (scans under C:\). To make it permanent:
+    #   python assetdb.py path codewalker "<path>"
     $CodeWalker = Get-ChildItem -Path "$env:USERPROFILE\Desktop","C:\" -Filter 'CodeWalker.Core.dll' `
                     -Recurse -Depth 4 -ErrorAction SilentlyContinue |
                   Select-Object -First 1 -ExpandProperty FullName
 }
-if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll bulunamadi. -CodeWalker <yol> ile ver." }
+if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll not found. Pass it with -CodeWalker <path>." }
 
-$GtaFolder = & "$PSScriptRoot\yol.ps1" gta $GtaFolder
-if (-not $GtaFolder) { throw "GTA V klasoru bulunamadi. -GtaFolder <yol> ile ver." }
+$GtaFolder = & "$PSScriptRoot\paths.ps1" gta $GtaFolder
+if (-not $GtaFolder) { throw "GTA V folder not found. Pass it with -GtaFolder <path>." }
 
 $cwDir = Split-Path $CodeWalker -Parent
 Write-Output "CodeWalker : $CodeWalker"
 Write-Output "GTA V      : $GtaFolder"
-Write-Output "Cikti      : $Out"
+Write-Output "Output     : $Out"
 
 $script:cwDir = $cwDir
 [System.AppDomain]::CurrentDomain.add_AssemblyResolve([System.ResolveEventHandler]{
@@ -72,7 +72,7 @@ public static class RigIndexer
             if (b == null) continue;
             string nm = null;
             try { nm = b.Name; } catch { }
-            if (string.IsNullOrEmpty(nm)) nm = "(adsiz)";
+            if (string.IsNullOrEmpty(nm)) nm = "(unnamed)";
             int tag = 0, idx = 0, par = -1;
             try { tag = b.Tag; } catch { }
             try { idx = b.Index; } catch { }
@@ -95,7 +95,7 @@ public static class RigIndexer
         var man = new RpfManager();
         var t0 = DateTime.Now;
         man.Init(gtaFolder, s => { }, s => { }, false, true);
-        Console.WriteLine("[*] RPF taramasi: {0:0.0} sn", (DateTime.Now - t0).TotalSeconds);
+        Console.WriteLine("[*] RPF scan: {0:0.0} s", (DateTime.Now - t0).TotalSeconds);
 
         var ydrs = new List<RpfFileEntry>();
         var yfts = new List<RpfFileEntry>();
@@ -111,7 +111,7 @@ public static class RigIndexer
             }
         Console.WriteLine("[*] ydr={0}  yft={1}  yed={2}", ydrs.Count, yfts.Count, yeds.Count);
 
-        // ── ISKELETLER ──────────────────────────────────────────────
+        // -- SKELETONS ---------------------------------------------------
         var skelPath = Path.Combine(outFolder, "skeletons.tsv.gz");
         long rigged = 0, boneRows = 0;
         int scanned = 0, err = 0;
@@ -137,7 +137,7 @@ public static class RigIndexer
                 }
                 catch { err++; }
                 if (scanned % 20000 == 0)
-                    Console.WriteLine("    ... {0} model tarandi, {1} iskeletli", scanned, rigged);
+                    Console.WriteLine("    ... {0} models scanned, {1} with a skeleton", scanned, rigged);
             }
 
             foreach (var fe in yfts)
@@ -154,13 +154,13 @@ public static class RigIndexer
                 }
                 catch { err++; }
                 if (scanned % 20000 == 0)
-                    Console.WriteLine("    ... {0} model tarandi, {1} iskeletli", scanned, rigged);
+                    Console.WriteLine("    ... {0} models scanned, {1} with a skeleton", scanned, rigged);
             }
         }
-        Console.WriteLine("[+] skeletons.tsv.gz  ({0:0.00} MB)  iskeletli model={1}  kemik satiri={2}  hata={3}  {4:0.0} sn",
+        Console.WriteLine("[+] skeletons.tsv.gz  ({0:0.00} MB)  models with skeleton={1}  bone rows={2}  errors={3}  {4:0.0} s",
             new FileInfo(skelPath).Length / 1024.0 / 1024.0, rigged, boneRows, err, (DateTime.Now - t1).TotalSeconds);
 
-        // ── EXPRESSION (.yed) ───────────────────────────────────────
+        // -- EXPRESSION (.yed) -------------------------------------------
         var exprPath = Path.Combine(outFolder, "expressions.tsv.gz");
         long exprs = 0;
         int okY = 0, errY = 0;
@@ -202,16 +202,16 @@ public static class RigIndexer
                 catch { errY++; }
             }
         }
-        Console.WriteLine("[+] expressions.tsv.gz  yed={0} hata={1} expression={2}  {3:0.0} sn",
+        Console.WriteLine("[+] expressions.tsv.gz  yed={0} errors={1} expressions={2}  {3:0.0} s",
             okY, errY, exprs, (DateTime.Now - t2).TotalSeconds);
     }
 }
 '@
 
-# 'System.Collections'/'System.Runtime'/'System.Console' SART: PowerShell 7 (.NET 8+)
-# altinda bu tipler netstandard'dan FORWARD edilmis durumda; referans verilmezse
-# Add-Type "CS1069: type has been forwarded" / "CS0103: Console does not exist"
-# ile coker. Windows PowerShell 5.1'de sorun cikmaz, PS7'de her seferinde cikar.
+# 'System.Collections'/'System.Runtime'/'System.Console' are REQUIRED: under PowerShell 7 (.NET 8+)
+# these types are FORWARDED from netstandard; without a reference
+# Add-Type crashes with "CS1069: type has been forwarded" / "CS0103: Console does not exist".
+# Windows PowerShell 5.1 has no problem with it; PS7 fails every time.
 $refs = @($CodeWalker, (Join-Path $cwDir 'SharpDX.dll'), (Join-Path $cwDir 'SharpDX.Mathematics.dll'), 'netstandard',
           'System.Collections', 'System.Runtime', 'System.Linq', 'System.Console', 'System.IO.Compression', 'System.Text.RegularExpressions')
 Add-Type -TypeDefinition $src -ReferencedAssemblies $refs -Language CSharp

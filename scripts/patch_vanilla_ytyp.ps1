@@ -1,26 +1,26 @@
-﻿# patch_vanilla_ytyp.ps1 — vanilla bir .ytyp dosyasinin TAMAMINI kopyalayip
-# icindeki belirli archetype'larin alanlarini degistirir ve AYNI ADLA yazar.
+﻿# patch_vanilla_ytyp.ps1 - copies a vanilla .ytyp file IN FULL, changes the fields
+# of specific archetypes in it and writes it under THE SAME NAME.
 #
-# NEDEN BU, make_ytyp_override.ps1'DEN FARKLI:
-#   make_ytyp_override.ps1 YENI bir ytyp uretir (kendi adimizla yeni archetype).
-#   O yol kendi modelimizi eklemek icin dogru, ama HARITADAKI mevcut objeyi
-#   duzeltmek icin ise yaramaz: haritadaki entity hala vanilla archetype'a
-#   bakar. Vanilla adiyla YENI bir ytyp eklemek de catisir — oyun ilk tanimi
-#   zaten kaydetmistir.
+# WHY THIS IS DIFFERENT FROM make_ytyp_override.ps1:
+#   make_ytyp_override.ps1 builds a NEW ytyp (a new archetype under our own name).
+#   That path is right for adding our own model, but useless for fixing an object
+#   that is ALREADY ON THE MAP: the entity on the map still points to the vanilla
+#   archetype. Adding a NEW ytyp under the vanilla name conflicts too - the game has
+#   already registered the first definition.
 #
-#   Tutan yol: vanilla ytyp DOSYASINI ayni adla stream/ icine koymak.
-#   FiveM stream klasorundeki dosyayi ad esleserek DEGISTIRIR; oyun bizim
-#   surumumuzu yukler. Boylece haritadaki entity'nin kendisi duzelir —
-#   obje spawn etmeye, gizlemeye, kapi sistemine elle kayit atmaya gerek
-#   kalmaz. Ayni MLO haritada kac yerde varsa hepsinde birden gecerlidir.
+#   The path that works: put the vanilla ytyp FILE into stream/ under the same name.
+#   FiveM REPLACES the file in the stream folder by matching the name; the game loads our
+#   version. That fixes the entity on the map itself -
+#   no need to spawn objects, hide them, or register them in the door system by hand.
+#   It applies in every place the MLO exists on the map at once.
 #
-# RISK: dosyanin TAMAMI degisir. Bu yuzden kaynak RPF'ten birebir okunur,
-# sadece istenen alanlar yazilir ve yazdiktan sonra GERI OKUNUP kaynakla
-# karsilastirilir (archetype sayisi, MLO oda/portal/entity sayilari).
-# Karsilastirma tutmazsa dosya SILINIR — bozuk ytyp streamlemek MLO'yu
-# komple bozar.
+# RISK: the WHOLE file changes. So the source is read exactly from the RPF,
+# only the requested fields are written, and after writing the file is READ BACK and
+# compared with the source (archetype count, MLO room/portal/entity counts).
+# If the comparison fails the file is DELETED - streaming a broken ytyp breaks the MLO
+# completely.
 #
-# Kullanim:
+# Usage:
 #   powershell -File patch_vanilla_ytyp.ps1 `
 #       -YtypName int_lev_des.ytyp `
 #       -Patch "v_ilev_gb_teldr=specialAttribute:7" `
@@ -28,16 +28,16 @@
 
 param(
     [Parameter(Mandatory=$true)][string]   $YtypName,
-    # "archetypeAdi=alan:deger" biciminde, virgulle birden fazla.
-    # Desteklenen alanlar: specialAttribute, flags, lodDist
+    # In the form "archetypeName=field:value", several separated by commas.
+    # Supported fields: specialAttribute, flags, lodDist
     [string[]] $Patch = @(),
-    # "eskiModel=yeniModel" — MLO'nun ENTITY listesinde model adini degistirir.
+    # "oldModel=newModel" - changes the model name in the MLO's ENTITY list.
     #
-    # NEDEN GEREKLI: MLO ic mekanina disaridan ymap ile prop koyulamaz; oda/
-    # portal sistemi onu eler. Ic mekandaki bir objeyi kendi modelimizle
-    # degistirmenin tek dogru yolu MLO'nun kendi entity listesini duzeltmek.
-    # Boylece objeyi MLO'nun KENDISI yerleştirir: gizleme, ymap, spawn yok
-    # ve o MLO haritada kac yerde varsa hepsinde birden gecerli olur.
+    # WHY IT IS NEEDED: a prop cannot be placed inside an MLO interior from an outside ymap; the
+    # room/portal system culls it. The only right way to replace an interior object with our own
+    # model is to fix the MLO's own entity list.
+    # Then the MLO ITSELF places the object: no hiding, no ymap, no spawn,
+    # and it applies in every place the MLO exists on the map at once.
     [string[]] $SwapEntity = @(),
     [Parameter(Mandatory=$true)][string]   $OutDir,
     [string] $GtaFolder,
@@ -46,11 +46,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$CodeWalker = & "$PSScriptRoot\yol.ps1" codewalker $CodeWalker
-if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll bulunamadi." }
+$CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
+if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll not found." }
 
-$GtaFolder = & "$PSScriptRoot\yol.ps1" gta $GtaFolder
-if (-not $GtaFolder) { throw "GTA V klasoru bulunamadi." }
+$GtaFolder = & "$PSScriptRoot\paths.ps1" gta $GtaFolder
+if (-not $GtaFolder) { throw "GTA V folder not found." }
 
 if (-not (Test-Path $OutDir)) { New-Item -ItemType Directory -Path $OutDir -Force | Out-Null }
 
@@ -80,8 +80,8 @@ public static class YtypPatcher
         h += h << 3; h ^= h >> 11; h += h << 15; return h;
     }
 
-    // MLO'nun ic yapisini sayarak imzasini cikarir. Round-trip sonrasi
-    // bu imza degistiyse kayit bozulmus demektir.
+    // Builds a signature of the MLO by counting its internal structure. If this signature
+    // changed after the round trip, the record is broken.
     static string Signature(YtypFile y)
     {
         int arch = 0, mlo = 0, rooms = 0, portals = 0, ents = 0, esets = 0;
@@ -110,25 +110,25 @@ public static class YtypPatcher
         var man = new RpfManager();
         man.Init(gtaFolder, s => { }, s => { }, false, true);
 
-        // Istenen degisiklikleri ayristir: "ad=alan:deger"
+        // Parse the requested changes: "name=field:value"
         var want = new Dictionary<uint, List<KeyValuePair<string,string>>>();
         var names = new Dictionary<uint, string>();
         foreach (var p in patches)
         {
             var eq = p.IndexOf('=');
-            if (eq < 0) { Console.WriteLine("[!] anlasilmadi: {0}", p); continue; }
-            var an = p.Substring(0, eq).Trim();
+            if (eq < 0) { Console.WriteLine("[!] could not parse: {0}", p); continue; }
+            var archName = p.Substring(0, eq).Trim();
             var rest = p.Substring(eq + 1).Trim();
             var co = rest.IndexOf(':');
-            if (co < 0) { Console.WriteLine("[!] anlasilmadi: {0}", p); continue; }
-            uint h = Joaat(an);
-            names[h] = an;
+            if (co < 0) { Console.WriteLine("[!] could not parse: {0}", p); continue; }
+            uint h = Joaat(archName);
+            names[h] = archName;
             if (!want.ContainsKey(h)) want[h] = new List<KeyValuePair<string,string>>();
             want[h].Add(new KeyValuePair<string,string>(rest.Substring(0, co).Trim(),
                                                        rest.Substring(co + 1).Trim()));
         }
 
-        // Kaynak dosyayi RPF'te bul
+        // Find the source file in the RPFs
         RpfFileEntry found = null;
         foreach (var rpf in man.AllRpfs)
         {
@@ -140,32 +140,32 @@ public static class YtypPatcher
             }
             if (found != null) break;
         }
-        if (found == null) { Console.WriteLine("[!] {0} RPF'lerde bulunamadi.", ytypName); return; }
+        if (found == null) { Console.WriteLine("[!] {0} not found in the RPFs.", ytypName); return; }
 
-        // YAMALAR UST USTE BINEBILMELI.
-        // Her calismada vanilla RPF'ten okursak onceki yamayi EZERIZ.
-        // (Gercek vaka: kapi degisimi yapildi, sonra ayni ytyp'ye kutu
-        // eklenince kapilar vanilla'ya geri dondu.) Cikti klasorunde
-        // dosya varsa ONDAN devam ederiz.
+        // PATCHES MUST STACK.
+        // If every run reads from the vanilla RPF we OVERWRITE the previous patch.
+        // (Real case: a door swap was made, then adding boxes to the same ytyp
+        // turned the doors back to vanilla.) If the file exists in the output
+        // folder we continue FROM IT.
         var existing = Path.Combine(outDir, ytypName);
         var y = new YtypFile();
         if (File.Exists(existing))
         {
             y.Load(File.ReadAllBytes(existing));
-            Console.WriteLine("[*] mevcut yamali dosyadan devam ediliyor: {0}", existing);
+            Console.WriteLine("[*] continuing from the existing patched file: {0}", existing);
         }
         else
         {
             y.Load(found.File.ExtractFile(found), found);
-            Console.WriteLine("[*] vanilla kaynaktan okundu");
+            Console.WriteLine("[*] read from the vanilla source");
         }
         string sigBefore = Signature(y);
-        Console.WriteLine("[*] kaynak: {0}", found.Path);
-        Console.WriteLine("[*] imza  : {0}", sigBefore);
+        Console.WriteLine("[*] source   : {0}", found.Path);
+        Console.WriteLine("[*] signature: {0}", sigBefore);
 
-        // Alanlari degistir. AllArchetypes ELEMANLARI struct dondurur;
-        // degisikligin kalici olmasi icin archetype nesnesine Init ile
-        // geri yazmak gerekiyor.
+        // Change the fields. The ELEMENTS of AllArchetypes return structs;
+        // to make the change stick it has to be written back to the archetype
+        // object with Init.
         int changed = 0;
         foreach (var a in y.AllArchetypes)
         {
@@ -189,7 +189,7 @@ public static class YtypPatcher
                         def.lodDist = float.Parse(kv.Value, CultureInfo.InvariantCulture);
                         break;
                     default:
-                        Console.WriteLine("[!] desteklenmeyen alan: {0}", kv.Key);
+                        Console.WriteLine("[!] unsupported field: {0}", kv.Key);
                         break;
                 }
             }
@@ -197,12 +197,12 @@ public static class YtypPatcher
             changed++;
         }
 
-        // ── MLO ENTITY MODEL DEGISIMI ────────────────────────────────
+        // -- MLO ENTITY MODEL SWAP ---------------------------------------
         var swapMap = new Dictionary<uint, KeyValuePair<string,string>>();
         foreach (var s in swaps)
         {
             var eq = s.IndexOf('=');
-            if (eq < 0) { Console.WriteLine("[!] anlasilmadi: {0}", s); continue; }
+            if (eq < 0) { Console.WriteLine("[!] could not parse: {0}", s); continue; }
             var oldN = s.Substring(0, eq).Trim();
             var newN = s.Substring(eq + 1).Trim();
             swapMap[Joaat(oldN)] = new KeyValuePair<string,string>(oldN, newN);
@@ -220,7 +220,7 @@ public static class YtypPatcher
                     var d = me.Data;
                     KeyValuePair<string,string> sw;
                     if (!swapMap.TryGetValue(d.archetypeName.Hash, out sw)) continue;
-                    // MCEntityDef.Data bir STRUCT dondurur; kopyala-degistir-geri yaz
+                    // MCEntityDef.Data returns a STRUCT; copy, modify, write back
                     d.archetypeName = new MetaHash(Joaat(sw.Value));
                     me.Data = d;
                     swapped++;
@@ -231,17 +231,17 @@ public static class YtypPatcher
             changed += swapped;
         }
 
-        if (changed == 0) { Console.WriteLine("[!] hicbir degisiklik yapilmadi — dosya yazilmadi."); return; }
+        if (changed == 0) { Console.WriteLine("[!] no change made - file not written."); return; }
 
         var outPath = Path.Combine(outDir, ytypName);
         var outBytes = y.Save();
         File.WriteAllBytes(outPath, outBytes);
 
-        // ---- GERI OKU VE DOGRULA ----
+        // ---- READ BACK AND VERIFY ----
         var check = new YtypFile();
         check.Load(File.ReadAllBytes(outPath));
         string sigAfter = Signature(check);
-        Console.WriteLine("[*] yazilan imza: {0}", sigAfter);
+        Console.WriteLine("[*] written signature: {0}", sigAfter);
 
         bool ok = (sigBefore == sigAfter);
         if (ok)
@@ -250,10 +250,10 @@ public static class YtypPatcher
             {
                 var def = a._BaseArchetypeDef;
                 if (want.ContainsKey(def.name.Hash))
-                    Console.WriteLine("    dogrulama: {0} specialAttribute={1} flags={2} lodDist={3}",
+                    Console.WriteLine("    verify: {0} specialAttribute={1} flags={2} lodDist={3}",
                         names[def.name.Hash], def.specialAttribute, def.flags, def.lodDist);
             }
-            // Model degisimi gercekten dosyaya gitti mi?
+            // Did the model swap really reach the file?
             if (swapMap.Count > 0)
             {
                 int seen = 0, leftover = 0;
@@ -269,7 +269,7 @@ public static class YtypPatcher
                             if (h == Joaat(kv.Value.Value)) seen++;
                     }
                 }
-                Console.WriteLine("    dogrulama: yeni model {0} entity'de, eski model {1} entity'de kaldi", seen, leftover);
+                Console.WriteLine("    verify: new model in {0} entities, old model left in {1} entities", seen, leftover);
                 if (seen != swapped || leftover != 0) ok = false;
             }
         }
@@ -277,21 +277,21 @@ public static class YtypPatcher
         if (!ok)
         {
             File.Delete(outPath);
-            Console.WriteLine("[X] IMZA TUTMADI — dosya SILINDI. Bozuk ytyp streamlemek MLO'yu bozar.");
+            Console.WriteLine("[X] SIGNATURE MISMATCH - file DELETED. Streaming a broken ytyp breaks the MLO.");
             return;
         }
 
-        Console.WriteLine("[+] yazildi: {0}  ({1} bayt, {2} archetype degisti)", outPath, outBytes.Length, changed);
-        Console.WriteLine("[i] fxmanifest'e SADECE files{{}} olarak ekle — data_file DLC_ITYP_REQUEST EKLEME.");
-        Console.WriteLine("    Bu bir vanilla dosya DEGISIMIDIR, yeni bir ityp kaydi degil.");
+        Console.WriteLine("[+] written: {0}  ({1} bytes, {2} archetypes changed)", outPath, outBytes.Length, changed);
+        Console.WriteLine("[i] add it to fxmanifest ONLY as files{{}} - do NOT add data_file DLC_ITYP_REQUEST.");
+        Console.WriteLine("    This is a vanilla file REPLACEMENT, not a new ityp registration.");
     }
 }
 '@
 
-# 'System.Collections'/'System.Runtime'/'System.Console' SART: PowerShell 7 (.NET 8+)
-# altinda bu tipler netstandard'dan FORWARD edilmis durumda; referans verilmezse
-# Add-Type "CS1069: type has been forwarded" / "CS0103: Console does not exist"
-# ile coker. Windows PowerShell 5.1'de sorun cikmaz, PS7'de her seferinde cikar.
+# 'System.Collections'/'System.Runtime'/'System.Console' are REQUIRED: under PowerShell 7 (.NET 8+)
+# these types are FORWARDED from netstandard; without a reference
+# Add-Type crashes with "CS1069: type has been forwarded" / "CS0103: Console does not exist".
+# Windows PowerShell 5.1 has no problem with it; PS7 fails every time.
 $refs = @($CodeWalker, (Join-Path $cwDir 'SharpDX.dll'), (Join-Path $cwDir 'SharpDX.Mathematics.dll'), 'netstandard',
           'System.Collections', 'System.Runtime', 'System.Linq', 'System.Console', 'System.IO.Compression', 'System.Text.RegularExpressions')
 Add-Type -TypeDefinition $src -ReferencedAssemblies $refs -Language CSharp

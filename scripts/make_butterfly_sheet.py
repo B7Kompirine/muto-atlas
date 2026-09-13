@@ -1,55 +1,57 @@
 #!/usr/bin/env python3
-"""make_butterfly_sheet.py — kanat cirpan kelebek sprite sheet'i uretir.
+"""make_butterfly_sheet.py — writes a sprite sheet of a butterfly flapping its wings.
 
-NEDEN PROSEDUREL: bir metin-gorsel modeli 16 kareyi TUTARLI uretemez --
-her karede kelebegin govdesi/oranlari kayar, cirpma titrer. Kanat cirpma
-geometrik olarak basit oldugu icin prosedurel uretim hem kareler arasi
-tutarliligi hem ortalanmayi hem esit acisal araligi GARANTI eder.
-Sprite sheet'te bunlarin ucu de zorunludur.
+WHY PROCEDURAL: a text-to-image model cannot make 16 frames CONSISTENTLY --
+in every frame the butterfly's body/proportions drift, the flapping jitters.
+Because wing flapping is geometrically simple, procedural generation GUARANTEES
+frame-to-frame consistency, centring and equal angular steps.
+A sprite sheet needs all three.
 
-⛔ CIKTI GRI MASKEDIR, renkli degil. Partikul dokusunun rengi motordan
-   gelir (particle rule'un ptxu_Colour keyframe'i). Doku renkli olursa
-   tint uzerine biner ve renk kontrolu kaybolur -- decal tarafinda tam
-   bu yasandi (fxdecal dokularinda 800 renk ciftinin tamami R=G=B).
+⛔ THE OUTPUT IS A GREY MASK, not colored. The color of a particle texture comes
+   from the engine (the particle rule's ptxu_Colour keyframe). If the texture is
+   colored it stacks on the tint and color control is lost -- exactly this
+   happened on the decal side (all 800 color pairs in the fxdecal textures are R=G=B).
 
-Kareler SOLDAN SAGA, YUKARIDAN ASAGIYA dizilir (satir onceligi).
+Frames run LEFT TO RIGHT, TOP TO BOTTOM (row first).
 
-Kullanim:
-  python make_butterfly_sheet.py cikti.png --sutun 4 --satir 4 --hucre 128
+Usage:
+  python make_butterfly_sheet.py out.png --columns 4 --rows 4 --cell 128
 """
 from __future__ import annotations
+
+import sys
 
 import argparse
 import math
 
 from PIL import Image, ImageDraw
 
-SS = 4          # supersample carpani (kenar yumusatma icin)
+SS = 4          # supersample factor (for edge smoothing)
 
-# --- Kelebek govdesi: normalize koordinat, y YUKARI pozitif, [-1,1] ---
-# Ust gorunum. Kanatlar govdenin saginda tanimli, sola AYNALANIR.
-ON_KANAT = [
+# --- Butterfly body: normalised coordinates, y UP is positive, [-1,1] ---
+# Top view. The wings are defined to the right of the body and MIRRORED to the left.
+FRONT_WING = [
     (0.04, 0.34), (0.30, 0.52), (0.60, 0.66), (0.84, 0.60),
     (0.94, 0.36), (0.86, 0.14), (0.55, 0.02), (0.20, -0.02), (0.04, 0.02),
 ]
-ARKA_KANAT = [
+HIND_WING = [
     (0.04, -0.04), (0.34, -0.10), (0.62, -0.28), (0.70, -0.52),
     (0.56, -0.72), (0.30, -0.74), (0.12, -0.55), (0.04, -0.30),
 ]
-# Kanat deseni: (merkez_x, merkez_y, yaricap, alfa) -- govdeye gore
-BENEK = [
+# Wing pattern: (centre_x, centre_y, radius, alpha) -- relative to the body
+SPOTS = [
     (0.62, 0.42, 0.13, 0.45), (0.40, 0.22, 0.09, 0.55),
     (0.44, -0.40, 0.11, 0.45), (0.28, -0.58, 0.07, 0.60),
 ]
 
 
-def chaikin(p, tur=4):
-    """Kapali cokgeni yumusatir (Chaikin kose kesme).
+def chaikin(p, passes=4):
+    """Smooths a closed polygon (Chaikin corner cutting).
 
-    Ham cokgen 128px hucrede KOSELI okunur -- kanat kenarindaki kirilmalar
-    gozle secilir. Her tur kose sayisini ikiye katlayip kirikligi yariya
-    indirir; 4 tur 128px'te tamamen puruzsuz."""
-    for _ in range(tur):
+    A raw polygon reads ANGULAR in a 128px cell -- the breaks along the wing
+    edge are visible. Each pass doubles the corner count and halves the breaks;
+    4 passes are fully smooth at 128px."""
+    for _ in range(passes):
         y = []
         for i in range(len(p)):
             a, b = p[i], p[(i + 1) % len(p)]
@@ -59,88 +61,95 @@ def chaikin(p, tur=4):
     return p
 
 
-def cokgen(d, noktalar, gen_carp, olcek, mrk, dolgu):
-    """Bir kanadi cizer. gen_carp: cirpma foreshortening'i (yatay ezilme)."""
-    p = [(mrk + x * gen_carp * olcek, mrk - y * olcek)
-         for x, y in chaikin(noktalar)]
-    d.polygon(p, fill=dolgu)
+def draw_wing(d, points, width_mult, scale, centre, fill):
+    """Draws one wing. width_mult: flapping foreshortening (horizontal squash)."""
+    p = [(centre + x * width_mult * scale, centre - y * scale)
+         for x, y in chaikin(points)]
+    d.polygon(p, fill=fill)
 
 
-def kare_ciz(boy, faz, ss=SS):
-    """Tek kareyi (L modunda alfa maskesi) uretir. faz: 0..1 cevrim icinde."""
-    n = boy * ss
+def draw_frame(size, phase, ss=SS):
+    """Makes one frame (alpha mask in L mode). phase: 0..1 within the cycle."""
+    n = size * ss
     im = Image.new("L", (n, n), 0)
     d = ImageDraw.Draw(im)
-    mrk = n / 2.0
-    olcek = n * 0.45          # hucre kenarina degmesin
+    centre = n / 2.0
+    scale = n * 0.45          # keep off the cell edge
 
-    # ⛔ Cirpma UST GORUNUMDE yatay kisalma olarak okunur.
-    #    Kanat dihedral acisi t -> ekranda genislik cos(t) ile carpilir.
-    #    Tam cevrim: sin ile git-gel, boylece sheet KUSURSUZ DONGU olur.
-    aci = math.radians(62.0) * math.sin(2 * math.pi * faz)
-    geni = math.cos(aci)
-    # kanat kalkinca govde biraz asagi kayar gibi durur (hacim hissi)
-    kayma = -0.05 * abs(math.sin(aci)) * olcek
+    # ⛔ In TOP VIEW the flap reads as horizontal shortening.
+    #    Wing dihedral angle t -> on screen the width is multiplied by cos(t).
+    #    Full cycle: back and forth with sin, so the sheet LOOPS SEAMLESSLY.
+    angle = math.radians(62.0) * math.sin(2 * math.pi * phase)
+    width_factor = math.cos(angle)
+    # when the wings rise the body seems to slide down a little (sense of volume)
+    shift = -0.05 * abs(math.sin(angle)) * scale
 
-    for yon in (1, -1):
-        gc = geni * yon
-        cokgen(d, ON_KANAT, gc, olcek, mrk, 235)
-        cokgen(d, ARKA_KANAT, gc, olcek, mrk, 215)
+    for side in (1, -1):
+        gc = width_factor * side
+        draw_wing(d, FRONT_WING, gc, scale, centre, 235)
+        draw_wing(d, HIND_WING, gc, scale, centre, 215)
 
-    # kanat deseni (alfa dusuk benekler -> tint'te doku hissi)
-    for bx, by, br, ba in BENEK:
-        for yon in (1, -1):
-            cx = mrk + bx * geni * yon * olcek
-            cy = mrk - by * olcek
-            r = br * olcek * max(0.35, geni)
+    # wing pattern (low-alpha spots -> a sense of texture under the tint)
+    for bx, by, br, ba in SPOTS:
+        for side in (1, -1):
+            cx = centre + bx * width_factor * side * scale
+            cy = centre - by * scale
+            r = br * scale * max(0.35, width_factor)
             d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=int(255 * ba))
 
-    # govde: ince elips + kafa
-    gw, gh = 0.055 * olcek, 0.42 * olcek
-    d.ellipse([mrk - gw, mrk - gh + kayma, mrk + gw, mrk + gh * 0.85 + kayma], fill=255)
-    kr = 0.075 * olcek
-    d.ellipse([mrk - kr, mrk - gh - kr * 0.9 + kayma,
-               mrk + kr, mrk - gh + kr * 1.1 + kayma], fill=255)
+    # body: thin ellipse + head
+    gw, gh = 0.055 * scale, 0.42 * scale
+    d.ellipse([centre - gw, centre - gh + shift, centre + gw, centre + gh * 0.85 + shift], fill=255)
+    head_r = 0.075 * scale
+    d.ellipse([centre - head_r, centre - gh - head_r * 0.9 + shift,
+               centre + head_r, centre - gh + head_r * 1.1 + shift], fill=255)
 
-    # antenler
-    for yon in (1, -1):
-        x0, y0 = mrk + yon * kr * 0.5, mrk - gh + kayma
-        x1, y1 = mrk + yon * 0.26 * olcek, mrk - 0.62 * olcek + kayma
+    # antennae
+    for side in (1, -1):
+        x0, y0 = centre + side * head_r * 0.5, centre - gh + shift
+        x1, y1 = centre + side * 0.26 * scale, centre - 0.62 * scale + shift
         d.line([x0, y0, x1, y1], fill=200, width=max(1, int(n * 0.008)))
-        ur = n * 0.012
-        d.ellipse([x1 - ur, y1 - ur, x1 + ur, y1 + ur], fill=220)
+        tip_r = n * 0.012
+        d.ellipse([x1 - tip_r, y1 - tip_r, x1 + tip_r, y1 + tip_r], fill=220)
 
-    return im.resize((boy, boy), Image.LANCZOS)
+    return im.resize((size, size), Image.LANCZOS)
 
 
 def main() -> int:
+    # Help and messages carry non-ASCII marks; a console with a legacy code page cannot encode
+    # them and argparse would crash. Replace what the console cannot show.
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(errors="replace")
+        except (AttributeError, ValueError):
+            pass
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cikti")
-    ap.add_argument("--sutun", type=int, default=4)
-    ap.add_argument("--satir", type=int, default=4)
-    ap.add_argument("--hucre", type=int, default=128)
-    a = ap.parse_args()
+    ap.add_argument("out")
+    ap.add_argument("--columns", "--sutun", dest="columns", type=int, default=4)
+    ap.add_argument("--rows", "--satir", dest="rows", type=int, default=4)
+    ap.add_argument("--cell", "--hucre", dest="cell", type=int, default=128)
+    args = ap.parse_args()
 
-    kare_sayisi = a.sutun * a.satir
-    gen, yuk = a.sutun * a.hucre, a.satir * a.hucre
-    if gen & (gen - 1) or yuk & (yuk - 1):
-        print(f"[!] UYARI: {gen}x{yuk} 2'nin kuvveti degil, DXT sikistirmasi "
-              f"sorun cikarabilir")
+    frame_count = args.columns * args.rows
+    width, height = args.columns * args.cell, args.rows * args.cell
+    if width & (width - 1) or height & (height - 1):
+        print(f"[!] WARNING: {width}x{height} is not a power of 2, DXT compression "
+              f"may cause problems")
 
-    sheet = Image.new("RGBA", (gen, yuk), (255, 255, 255, 0))
-    for i in range(kare_sayisi):
-        m = kare_ciz(a.hucre, i / kare_sayisi)
-        # renk BEYAZ, sekil ALFA'da -- motor tint'i uzerine biner
-        hucre = Image.merge("RGBA", (
+    sheet = Image.new("RGBA", (width, height), (255, 255, 255, 0))
+    for i in range(frame_count):
+        m = draw_frame(args.cell, i / frame_count)
+        # color WHITE, shape in ALPHA -- the engine's tint stacks on top
+        cell = Image.merge("RGBA", (
             Image.new("L", m.size, 255), Image.new("L", m.size, 255),
             Image.new("L", m.size, 255), m))
-        sheet.paste(hucre, ((i % a.sutun) * a.hucre, (i // a.sutun) * a.hucre))
+        sheet.paste(cell, ((i % args.columns) * args.cell, (i // args.columns) * args.cell))
 
-    sheet.save(a.cikti)
-    print(f"[+] {a.cikti}  {gen}x{yuk}  {a.sutun}x{a.satir} = {kare_sayisi} kare "
-          f"(hucre {a.hucre}px)")
-    print("    kareler: soldan saga, yukaridan asagiya · dongu kusursuz")
+    sheet.save(args.out)
+    print(f"[+] {args.out}  {width}x{height}  {args.columns}x{args.rows} = {frame_count} frames "
+          f"(cell {args.cell}px)")
+    print("    frames: left to right, top to bottom · seamless loop")
     return 0
 
 

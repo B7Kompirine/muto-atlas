@@ -1,36 +1,36 @@
 ---
 description: Lint Lua files for native mistakes (invented natives, wrong side, wrong arity)
-argument-hint: [dosya veya klasör yolu — boşsa mevcut dizin]
+argument-hint: [file or folder path — current directory if empty]
 allowed-tools: Bash(python:*), Read, Edit, Grep, Glob
 ---
 
-Hedef: `$ARGUMENTS` (boşsa mevcut çalışma dizini)
+Target: `$ARGUMENTS` (the current working directory if empty)
 
-1. Linteri çalıştır:
+1. Run the linter:
 
    ```bash
-   python "${CLAUDE_PLUGIN_ROOT}/scripts/lint_lua.py" <hedef>
+   python "${CLAUDE_PLUGIN_ROOT}/scripts/lint_lua.py" <target>
    ```
 
-2. Bulguları ele al:
+2. Handle the findings:
 
-   - **E001** (native yok) — `nativedb.py check` ile doğru adı bul. Önerilen isim
-     doğruysa düzelt. Hiç öneri yoksa bunun bir framework fonksiyonu olabileceğini
-     değerlendir; native değilse kullanıcıya söyle, uydurma bir isimle değiştirme.
-   - **E002** (yanlış taraf) — client-only native sunucu dosyasında. Ya mantığı
-     client'a taşı ve olayla tetikle, ya da `--apiset server` ile eşdeğer bir native
-     ara. Sessizce silme; hangi çözümü seçtiğini açıkla.
-   - **E003** (fazla argüman) — `show` ile imzayı al, çağrıyı imzaya uydur.
-   - **W101/W102/W103** — per-frame maliyet. `references/performance.md` kalıplarını
-     uygula (dinamik `sleep`, döngü dışına taşıma, önbellekleme).
-   - **W104** (eksik argüman) — genelde zararsız bir deyimdir. Yalnız davranışı
-     etkiliyorsa düzelt; toplu olarak "düzeltme" yapma.
+   - **E001** (native does not exist) — find the right name with `nativedb.py check`. If the suggested
+     name is right, fix it. If there is no suggestion, consider that it may be a framework
+     function; if it is not a native, tell the user — do not replace it with an invented name.
+   - **E002** (wrong side) — a client-only native in a server file. Either move the logic
+     to the client and trigger it with an event, or look for an equivalent native with `--apiset server`.
+     Do not delete it silently; explain which fix you chose.
+   - **E003** (too many arguments) — get the signature with `show` and make the call match it.
+   - **W101/W102/W103** — per-frame cost. Apply the patterns in `references/performance.md`
+     (dynamic `sleep`, moving work out of the loop, caching).
+   - **W104** (missing argument) — usually a harmless idiom. Fix it only if it
+     affects behaviour; do not "fix" these in bulk.
 
-3. Düzeltmeleri uyguladıktan sonra linteri **tekrar çalıştır** ve E00x kalmadığını
-   göster.
+3. After applying the fixes, **run the linter again** and show that no E00x
+   remain.
 
-4. Özetle: kaç dosya tarandı, kaç hata düzeltildi, hangi uyarılar bilinçli olarak
-   bırakıldı ve neden.
+4. Summarise: how many files were scanned, how many errors were fixed, which warnings were deliberately
+   left and why.
 
-Yanlış pozitif olduğunu düşündüğün bir bulguyu düzeltmeden geçme — önce nedenini
-doğrula (tanım lint kapsamı dışında mı, metot çağrısı mı), sonra gerekçesini yaz.
+Do not just skip a finding you believe is a false positive — first verify the cause
+(is the definition outside the lint scope, is it a method call), then write down the reasoning.

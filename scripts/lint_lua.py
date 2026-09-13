@@ -176,27 +176,28 @@ def extract_call_args(line, start):
 
 
 def _is_test_file(path):
-    """Test kosumu dosyasi mi.
+    """Is this a test-harness file?
 
-    ⚠ TEST TAKLITLERI PROJE API'SI DEGILDIR.
-    Cevrimdisi test kosumlari native'leri global olarak taklit eder
-    (`TaskWanderInArea = function() end`). Bu tanimlar `collect_definitions`
-    tarafindan toplaninca linter o adi "proje fonksiyonu" sayiyor ve
-    apiset denetimini HIC yapmiyor.
+    ⚠ TEST MOCKS ARE NOT PROJECT API.
+    Offline test harnesses mock natives as globals
+    (`TaskWanderInArea = function() end`). Once `collect_definitions` collects
+    these definitions, the linter counts the name as a "project function" and
+    NEVER runs the apiset check on it.
 
-    Gercek bir vakada bunun bedeli olculdu: `TaskWanderInArea`
-    (client-only) bir SUNUCU dosyasinda cagrildi. Test kosumunda ayni
-    adin bir taklidi vardi; linter sustu, cevrimdisi testler gecti ve
-    hata ancak oyunda ortaya cikti — davranis dongusu her tick'te
-    oluyor ve zombiler tamamen spawn olmayi birakiyordu.
+    The cost of this was measured in a real case: `TaskWanderInArea`
+    (client-only) was called in a SERVER file. The test harness had a mock of
+    the same name; the linter stayed silent, the offline tests passed and the
+    error only showed up in game — the behaviour loop died on every tick and
+    the zombies stopped spawning altogether.
 
-    Tek bir taklit eklemek IKI bagimsiz guvenlik agini birden kor etti.
-    Kaynak agacinda testler ayri tutuldugu icin yol bazli eleme yeterli.
+    Adding a single mock blinded TWO independent safety nets at once.
+    Tests are kept separate in the source tree, so filtering by path is enough.
     """
     q = path.replace("\\", "/").lower()
     if "/tests/" in q or "/test/" in q:
         return True
     base = os.path.basename(q)
+    # "sahte_" is Turkish for "fake_": it matches mock files named that way in existing projects.
     return (base.startswith("test_") or base.endswith("_test.lua")
             or base.startswith("sahte_") or "selftest" in base)
 
@@ -204,7 +205,7 @@ def _is_test_file(path):
 def collect_definitions(files):
     """Every function name declared anywhere in the linted set.
 
-    Test kosumu dosyalari HARIC — gerekcesi `_is_test_file` icinde.
+    Test-harness files are EXCLUDED — the reason is in `_is_test_file`.
     """
     defined = set()
     for path in files:
@@ -255,32 +256,32 @@ def lint_file(path, idx, side_override=None, manifest=None, defined=frozenset())
             rec = idx.get(name)
 
             # ==================================================================
-            # ⚠ FIVEM'IN LUA ADI ALT CIZGI TASIYABILIR — VERITABANI TASIMAZ
+            # ⚠ FIVEM'S LUA NAME CAN CARRY AN UNDERSCORE — THE DATABASE DOES NOT
             # ==================================================================
-            # Native veritabani RESMI adi tutuyor (`GET_GROUND_Z_FOR_3D_COORD`
-            # -> `GetGroundZFor3dCoord`), ama FiveM'in Lua'ya actigi ad
-            # rakamla baslayan parcadan once ALT CIZGI aliyor:
-            #     GetGroundZFor_3dCoord      (Lua'da gecerli olan bu)
-            #     GetHeadingFromVector_2d    (Lua'da gecerli olan bu)
+            # The native database holds the OFFICIAL name (`GET_GROUND_Z_FOR_3D_COORD`
+            # -> `GetGroundZFor3dCoord`), but the name FiveM exposes to Lua
+            # takes an UNDERSCORE before a part that starts with a digit:
+            #     GetGroundZFor_3dCoord      (this is the one valid in Lua)
+            #     GetHeadingFromVector_2d    (this is the one valid in Lua)
             #
-            # Bu fark iki yonlu zarar veriyordu:
-            #   1. Alt cizgili DOGRU adlar E001 diye raporlanyordu
-            #      (bilinen yanlis pozitif, elle gormezden geliniyordu).
-            #   2. Daha kotusu: o yanlis pozitife guvenip alt cizgisiz
-            #      hali "dogru" sanildi ve koda yazildi. Oyunda
-            #      `attempt to call a nil value (global
-            #      'GetHeadingFromVector2d')` ile coktu — yani linter
-            #      dogru kodu reddederken YANLIS kodu onaylamis oldu.
+            # The difference did harm in both directions:
+            #   1. CORRECT names with an underscore were reported as E001
+            #      (a known false positive, ignored by hand).
+            #   2. Worse: trusting that false positive, the form without the
+            #      underscore was taken as "correct" and written into code. In
+            #      game it crashed with `attempt to call a nil value (global
+            #      'GetHeadingFromVector2d')` — so the linter rejected the
+            #      correct code while approving the WRONG code.
             #
-            # Kural: alt cizgiler atildiginda bilinen bir native'e
-            # esitse ad GECERLIDIR ve apiset denetimi o kayit uzerinden
-            # yapilir.
+            # Rule: if the name equals a known native once the underscores
+            # are dropped, the name is VALID and the apiset check runs
+            # against that record.
             if rec is None and "_" in name:
-                sade = name.replace("_", "")
-                rec = idx.get(sade)
+                plain = name.replace("_", "")
+                rec = idx.get(plain)
                 if rec is None:
                     for k in idx:
-                        if k.lower() == sade.lower():
+                        if k.lower() == plain.lower():
                             rec = idx[k]
                             break
 

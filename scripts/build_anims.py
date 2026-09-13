@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""build_anims.py — animasyon / prop / senaryo indekslerini uretir.
+"""build_anims.py — builds the animation / prop / scenario indexes.
 
-Kaynak: DurtyFree/gta-v-data-dumps (acik veri deposu, oyun dosyalarindan
-uretilmis dokumler). Archetype verisinin aksine bunlar isim listeleridir;
-oyunun kendi RPF'lerinden isim cikarmak mumkun ama gereksiz yere pahali.
+Source: DurtyFree/gta-v-data-dumps (an open data repository of dumps generated
+from the game files). Unlike the archetype data these are name lists; extracting
+names from the game's own RPFs is possible but needlessly expensive.
 
-Kullanim:
-  python build_anims.py             # indir + indeksle
-  python build_anims.py --offline   # daha once indirilmis ham dosyalari kullan
+Usage:
+  python build_anims.py             # download + index
+  python build_anims.py --offline   # use raw files downloaded earlier
 
-Cikti:
+Output:
   data/anims.tsv.gz       dict <TAB> clip
-  data/props.tsv.gz       prop adi (CREATE_OBJECT ile kullanilabilir)
-  data/scenarios.tsv.gz   senaryo adi
+  data/props.tsv.gz       prop name (usable with CREATE_OBJECT)
+  data/scenarios.tsv.gz   scenario name
   data/anims.meta.json
 """
 from __future__ import annotations
@@ -46,8 +46,8 @@ def fetch(name: str, offline: bool) -> bytes:
             print(f"  [cache] {name}")
             with open(path, "rb") as fh:
                 return fh.read()
-        sys.exit(f"HATA: --offline verildi ama {path} yok.")
-    print(f"  [indir] {BASE}{name}")
+        sys.exit(f"ERROR: --offline was given but {path} does not exist.")
+    print(f"  [download] {BASE}{name}")
     req = urllib.request.Request(BASE + name, headers={"User-Agent": "fivem-assets-indexer"})
     with urllib.request.urlopen(req, timeout=120) as resp:
         data = resp.read()
@@ -69,10 +69,11 @@ def write_gz(path: str, lines) -> int:
 
 
 def parse_anims(raw: bytes):
-    """animDictsCompact.json -> (dict, clip) ciftleri.
+    """animDictsCompact.json -> (dict, clip) pairs.
 
-    Ust yapinin dict mi list mi oldugu surume gore degisebiliyor; ikisini de
-    kaldiriyoruz ki depo formati degisince sessizce bos indeks uretmeyelim.
+    Whether the top level is a dict or a list can change between versions; both
+    are handled so that a change in the repository format does not silently
+    produce an empty index.
     """
     obj = json.loads(raw.decode("utf-8-sig"))
     pairs = []
@@ -99,12 +100,12 @@ def parse_anims(raw: bytes):
                     pairs.append((str(dct), str(c)))
 
     if not pairs:
-        sys.exit("HATA: animDictsCompact.json'dan hic cift cikmadi — format degismis olabilir.")
+        sys.exit("ERROR: no pairs came out of animDictsCompact.json — the format may have changed.")
     return pairs
 
 
 def parse_props(raw: bytes):
-    """ObjectList.ini -> prop adlari (satir basina bir ad)."""
+    """ObjectList.ini -> prop names (one name per line)."""
     out = []
     for line in raw.decode("utf-8-sig", errors="replace").splitlines():
         s = line.strip()
@@ -133,30 +134,30 @@ def parse_scenarios(raw: bytes):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--offline", action="store_true", help="sadece onbellekteki ham dosyalari kullan")
+    ap.add_argument("--offline", action="store_true", help="use only the cached raw files")
     args = ap.parse_args()
 
     os.makedirs(DATA, exist_ok=True)
     meta = {"generatedAtUtc": datetime.now(timezone.utc).isoformat(), "source": BASE}
 
-    print("Kaynaklar:")
+    print("Sources:")
     raws = {name: fetch(name, args.offline) for name in SOURCES}
 
     pairs = parse_anims(raws["animDictsCompact.json"])
     dicts = {d for d, _ in pairs}
     n = write_gz(os.path.join(DATA, "anims.tsv.gz"),
                  (f"{d}\t{c}" for d, c in sorted(pairs)))
-    print(f"[+] anims.tsv.gz      {n} clip / {len(dicts)} dictionary")
+    print(f"[+] anims.tsv.gz      {n} clips / {len(dicts)} dictionaries")
     meta["animClips"], meta["animDicts"] = n, len(dicts)
 
     props = sorted(set(parse_props(raws["ObjectList.ini"])))
     n = write_gz(os.path.join(DATA, "props.tsv.gz"), props)
-    print(f"[+] props.tsv.gz      {n} prop")
+    print(f"[+] props.tsv.gz      {n} props")
     meta["props"] = n
 
     scen = sorted(set(parse_scenarios(raws["scenariosCompact.json"])))
     n = write_gz(os.path.join(DATA, "scenarios.tsv.gz"), scen)
-    print(f"[+] scenarios.tsv.gz  {n} senaryo")
+    print(f"[+] scenarios.tsv.gz  {n} scenarios")
     meta["scenarios"] = n
 
     with open(os.path.join(DATA, "anims.meta.json"), "w", encoding="utf-8") as fh:

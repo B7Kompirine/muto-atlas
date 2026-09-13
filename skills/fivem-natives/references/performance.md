@@ -1,14 +1,14 @@
-# Native maliyeti ve resmon
+# Native cost and resmon
 
-Hedef: boştaki bir resource **0.01ms**, aktif kullanımda **0.10ms** altında.
-Bu hedefi aşan tek sebep genellikle her karede çalışan bir döngüdür.
+Target: an idle resource under **0.01ms**, under **0.10ms** in active use.
+The one thing that usually breaks this target is a loop that runs every frame.
 
-## Wait(0) döngüsü kuralı
+## The Wait(0) loop rule
 
-`Wait(0)` = saniyede ~60 iterasyon. İçine konan her native 60× çalışır.
+`Wait(0)` = ~60 iterations per second. Every native inside it runs 60×.
 
 ```lua
--- KÖTÜ: her karede pool taraması + model isteği
+-- BAD: pool scan + model request every frame
 CreateThread(function()
     while true do
         Wait(0)
@@ -18,7 +18,7 @@ CreateThread(function()
     end
 end)
 
--- İYİ: pahalı iş döngü dışında, döngü uyku süresine göre ayarlanmış
+-- GOOD: expensive work outside the loop, loop tuned by sleep time
 local model = `adder`
 RequestModel(model)
 while not HasModelLoaded(model) do Wait(0) end
@@ -28,7 +28,7 @@ CreateThread(function()
         local sleep = 1000
         local coords = GetEntityCoords(cache.ped)
         if #(coords - target) < 20.0 then
-            sleep = 0            -- yalnız yakınken her kare
+            sleep = 0            -- every frame only when close
             DrawMarker(...)
         end
         Wait(sleep)
@@ -36,62 +36,61 @@ CreateThread(function()
 end)
 ```
 
-Anahtar kalıp: **dinamik `sleep`**. Oyuncu ilgili alanda değilken döngü 500–1000ms
-uyumalı; `Wait(0)` yalnız çizim gerektiğinde kullanılmalı.
+Key pattern: **dynamic `sleep`**. While the player is not in the relevant area the loop should sleep
+500–1000ms; use `Wait(0)` only when something must be drawn.
 
-## Pahalı nativeler
+## Expensive natives
 
-Her karede çağrılmaması gerekenler — linter bunları `Wait(0)` gövdesinde yakalar:
+Do not call these every frame — the linter catches them inside a `Wait(0)` body:
 
-| native | maliyet | yerine |
+| native | cost | instead |
 |---|---|---|
-| `GetGamePool('CPed'/'CVehicle'/'CObject')` | tüm dünyayı tarar | periyodik tara, sonucu önbellekle |
-| `GetActivePlayers` | oyuncu listesi kopyalar | 1–5sn'de bir yenile |
-| `GetClosestVehicle` / `GetClosestPed` | shapetest + tarama | önbelleklenmiş pool üzerinden hesapla |
-| `GetDistanceBetweenCoords` | native sınırı geçer | `#(vec1 - vec2)` kullan (saf Lua, çok daha ucuz) |
-| `RequestModel` / `RequestAnimDict` | streaming isteği | bir kez yükle, `HasModelLoaded` ile bekle |
+| `GetGamePool('CPed'/'CVehicle'/'CObject')` | scans the whole world | scan periodically, cache the result |
+| `GetActivePlayers` | copies the player list | refresh every 1–5s |
+| `GetClosestVehicle` / `GetClosestPed` | shapetest + scan | compute from the cached pool |
+| `GetDistanceBetweenCoords` | crosses the native boundary | use `#(vec1 - vec2)` (pure Lua, much cheaper) |
+| `RequestModel` / `RequestAnimDict` | streaming request | load once, wait with `HasModelLoaded` |
 
-`#(v1 - v2)` vektör farkı GTA nativei çağırmaz; mesafe karşılaştırmalarında
-`GetDistanceBetweenCoords` yerine bunu tercih et.
+The `#(v1 - v2)` vector difference calls no GTA native; prefer it over
+`GetDistanceBetweenCoords` for distance comparisons.
 
-## Önbellekleme
+## Caching
 
-Her karede değişmeyen değerleri döngü dışına al:
+Move values that do not change every frame out of the loop:
 
 ```lua
--- KÖTÜ
+-- BAD
 while true do
     Wait(0)
     local ped = PlayerPedId()
     local veh = GetVehiclePedIsIn(ped, false)
 end
 
--- İYİ: ox_lib cache veya kendi değişkenin
+-- GOOD: ox_lib cache or your own variable
 local ped = cache.ped        -- ox_lib
 local veh = cache.vehicle
 ```
 
-`PlayerPedId()` ucuzdur ama ped değişimini olay üzerinden takip etmek daha ucuzdur.
-ox_lib kullanılıyorsa `cache.ped` / `cache.vehicle` / `cache.seat` zaten olay
-tabanlı günceller.
+`PlayerPedId()` is cheap, but tracking ped changes through an event is cheaper.
+With ox_lib, `cache.ped` / `cache.vehicle` / `cache.seat` already update from events.
 
-## Sunucu tarafı
+## Server side
 
-Sunucuda per-frame döngü yoktur ama eşdeğer hatalar vardır:
+The server has no per-frame loop, but it has equivalent mistakes:
 
-- Oyuncu döngüsü içinde tekil DB sorgusu → N+1. Tek sorguda topla.
-- `TriggerClientEvent` ile tüm oyunculara (`-1`) sık yayın → bant genişliği.
-  Mesafe/ilgi filtresi uygula.
-- Her olay tetiklenişinde DB yazımı → toplu yaz (batch) veya debounce et.
+- One DB query per iteration inside a player loop → N+1. Gather it into one query.
+- Frequent broadcasts to all players (`-1`) with `TriggerClientEvent` → bandwidth.
+  Apply a distance/interest filter.
+- A DB write on every event trigger → write in batches or debounce.
 
-## Ölçüm
+## Measurement
 
-Kod tahmininle yetinme:
+Do not settle for a guess from the code:
 
 ```
-resmon 1          # F8 konsolunda, resource CPU süresi
+resmon 1          # in the F8 console, resource CPU time
 profiler record 500
 profiler view
 ```
 
-Değişiklik öncesi ve sonrası resmon değerini karşılaştır; iddiayı ölçümle destekle.
+Compare the resmon value before and after the change; back the claim with a measurement.

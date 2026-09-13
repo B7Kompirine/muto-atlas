@@ -30,7 +30,7 @@ That is the whole idea. **Look at the data first, then write the code.**
 
 ## What it gives you
 
-25 offline data layers, built from **your own** GTA V install and FiveM server:
+24 offline data layers, built from **your own** GTA V install and FiveM server:
 
 | layer | rows | what it answers |
 |---|---:|---|
@@ -60,6 +60,48 @@ That is the whole idea. **Look at the data first, then write the code.**
 Plus a **Lua linter** that catches invented natives, client-only natives called on the
 server, wrong argument counts, and per-frame performance mistakes.
 
+### Measured build rules, not folklore — organised as a tree
+
+Some answers are not a row in a table — they are a number you only get by measuring
+vanilla and your own output side by side. Those live in the `fivem-assets` skill as a
+**trunk / branch / leaf** tree, so a task loads one branch and one leaf, not 30 files:
+
+- **Trunk** (`SKILL.md` + `trunk/`) — rules that hold everywhere: engine invariants,
+  the tool-trap catalogue (Sollumz, Blender, CodeWalker, PowerShell, FiveM runtime),
+  the verification ladder, flag tables, bone-tag rules.
+- **Branches** (`branches/<branch>/_branch.md`, one slash command each) — category-wide rules:
+  `map` · `prop` · `clothing` · `particle` · `look` · `vehicle`.
+- **Leaves** (`branches/<branch>/<leaf>.md`, 31 of them) — one task each, named by what is
+  wanted, never by the project it came from. "Road collapse", "bridge collapse" and
+  "explosion" are one leaf: destruction.
+
+Every leaf states what it measured, on what, and what it never checked. Two examples:
+
+- **Parallax (`*_pxm`)** — which of the 16 variants vanilla actually uses (571 uses;
+  `normal_spec_pxm` 218, `normal_pxm` only 3, so the obvious pick is the wrong one),
+  the parameter bands read field by field off a shipped MLO and cross-checked against
+  Sollumz's own `Shaders.xml`, and the one test that tells parallax apart from real
+  geometry: **a real recess looks deepest head-on, parallax looks flattest**.
+  Command: `/look`.
+- **Vanilla interior measurements** — corner bevels cluster at **17 mm** with chamfered
+  edges outnumbering hard 90° ones **11 : 1**; shadows come from a **separate low-poly
+  mesh**, not from lights; dirt and blood are **separate overlay meshes**; the widely
+  repeated "green at the bottom, blue at the top" vertex-colour rule **does not
+  reproduce** in `v_coroner`. Measured, with the sample size and the limits stated.
+
+Both say plainly what was measured, what was inferred, and what was never checked.
+
+The plugin also checks **itself**:
+
+```bash
+python scripts/audit_plugin.py     # exit 1 if anything is broken
+```
+
+It catches the failures that never raise an error: a command pointing at a
+reference that does not exist, a reference nothing links to, a `.ps1` with
+non-ASCII text but no BOM (PowerShell 5.1 misreads it), a command whose
+frontmatter drifted from the convention.
+
 ## Install
 
 **Step 1 — install the plugin** (two commands, no cloning):
@@ -69,20 +111,19 @@ claude plugin marketplace add B7Kompirine/muto-atlas
 claude plugin install muto-atlas@muto-atlas
 ```
 
-Restart Claude Code. You now have **23 commands** and **2 skills**
+Restart Claude Code. You now have **19 commands** and **2 skills**
 (`fivem-natives`, `fivem-assets`).
 
 | | |
 |---|---|
 | **Ask the data** | `/asset` `/native` `/where` `/anim` |
-| **Author assets** | `/ped` `/retarget` `/clipset` `/yed` `/weapon` `/weaponfx` `/3dnui` `/rayfire` |
-| **Light, decal & scene** | `/light` `/decal` `/scene` |
-| **Check & build** | `/asset-setup` `/asset-build` `/native-lint` |
+| **Branches** (rules + leaves) | `/map` `/prop` `/clothing` `/particle` `/look` `/vehicle` |
+| **Check & build** | `/asset-setup` `/asset-build` `/native-lint` `/help` |
 | **Tool paths** | `/paths` `/codewalker` `/gta` `/server` `/blender` |
 
 > The skills are part of the plugin — you do **not** install them separately.
-> They trigger automatically when you work on FiveM assets, natives, rigging or
-> animation, even if you never type a command.
+> They trigger automatically when you work on FiveM props, maps, materials,
+> particles or natives, even if you never type a command.
 
 **Step 2 — build the data layers.** The plugin ships with no game data, so the
 commands have nothing to answer with until you do this. **You need GTA V and
@@ -113,6 +154,103 @@ python scripts/assetdb.py stats
 **Why no data ships with the repo:** `entities.db` alone is 214 MB — over GitHub's
 100 MB file limit — and it is Rockstar's data. It is built locally instead. A useful
 side effect: everyone's layers come from *their* game version, not from a frozen copy.
+Your server's framework index and `data/config.json` (your paths) never leave your
+machine.
+
+## Knowledge database — projects, snippets, tags
+
+`scripts/build_atlas_db.py` turns the knowledge tree into one SQLite file, `data/atlas.db`.
+It is generated locally and never committed.
+
+- **Projects come from folder names.** Each branch folder (`map`, `prop`, `look`, …), the trunk
+  (`trunk`), the sources (`sources`) and `fivem-natives` is a project. Add your own notes with
+  `--source path/to/notes`; every subfolder of it becomes a project.
+- **Every file is split into snippets:** one per heading, with code blocks as separate snippets.
+  Long sections are split at blank lines, never cut mid-line.
+- **Claude tags every snippet** from a fixed vocabulary (`claude-opus-5` by default; `--model` and
+  `--effort` to change). Tags are cached by content hash: a rebuild — or a rerun after an
+  interrupted one — only sends snippets that have no tags yet. Requests to `claude-opus-5` enable
+  server-side refusal fallbacks (`fallbacks: "default"`). Without the `anthropic` package or
+  credentials the build says so and uses offline keyword rules.
+- **Full-text search** (SQLite FTS5) from the command line, or through the MCP server's
+  `snippet_search`, `snippet_read` and `snippet_tags` tools.
+- **Exit codes:** 0 found / written · 1 no hit · 2 database missing, or Claude requested but not
+  available (nothing written) · 3 database unreadable or verification failed (the old file is kept).
+
+```bash
+python scripts/build_atlas_db.py                         # auto: Claude when available, else rules
+python scripts/build_atlas_db.py --tagger claude         # python -m pip install anthropic + credentials
+python scripts/build_atlas_db.py --source path/to/notes  # your folders become projects
+python scripts/build_atlas_db.py --search "TimeFlags" --project look
+python scripts/build_atlas_db.py --stats
+```
+
+## Other AI tools
+
+muto-atlas is not tied to Claude Code. There are two routes; use either or both.
+
+### Agent Skills — Codex, ChatGPT desktop, Cursor, GitHub Copilot, Gemini CLI
+
+The two skills follow the open [Agent Skills](https://agentskills.io/specification) format.
+Clone the repository, build the data layers once (Step 2 above), then install the skills into
+your tool's skills folder:
+
+```bash
+python scripts/install_skills.py                  # ~/.agents/skills (Codex, ChatGPT desktop, Gemini CLI, VS Code Copilot, Cursor)
+python scripts/install_skills.py --tool cursor    # ~/.cursor/skills
+python scripts/install_skills.py --tool copilot --project path/to/your/repo   # .github/skills
+python scripts/install_skills.py --check          # validate only, write nothing
+```
+
+The installer copies each skill, rewrites the Claude Code path variable to the absolute path of
+your clone, and reads the copy back. Re-run it after `git pull`; the copies do not update
+themselves. The slash commands stay Claude Code only.
+
+### MCP server — Cursor, VS Code, Claude Desktop, Codex, Gemini CLI, ChatGPT
+
+`scripts/mcp_server.py` exposes the same queries as MCP tools: asset and door lookups, animation
+and particle names, flag decoding, native checks, the knowledge tree, and — locally only —
+`doctor`, structural diff, light decoding and the Lua linter. Every result starts with its exit
+code and what that code means. It needs the `mcp` Python package (tested with 1.28):
+`python -m pip install "mcp>=1.28"`.
+
+Claude Desktop (`claude_desktop_config.json`), Cursor (`~/.cursor/mcp.json`) and Gemini CLI
+(`~/.gemini/settings.json`) use this shape; VS Code (`.vscode/mcp.json`) takes the same entry
+under `"servers"` instead of `"mcpServers"`:
+
+```json
+{
+  "mcpServers": {
+    "muto-atlas": {
+      "command": "python",
+      "args": ["C:/path/to/muto-atlas/scripts/mcp_server.py"]
+    }
+  }
+}
+```
+
+Codex (`~/.codex/config.toml`):
+
+```toml
+[mcp_servers.muto-atlas]
+command = "python"
+args = ["C:/path/to/muto-atlas/scripts/mcp_server.py"]
+```
+
+**ChatGPT** connects only to remote servers (streamable HTTP or SSE), through Developer mode
+(Plus, Pro, Business, Enterprise, Education — Settings → Security and login → Developer mode).
+Run the server in HTTP mode and put an HTTPS tunnel in front of it:
+
+```bash
+python scripts/mcp_server.py --http --port 8765 --allow-host your-tunnel.example.com
+```
+
+Then create a developer-mode app in ChatGPT with `https://your-tunnel.example.com/mcp`.
+⚠️ In HTTP mode the tools that read your own files or your own server's map (`doctor`,
+`structural_diff`, `light_read`, `lua_lint`, `framework_api`, `lodaudit`) are not registered,
+because a tunnel puts the server on the internet with no authentication. If you built the data
+layers with your server folder, your custom archetype names can still be queried. Every tool is
+marked read-only (`readOnlyHint`). Close the tunnel when you are done.
 
 ## Usage
 
@@ -152,27 +290,6 @@ editing twenty files. They now all read the one registry. A path that is not on
 disk is rejected at set time, and "written in config but missing on disk" is
 reported as its own case — it is the most common cause of "I set it and it
 still doesn't work".
-
-### Scenes: several objects, clip decoding, and a ymap placement
-
-```bash
-assetdb.py scene --file scene.json --add a.ydr --add b.yft
-assetdb.py scene --file scene.json --anim "door.ycd:door_open"
-assetdb.py scene --file scene.json                 # summary + clip check
-assetdb.py scene --file scene.json --ymap out.ymap # write the placement
-```
-
-The `.ycd` is decoded into per-frame bone channels, so a clip's real frame
-count, duration and which bones it actually drives are known without launching
-the game. Six channel types are handled, including `CachedQuaternion` — which is
-a *pointer*, not a channel: it names the dropped component, and the missing one
-is rebuilt as `sqrt(1-Σ)` with the sign taken from the type name. Verified
-across 47,499 rotation frames: zero non-unit quaternions, max deviation
-1.72e-08.
-
-The ymap is written with extents computed from the union of the entities and is
-**read back** to confirm the entity count before it is accepted; an entity
-outside the extents renders nothing at all, with no error.
 
 ### Checking your own files, before the game sees them
 
@@ -217,9 +334,8 @@ Three things it gets right that cost real time when they are wrong:
 **Provenance.** This is an independent implementation. The lighting formulas are
 derived from the game's own shader files (`lighting_common.fxh`, `common.fxh`,
 `postfx.fx`) and verified against measurements; the reference bands are computed
-locally from your own GTA V install and never redistributed (`data/` is
-gitignored). No code, assets, UI, names or branding from any third-party editing
-tool are included.
+locally from your own GTA V install and never redistributed. No code, assets, UI,
+names or branding from any third-party editing tool are included.
 
 ### Why is my interior dark?
 
@@ -236,14 +352,13 @@ there are 13 of them and their times live in `time.xml` — where one sample is
 named `09:00` but carries `hour="10"`, so trusting the name shifts everything
 after it by an hour.
 
-
 Usually the answer is not in your prop and not in your light — it is the room's
 **timecycle modifier**, which overrides ambient light, exposure and fog.
 
 ```bash
 assetdb.py timecycle --mlo my_interior.ytyp   # each room → its modifier → ambient values
 assetdb.py timecycle int_hospital_dark        # what that modifier actually changes
-assetdb.py timecycle --ara hospital           # find modifiers by name
+assetdb.py timecycle --search hospital        # find modifiers by name
 ```
 
 The room stores its modifier as an unresolved JOAAT hash (`hash_CDE50982`);
@@ -324,9 +439,17 @@ These are not style preferences; each one was learned from a silent failure.
   was written.
 - **Missing translations print the key**, never an empty string, so gaps stay visible.
 
+## Contributing
+
+Corrections, new measurements and bug reports are welcome — in **English or
+Turkish**. Start with [CONTRIBUTING.md](CONTRIBUTING.md)
+([Türkçe](docs/CONTRIBUTING.tr.md)). Issues labelled
+[`good first issue`](https://github.com/B7Kompirine/muto-atlas/labels/good%20first%20issue)
+are a good place to begin.
+
 ## License
 
-MIT — see [LICENSE](LICENSE). Code only.
+MIT — see [LICENSE](LICENSE). Code only; [NOTICE.md](NOTICE.md) explains how game data is handled.
 
 No GTA V data is distributed here. GTA V and its assets are property of Rockstar Games.
 This project is not affiliated with Rockstar Games, Take-Two Interactive, or Cfx.re.

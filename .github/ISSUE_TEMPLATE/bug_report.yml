@@ -1,0 +1,62 @@
+name: Bug / silent failure
+description: A wrong answer, a crash, or something that failed without an error
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English or Turkish is fine.
+
+        Silent failures are the most valuable reports here — "no error, but nothing happened" counts.
+  - type: textarea
+    id: command
+    attributes:
+      label: "What did you run?"
+      description: "The exact command or slash command, with its arguments."
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: "What happened?"
+      description: "Full output, including the exit code (`$LASTEXITCODE` in PowerShell, `$?` in bash)."
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: "What did you expect, and why?"
+      description: "If you know the correct answer, say how you know it (in-game test, CodeWalker, a vanilla file)."
+    validations:
+      required: true
+  - type: textarea
+    id: stats
+    attributes:
+      label: "Output of `assetdb.py stats`"
+      description: "Shows which data layers are installed; a missing layer explains many \"not found\" results."
+      render: text
+  - type: input
+    id: plugin-version
+    attributes:
+      label: "muto-atlas version"
+      placeholder: "3.0.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: game-build
+    attributes:
+      label: "Game build"
+      options:
+        - "GTA V Legacy"
+        - "GTA V Enhanced"
+        - "Not relevant"
+    validations:
+      required: true
+  - type: input
+    id: tools
+    attributes:
+      label: "Tool versions"
+      description: "Only the ones involved."
+      placeholder: "Blender 4.2, Sollumz 2.9, CodeWalker 30, FiveM b3258"

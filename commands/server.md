@@ -4,26 +4,26 @@ argument-hint: [path]  ·  omit to just show it
 allowed-tools: Bash(python:*), Read
 ---
 
-Kullanıcının sorgusu: `$ARGUMENTS`
+User query: `$ARGUMENTS`
 
 ```bash
-# nerede?
+# where is it?
 python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" path server
 
-# ayarla
+# set it
 python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" path server "$ARGUMENTS"
 ```
 
-`$ARGUMENTS` boşsa **göster**, bir yol verilmişse **ayarla**.
+If `$ARGUMENTS` is empty, **show** the path; if a path was given, **set** it.
 
-Framework indeksi (QBCore/Qbox/ESX/ox export ve event'leri) bu klasörden
-üretilir — eksik export ve olmayan event çağrıları böyle yakalanır.
-Yol `.../txData/<sunucu>.base/resources` biçimindedir.
+The framework index (QBCore/Qbox/ESX/ox exports and events) is built from this folder
+— that is how missing exports and calls to non-existent events are caught.
+The path looks like `.../txData/<server>.base/resources`.
 
-## Sonucu sunarken
+## When presenting the result
 
-- Klasör **diskte doğrulanır**.
-- Sunucu yolu değiştiyse framework indeksi bayattır: `build_framework.py`
-  ile yenile, yoksa "bu export yok" uyarıları yanlış çıkar.
-- Otomatik aday yoktur — sunucu klasörü her kurulumda farklı yerdedir,
-  bu yüzden bir kez elle verilir.
+- The folder is **verified on disk**.
+- If the server path changed, the framework index is stale: refresh it with `build_framework.py`,
+  otherwise the "this export does not exist" warnings come out wrong.
+- There is no automatic candidate — the server folder is in a different place on every install,
+  so it is given by hand once.

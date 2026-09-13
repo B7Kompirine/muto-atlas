@@ -1,23 +1,23 @@
-﻿# build_usage.ps1 — vanilla modellerin GERCEKTE kullandigi shader ve collision
-# materyallerini indeksler.
+﻿# build_usage.ps1 - indexes the shaders and collision materials that vanilla models
+# REALLY use.
 #
-# NEDEN: shaders.tsv (249) ve collision_materials.tsv (185) tablolarini
-# Sollumz'un kendi dosyalarindan cikardik. Ikisi de TEK KAYNAK. Bugune kadarki
-# guclu dogrulamalarimiz hep IKI BAGIMSIZ KAYNAGIN kesismesinden geldi
-# ('Has Anim' biti <-> clipDict, specialAttribute <-> door physics,
-# ANIMAL_DEFAULT <-> eski olcumumuz). Bu iki tabloda o kesisim yoktu.
+# WHY: we extracted the shaders.tsv (249) and collision_materials.tsv (185) tables
+# from Sollumz's own files. Both are a SINGLE SOURCE. Our strongest verifications
+# so far have always come from the intersection of TWO INDEPENDENT SOURCES
+# ('Has Anim' bit <-> clipDict, specialAttribute <-> door physics,
+# ANIMAL_DEFAULT <-> our earlier measurement). These two tables had no such intersection.
 #
-# Bu betik ikinci kaynagi uretir: oyunun kendi .ydr/.yft/.ybn dosyalari.
-# Ayni anda uc soruyu cevaplar:
-#   1) shaders.tsv'deki adlar gercekten kullaniliyor mu, eksik var mi
-#   2) collision_materials.tsv indeksleri dogru araliktaki degerlerle
-#      ortusuyor mu
-#   3) DECAL shader'lari hangi RenderBucket ile kullaniliyor
-#      (Sollumz varsayilani Opaque(0); dogrusu ne, ancak boyle olculur)
+# This script produces the second source: the game's own .ydr/.yft/.ybn files.
+# It answers three questions at once:
+#   1) are the names in shaders.tsv really used, is any missing
+#   2) do the collision_materials.tsv indexes match values in the
+#      right range
+#   3) which RenderBucket DECAL shaders are used with
+#      (the Sollumz default is Opaque(0); what is right can only be measured this way)
 #
-# Kullanim:
+# Usage:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File build_usage.ps1
-#       [-Limit 4000]   # taranacak dosya sayisi (0 = hepsi, yavas)
+#       [-Limit 4000]   # number of files to scan (0 = all, slow)
 
 param(
     [string] $GtaFolder,
@@ -31,17 +31,17 @@ $ErrorActionPreference = 'Stop'
 if (-not $Out) { $Out = Join-Path (Split-Path $PSScriptRoot -Parent) 'data' }
 if (-not (Test-Path -LiteralPath $Out)) { New-Item -ItemType Directory -Path $Out | Out-Null }
 
-$CodeWalker = & "$PSScriptRoot\yol.ps1" codewalker $CodeWalker
+$CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
 if (-not $CodeWalker -or -not (Test-Path -LiteralPath $CodeWalker)) {
-    throw "CodeWalker.Core.dll bulunamadi."
+    throw "CodeWalker.Core.dll not found."
 }
-$GtaFolder = & "$PSScriptRoot\yol.ps1" gta $GtaFolder
-if (-not $GtaFolder) { throw "GTA V klasoru bulunamadi." }
+$GtaFolder = & "$PSScriptRoot\paths.ps1" gta $GtaFolder
+if (-not $GtaFolder) { throw "GTA V folder not found." }
 
 $cwDir = Split-Path $CodeWalker -Parent
 Write-Output "CodeWalker : $CodeWalker"
 Write-Output "GTA V      : $GtaFolder"
-Write-Output "Limit      : $(if($Limit -gt 0){$Limit}else{'(hepsi)'})"
+Write-Output "Limit      : $(if($Limit -gt 0){$Limit}else{'(all)'})"
 
 $script:cwDir = $cwDir
 [System.AppDomain]::CurrentDomain.add_AssemblyResolve([System.ResolveEventHandler]{
@@ -62,12 +62,12 @@ using CodeWalker.GameFiles;
 
 public static class UsageIndexer
 {
-    // shader adi -> (renderBucket -> adet)
+    // shader name -> (renderBucket -> count)
     static Dictionary<string, Dictionary<int, int>> shaderUse =
         new Dictionary<string, Dictionary<int, int>>();
-    // collision materyal indeksi -> adet
+    // collision material index -> count
     static Dictionary<int, int> matUse = new Dictionary<int, int>();
-    // materyal indeksi -> gorulen proceduralId'ler
+    // material index -> proceduralIds seen
     static Dictionary<int, HashSet<int>> matProc = new Dictionary<int, HashSet<int>>();
 
     static void AddShader(string name, int bucket)
@@ -89,13 +89,13 @@ public static class UsageIndexer
         }
     }
 
-    // NOT: Drawable ile FragDrawable AYRI tiplerdir (ortak taban yok), o yuzden
-    // fonksiyon ShaderGroup aliyor -- ikisi de onu veriyor.
-    // !! ResourcePointerArray64<T> uzerinde foreach KULLANMA.
-    // IEnumerable uyguluyor gorunuyor ama GetEnumerator() ->
-    // NotImplementedException. Derleyici sikayet etmez, calisma aninda her
-    // dosya sessizce hataya duser (ilk surumde 86.690 ydr'nin HEPSI boyle
-    // kayboldu). Dogru erisim: .data_items dizisi.
+    // NOTE: Drawable and FragDrawable are SEPARATE types (no common base), so
+    // the function takes a ShaderGroup -- both provide one.
+    // !! Do NOT USE foreach on ResourcePointerArray64<T>.
+    // It appears to implement IEnumerable, but GetEnumerator() ->
+    // NotImplementedException. The compiler does not complain; at run time every
+    // file silently fails (in the first version ALL 86,690 ydr files were
+    // lost this way). The right access: the .data_items array.
     static void WalkShaderGroup(ShaderGroup sg)
     {
         if (sg == null || sg.Shaders == null) return;
@@ -109,10 +109,10 @@ public static class UsageIndexer
         }
     }
 
-    // Bounds agaci: composite -> children -> ... ; her dugumde materyal olabilir
-    static void WalkBounds(Bounds b, int derinlik)
+    // Bounds tree: composite -> children -> ... ; any node can have a material
+    static void WalkBounds(Bounds b, int depth)
     {
-        if (b == null || derinlik > 8) return;
+        if (b == null || depth > 8) return;
 
         var geom = b as BoundGeometry;
         if (geom != null && geom.Materials != null)
@@ -122,16 +122,16 @@ public static class UsageIndexer
         }
         else
         {
-            // primitive bound (box/cylinder/sphere/capsule): tek materyal indeksi
+            // primitive bound (box/cylinder/sphere/capsule): a single material index
             AddMat(b.MaterialIndex, 0);
         }
 
         var comp = b as BoundComposite;
         if (comp != null && comp.Children != null)
         {
-            var ch = comp.Children.data_items;   // foreach DEGIL, bkz. yukarisi
+            var ch = comp.Children.data_items;   // NOT foreach, see above
             if (ch != null)
-                for (int i = 0; i < ch.Length; i++) WalkBounds(ch[i], derinlik + 1);
+                for (int i = 0; i < ch.Length; i++) WalkBounds(ch[i], depth + 1);
         }
     }
 
@@ -157,17 +157,17 @@ public static class UsageIndexer
 
         var t0 = DateTime.Now;
         int nD = 0, nF = 0, nB = 0, err = 0;
-        // Sessiz yutma tuzagi: ilk surumde tum ydr'ler hata verdi ve
-        // 'ydr tarandi: 0' disinda hicbir bilgi yoktu. Ilk hatayi yazdir.
-        string ilkHata = null;
+        // Silent swallowing pitfall: in the first version every ydr failed and
+        // there was no information except 'ydr scanned: 0'. Print the first error.
+        string firstError = null;
 
-        int denenenD = 0;
+        int triedD = 0;
         foreach (var fe in ydr)
         {
-            // DENENEN sayilir, BASARILI degil: hepsi hata verirse limit
-            // hic devreye girmez ve 86.690 dosya taranir.
-            if (limit > 0 && denenenD >= limit) break;
-            denenenD++;
+            // Count ATTEMPTS, not SUCCESSES: if all of them fail the limit
+            // never kicks in and 86,690 files get scanned.
+            if (limit > 0 && triedD >= limit) break;
+            triedD++;
             try
             {
                 var data = fe.File.ExtractFile(fe);
@@ -176,16 +176,16 @@ public static class UsageIndexer
                 if (f.Drawable != null) WalkShaderGroup(f.Drawable.ShaderGroup);
                 nD++;
             }
-            catch (Exception ex) { err++; if (ilkHata == null) ilkHata = fe.Name + " -> " + ex.GetType().Name + ": " + ex.Message; }
+            catch (Exception ex) { err++; if (firstError == null) firstError = fe.Name + " -> " + ex.GetType().Name + ": " + ex.Message; }
         }
-        Console.WriteLine("[*] ydr tarandi: {0}", nD);
-        if (ilkHata != null) Console.WriteLine("[!] ilk ydr hatasi: {0}", ilkHata);
+        Console.WriteLine("[*] ydr scanned: {0}", nD);
+        if (firstError != null) Console.WriteLine("[!] first ydr error: {0}", firstError);
 
-        int denenenF = 0;
+        int triedF = 0;
         foreach (var fe in yft)
         {
-            if (limit > 0 && denenenF >= limit) break;
-            denenenF++;
+            if (limit > 0 && triedF >= limit) break;
+            triedF++;
             try
             {
                 var data = fe.File.ExtractFile(fe);
@@ -197,13 +197,13 @@ public static class UsageIndexer
             }
             catch { err++; }
         }
-        Console.WriteLine("[*] yft tarandi: {0}", nF);
+        Console.WriteLine("[*] yft scanned: {0}", nF);
 
-        int denenenB = 0;
+        int triedB = 0;
         foreach (var fe in ybn)
         {
-            if (limit > 0 && denenenB >= limit) break;
-            denenenB++;
+            if (limit > 0 && triedB >= limit) break;
+            triedB++;
             try
             {
                 var data = fe.File.ExtractFile(fe);
@@ -214,24 +214,24 @@ public static class UsageIndexer
             }
             catch { err++; }
         }
-        Console.WriteLine("[*] ybn tarandi: {0}", nB);
+        Console.WriteLine("[*] ybn scanned: {0}", nB);
 
-        // ---- shader kullanimi ----
+        // ---- shader usage ----
         var sb = new StringBuilder();
         sb.Append("shader\ttotal\tbuckets\n");
         foreach (var kv in shaderUse)
         {
-            int toplam = 0;
+            int total = 0;
             var parts = new List<string>();
-            foreach (var b in kv.Value) toplam += b.Value;
+            foreach (var b in kv.Value) total += b.Value;
             foreach (var b in kv.Value) parts.Add(b.Key + ":" + b.Value);
-            sb.Append(kv.Key).Append('\t').Append(toplam).Append('\t')
+            sb.Append(kv.Key).Append('\t').Append(total).Append('\t')
               .Append(string.Join(";", parts.ToArray())).Append('\n');
         }
-        var utf8NoBom = new UTF8Encoding(false);   // Encoding.UTF8 BOM yazar; ilk sutun adi bozulur
+        var utf8NoBom = new UTF8Encoding(false);   // Encoding.UTF8 writes a BOM; the first column name breaks
         File.WriteAllText(Path.Combine(outFolder, "shader_usage.tsv"), sb.ToString(), utf8NoBom);
 
-        // ---- collision materyal kullanimi ----
+        // ---- collision material usage ----
         var sb2 = new StringBuilder();
         sb2.Append("matIndex\tcount\tproceduralIds\n");
         foreach (var kv in matUse)
@@ -249,9 +249,9 @@ public static class UsageIndexer
         }
         File.WriteAllText(Path.Combine(outFolder, "collision_usage.tsv"), sb2.ToString(), utf8NoBom);
 
-        Console.WriteLine("[+] shader_usage.tsv    ({0} farkli shader)", shaderUse.Count);
-        Console.WriteLine("[+] collision_usage.tsv ({0} farkli materyal indeksi)", matUse.Count);
-        Console.WriteLine("[+] {0:0.0} sn, {1} hata", (DateTime.Now - t0).TotalSeconds, err);
+        Console.WriteLine("[+] shader_usage.tsv    ({0} distinct shaders)", shaderUse.Count);
+        Console.WriteLine("[+] collision_usage.tsv ({0} distinct material indexes)", matUse.Count);
+        Console.WriteLine("[+] {0:0.0} s, {1} errors", (DateTime.Now - t0).TotalSeconds, err);
     }
 }
 '@

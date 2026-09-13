@@ -1,20 +1,18 @@
-﻿# res_to_xml.ps1 — binary .ycd / .yed / .yft / .ydd / .ypt dosyasini XML'e dokur.
+﻿# res_to_xml.ps1 - dumps a binary .ycd / .yed / .yft / .ydd / .yld / .ypt file to XML.
 #
-# NEDEN GEREKLI: Sollumz binary .ycd ve .yed OKUYAMAZ. Import denendiginde
-# sessizce
+# WHY IT IS NEEDED: Sollumz CANNOT READ binary .ycd and .yed. When you try to import one it
+# silently shows the warning
 #     "Binary resource format '.ycd' is not supported yet."
-# uyarisi verip "Imported in 0.0 seconds" der — hata firlatmaz, sahneye de
-# hicbir sey gelmez. Animasyonu Blender'da kare kare incelemek icin once
-# XML'e cevirmek ZORUNLU.
+# and says "Imported in 0.0 seconds" - it throws no error, and nothing arrives
+# in the scene either. To inspect an animation frame by frame in Blender you MUST
+# convert it to XML first.
 #
-# xml_to_ycd.ps1 bunun TERSIDIR (XML -> binary, oyuna hazir).
-#
-# Kullanim:
-#   powershell -NoProfile -ExecutionPolicy Bypass -File res_to_xml.ps1 -Path <dosya>
+# Usage:
+#   powershell -NoProfile -ExecutionPolicy Bypass -File res_to_xml.ps1 -Path <file>
 #   powershell -NoProfile -ExecutionPolicy Bypass -Command "& res_to_xml.ps1 -Path @('a.ycd','b.yed')"
-#   powershell -NoProfile -ExecutionPolicy Bypass -File res_to_xml.ps1 -Dir <klasor> -Filter *.ycd
+#   powershell -NoProfile -ExecutionPolicy Bypass -File res_to_xml.ps1 -Dir <folder> -Filter *.ycd
 #
-# Cikti: <ayni ad>.xml  (ya da -OutDir verilirse orada)
+# Output: <same name>.xml  (or in -OutDir if given)
 
 param(
     [string[]] $Path = @(),
@@ -27,13 +25,13 @@ param(
 $ErrorActionPreference = 'Stop'
 
 if ($Dir) {
-    if (-not (Test-Path -LiteralPath $Dir)) { throw "Klasor bulunamadi: $Dir" }
+    if (-not (Test-Path -LiteralPath $Dir)) { throw "Folder not found: $Dir" }
     $Path += (Get-ChildItem -LiteralPath $Dir -Filter $Filter -File | ForEach-Object { $_.FullName })
 }
-if ($Path.Count -eq 0) { throw "Dosya verilmedi. -Path veya -Dir kullan." }
+if ($Path.Count -eq 0) { throw "No file given. Use -Path or -Dir." }
 
-$CodeWalker = & "$PSScriptRoot\yol.ps1" codewalker $CodeWalker
-if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll bulunamadi." }
+$CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
+if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll not found." }
 
 $cwDir = Split-Path $CodeWalker -Parent
 $script:cwDir = $cwDir
@@ -96,6 +94,14 @@ public static class ResToXml
                 xml = YdrXml.GetXml(f);
                 break;
             }
+            case ".yld":
+            {
+                // Ped cloth dictionary (the same-named file next to the .ydd)
+                var f = RpfFile.GetResourceFile<YldFile>(data);
+                f.Name = name;
+                xml = YldXml.GetXml(f);
+                break;
+            }
             case ".ybn":
             {
                 var f = RpfFile.GetResourceFile<YbnFile>(data);
@@ -103,11 +109,21 @@ public static class ResToXml
                 xml = YbnXml.GetXml(f);
                 break;
             }
+            case ".ymt":
+            {
+                // Ped variation / creature metadata etc. A Meta/PSO resource; its own Load, like ytyp.
+                var f = new YmtFile();
+                f.Load(data);
+                f.Name = name;
+                string _fn;
+                xml = MetaXml.GetXml(f, out _fn);
+                break;
+            }
             case ".ytyp":
             {
-                // DIKKAT: .ytyp bir Meta/PSO kaynagidir, RpfFile.GetResourceFile<YtypFile>
-                // ile OKUNMAZ -> StackOverflowException ile coker. Kendi Load'u kullanilir
-                // ve XML'i MetaXml uretir (YtypXml diye bir sinif YOKTUR).
+                // CAREFUL: .ytyp is a Meta/PSO resource; it CANNOT be read with RpfFile.GetResourceFile<YtypFile>
+                // -> it crashes with StackOverflowException. Its own Load is used
+                // and the XML is produced by MetaXml (there is NO class called YtypXml).
                 var f = new YtypFile();
                 f.Load(data);
                 string _fn;
@@ -116,8 +132,8 @@ public static class ResToXml
             }
             case ".ytd":
             {
-                // Doku sozlugu. .ypt gibi: gomulu .dds'ler cikti klasorune AYRI
-                // dosya olarak yazilir, geri derlerken ayni klasorde olmalidirlar.
+                // Texture dictionary. Like .ypt: the embedded .dds files are written to the output folder
+                // as SEPARATE files; they must be in the same folder when compiling back.
                 var f = RpfFile.GetResourceFile<YtdFile>(data);
                 f.Name = name;
                 var tdir = string.IsNullOrWhiteSpace(outDir) ? Path.GetDirectoryName(path) : outDir;
@@ -127,9 +143,9 @@ public static class ResToXml
             }
             case ".ypt":
             {
-                // Partikul efekti. Digerlerinden farki: gomulu .dds dokular
-                // cikti klasorune AYRI dosya olarak yazilir; geri derlerken
-                // (xml_to_res.ps1) o dosyalar XML ile ayni klasorde olmalidir.
+                // Particle effect. The difference from the others: the embedded .dds textures
+                // are written to the output folder as SEPARATE files; when compiling back
+                // (xml_to_res.ps1) those files must be in the same folder as the XML.
                 var f = RpfFile.GetResourceFile<YptFile>(data);
                 f.Name = name;
                 var texDir = string.IsNullOrWhiteSpace(outDir) ? Path.GetDirectoryName(path) : outDir;
@@ -138,17 +154,17 @@ public static class ResToXml
                 break;
             }
             default:
-                Console.WriteLine("[!] {0}: desteklenmeyen uzanti", name);
+                Console.WriteLine("[!] {0}: unsupported extension", name);
                 return null;
         }
 
-        if (string.IsNullOrEmpty(xml)) { Console.WriteLine("[!] {0}: XML bos", name); return null; }
+        if (string.IsNullOrEmpty(xml)) { Console.WriteLine("[!] {0}: XML empty", name); return null; }
 
         var dir = string.IsNullOrWhiteSpace(outDir) ? Path.GetDirectoryName(path) : outDir;
         if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
         var dst = Path.Combine(dir, name + ".xml");
         File.WriteAllText(dst, xml);
-        Console.WriteLine("[+] {0,-52} -> {1:N0} bayt XML", name, xml.Length);
+        Console.WriteLine("[+] {0,-52} -> {1:N0} bytes XML", name, xml.Length);
         return dst;
     }
 
@@ -160,15 +176,15 @@ public static class ResToXml
             try { if (One(p, outDir) != null) ok++; else bad++; }
             catch (Exception ex) { Console.WriteLine("[!] {0}: {1}", Path.GetFileName(p), ex.Message); bad++; }
         }
-        Console.WriteLine("[=] {0} basarili, {1} hatali", ok, bad);
+        Console.WriteLine("[=] {0} succeeded, {1} failed", ok, bad);
     }
 }
 '@
 
-# 'System.Collections'/'System.Runtime'/'System.Console' SART: PowerShell 7 (.NET 8+)
-# altinda bu tipler netstandard'dan FORWARD edilmis durumda; referans verilmezse
-# Add-Type "CS1069: type has been forwarded" / "CS0103: Console does not exist"
-# ile coker. Windows PowerShell 5.1'de sorun cikmaz, PS7'de her seferinde cikar.
+# 'System.Collections'/'System.Runtime'/'System.Console' are REQUIRED: under PowerShell 7 (.NET 8+)
+# these types are FORWARDED from netstandard; without a reference
+# Add-Type crashes with "CS1069: type has been forwarded" / "CS0103: Console does not exist".
+# Windows PowerShell 5.1 has no problem with it; PS7 fails every time.
 $refs = @($CodeWalker, (Join-Path $cwDir 'SharpDX.dll'), (Join-Path $cwDir 'SharpDX.Mathematics.dll'), 'netstandard', 'System.Xml',
           'System.Collections', 'System.Runtime', 'System.Linq', 'System.Console', 'System.IO.Compression', 'System.Text.RegularExpressions')
 Add-Type -TypeDefinition $src -ReferencedAssemblies $refs -Language CSharp

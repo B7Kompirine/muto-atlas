@@ -1,23 +1,23 @@
-﻿# build_ptfx.ps1 — GTA V PARTIKUL EFEKT KATALOGU (.ypt dosyalari).
+# build_ptfx.ps1 - GTA V PARTICLE EFFECT CATALOG (.ypt files).
 #
-# NEDEN: ytyp_extensions.tsv.gz "hangi PROP hangi efekti kullaniyor" sorusunu
-# cevapliyor ama efektin KENDISI hakkinda hicbir sey bilmiyor. "amb_steam_vent
-# diye bir efekt var mi", "hangi .ypt icinde", "kac emitter'i var" sorulari
-# ancak .ypt'leri okuyarak cevaplanir.
+# WHY: ytyp_extensions.tsv.gz answers "which PROP uses which effect"
+# but knows nothing about the effect ITSELF. "is there an effect called
+# amb_steam_vent", "inside which .ypt", "how many emitters does it have" can
+# only be answered by reading the .ypt files.
 #
-# Yanlis yazilmis bir fxName SESSIZ hatadir (efekt hic cikmaz, uyari yok).
-# Bu indeks o hatayi yazmadan once yakalamak icindir.
+# A misspelt fxName is a SILENT failure (the effect never appears, no warning).
+# This index is there to catch that failure before you write it.
 #
-# .ypt YAPISI (video iddiasi CodeWalker tipleriyle dogrulandi):
-#   ParticleEffectsList (kok)
-#     +- EffectRuleDictionary    <- efektler; her biri EventEmitters listesi
-#     +- EmitterRuleDictionary   <- emitter kurallari (spawn rate keyframe'leri)
-#     +- ParticleRuleDictionary  <- particle kurallari (renk/boyut keyframe'leri)
-#     +- DrawableDictionary      <- efektin kullandigi modeller
-#     +- TextureDictionary       <- efektin kullandigi dokular
-#   Ozel efekt uretirken bu BES sozlugun hepsi yeni .ypt'ye tasinir.
+# .ypt STRUCTURE (a claim from a video, verified against the CodeWalker types):
+#   ParticleEffectsList (root)
+#     +- EffectRuleDictionary    <- effects; each one an EventEmitters list
+#     +- EmitterRuleDictionary   <- emitter rules (spawn rate keyframes)
+#     +- ParticleRuleDictionary  <- particle rules (color/size keyframes)
+#     +- DrawableDictionary      <- models the effect uses
+#     +- TextureDictionary       <- textures the effect uses
+#   When building a custom effect all FIVE of these dictionaries move into the new .ypt.
 #
-# Kullanim:
+# Usage:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File build_ptfx.ps1
 
 param(
@@ -31,10 +31,10 @@ $ErrorActionPreference = 'Stop'
 if (-not $Out) { $Out = Join-Path (Split-Path $PSScriptRoot -Parent) 'data' }
 if (-not (Test-Path -LiteralPath $Out)) { New-Item -ItemType Directory -Path $Out | Out-Null }
 
-$CodeWalker = & "$PSScriptRoot\yol.ps1" codewalker $CodeWalker
-if (-not $CodeWalker -or -not (Test-Path -LiteralPath $CodeWalker)) { throw "CodeWalker.Core.dll bulunamadi." }
-$GtaFolder = & "$PSScriptRoot\yol.ps1" gta $GtaFolder
-if (-not $GtaFolder) { throw "GTA V klasoru bulunamadi." }
+$CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
+if (-not $CodeWalker -or -not (Test-Path -LiteralPath $CodeWalker)) { throw "CodeWalker.Core.dll not found." }
+$GtaFolder = & "$PSScriptRoot\paths.ps1" gta $GtaFolder
+if (-not $GtaFolder) { throw "GTA V folder not found." }
 
 $cwDir = Split-Path $CodeWalker -Parent
 Write-Output "CodeWalker : $CodeWalker"
@@ -79,17 +79,17 @@ public static class PtfxIndexer
                 var fe = e as RpfFileEntry;
                 if (fe != null && fe.NameLower.EndsWith(".ypt")) ypts.Add(fe);
             }
-        Console.WriteLine("[*] ypt dosyasi: {0}", ypts.Count);
+        Console.WriteLine("[*] ypt files: {0}", ypts.Count);
 
         var t0 = DateTime.Now;
-        int okY = 0, err = 0;
+        int okYpt = 0, err = 0;
         long nEffect = 0;
-        string ilkHata = null;
+        string firstError = null;
 
-        // ayni efekt adi birden cok ypt'de olabilir -> ad basina tek satir,
-        // hangi ypt'lerde gectigi toplanir
-        var efekt = new Dictionary<string, string[]>();     // ad -> [ypt listesi, emitterSayisi]
-        var yptEfekt = new Dictionary<string, int>();
+        // the same effect name can occur in more than one ypt -> one row per name,
+        // collecting the ypts it appears in
+        var effects = new Dictionary<string, string[]>();     // name -> [ypt list, emitterCount]
+        var yptEffects = new Dictionary<string, int>();
 
         foreach (var fe in ypts)
         {
@@ -98,41 +98,41 @@ public static class PtfxIndexer
                 var data = fe.File.ExtractFile(fe);
                 if (data == null || data.Length == 0) { err++; continue; }
                 var f = new YptFile(); f.Load(data, fe);
-                okY++;
+                okYpt++;
                 if (f.AllEffects == null) continue;
-                yptEfekt[fe.Name] = f.AllEffects.Length;
+                yptEffects[fe.Name] = f.AllEffects.Length;
 
                 foreach (var ef in f.AllEffects)
                 {
                     if (ef == null) continue;
-                    string ad = (ef.Name == null) ? null : ef.Name.ToString();
-                    if (string.IsNullOrEmpty(ad)) continue;
+                    string name = (ef.Name == null) ? null : ef.Name.ToString();
+                    if (string.IsNullOrEmpty(name)) continue;
                     nEffect++;
-                    string[] mevcut;
-                    if (efekt.TryGetValue(ad, out mevcut))
+                    string[] existing;
+                    if (effects.TryGetValue(name, out existing))
                     {
-                        if (mevcut[0].Split(';').Length < 6 && mevcut[0].IndexOf(fe.Name) < 0)
-                            mevcut[0] = mevcut[0] + ";" + fe.Name;
+                        if (existing[0].Split(';').Length < 6 && existing[0].IndexOf(fe.Name) < 0)
+                            existing[0] = existing[0] + ";" + fe.Name;
                     }
                     else
                     {
-                        efekt[ad] = new string[] { fe.Name, ef.EventEmittersCount.ToString() };
+                        effects[name] = new string[] { fe.Name, ef.EventEmittersCount.ToString() };
                     }
                 }
             }
             catch (Exception ex)
             {
                 err++;
-                if (ilkHata == null) ilkHata = fe.Name + " -> " + ex.GetType().Name + ": " + ex.Message;
+                if (firstError == null) firstError = fe.Name + " -> " + ex.GetType().Name + ": " + ex.Message;
             }
         }
 
-        Console.WriteLine("[*] okunan ypt: {0}, hata: {1}", okY, err);
-        if (ilkHata != null) Console.WriteLine("[!] ilk hata: {0}", ilkHata);
+        Console.WriteLine("[*] ypts read: {0}, errors: {1}", okYpt, err);
+        if (firstError != null) Console.WriteLine("[!] first error: {0}", firstError);
 
         var sb = new StringBuilder(1 << 20);
         sb.Append("effect\teventEmitters\typts\n");
-        foreach (var kv in efekt)
+        foreach (var kv in effects)
             sb.Append(Clean(kv.Key)).Append('\t')
               .Append(kv.Value[1]).Append('\t')
               .Append(Clean(kv.Value[0])).Append('\n');
@@ -145,17 +145,17 @@ public static class PtfxIndexer
 
         var sb2 = new StringBuilder();
         sb2.Append("ypt\teffectCount\n");
-        foreach (var kv in yptEfekt) sb2.Append(Clean(kv.Key)).Append('\t').Append(kv.Value).Append('\n');
-        // UTF8Encoding PS7 altinda System.Text.Encoding.Extensions'a forward
-        // edilmis (CS1069). Referans eklemek yerine bayti kendimiz yaziyoruz;
-        // Encoding.UTF8.GetBytes BOM URETMEZ, sorun yalniz WriteAllText'in
-        // encoder nesnesini istemesindeydi.
+        foreach (var kv in yptEffects) sb2.Append(Clean(kv.Key)).Append('\t').Append(kv.Value).Append('\n');
+        // Under PS7 UTF8Encoding is forwarded to System.Text.Encoding.Extensions
+        // (CS1069). Instead of adding a reference we write the bytes ourselves;
+        // Encoding.UTF8.GetBytes writes NO BOM, the problem was only that
+        // WriteAllText wants the encoder object.
         File.WriteAllBytes(Path.Combine(outFolder, "ptfx_files.tsv"),
                            Encoding.UTF8.GetBytes(sb2.ToString()));
 
-        Console.WriteLine("[+] ptfx_effects.tsv.gz  ({0} benzersiz efekt / {1} tanim)", efekt.Count, nEffect);
-        Console.WriteLine("[+] ptfx_files.tsv       ({0} ypt)", yptEfekt.Count);
-        Console.WriteLine("[+] {0:0.0} sn", (DateTime.Now - t0).TotalSeconds);
+        Console.WriteLine("[+] ptfx_effects.tsv.gz  ({0} unique effects / {1} definitions)", effects.Count, nEffect);
+        Console.WriteLine("[+] ptfx_files.tsv       ({0} ypt)", yptEffects.Count);
+        Console.WriteLine("[+] {0:0.0} s", (DateTime.Now - t0).TotalSeconds);
     }
 }
 '@

@@ -1,14 +1,14 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "muto-atlas",
-  "description": "Ground truth data layers, asset database and Lua linter for FiveM/GTA V development in Claude Code.",
+  "description": "Ground truth data layers, asset database and Lua linter for FiveM/GTA V development in Claude Code. Knowledge is organised as a trunk/branch/leaf tree: the trunk holds the rules that hold everywhere; 6 branches (map, prop, clothing, particle, look, vehicle) carry category-wide rules and one slash command each; 31 leaves carry one task each.",
   "owner": {
     "name": "muto"
   },
   "plugins": [
     {
       "name": "muto-atlas",
-      "description": "Ground truth for FiveM/GTA V development. 25 offline data layers built from your own GTA V install and FiveM server: natives with apiset resolution and a Lua linter, archetypes, world placements, animations, skeletons, vehicles, weapons, peds, MLO interiors, embedded lights, weather timecycles, and your server's framework API. It also checks your own files before the game sees them - including the animated-drawable bone flags and .ycd contract that Sollumz gets wrong without ever raising an error - decodes and edits prop lights against a measured vanilla reference, and reads .ycd clips without launching the game. Nothing is guessed; a file that could not be inspected is never reported as clean.",
+      "description": "Ground truth for FiveM/GTA V development. 24 offline data layers built from your own GTA V install and FiveM server: natives with apiset resolution and a Lua linter, archetypes, world placements, vanilla animation names, skeleton bone tags, vehicles, weapon components, peds, MLO interiors, embedded lights, weather timecycles, and your server's framework API. It checks your own files before the game sees them, decodes and edits prop lights against a measured vanilla reference, and covers parallax shaders and vanilla interior measurements. Nothing is guessed; a file that could not be inspected is never reported as clean.",
       "source": "./",
       "category": "development"
     }

@@ -4,52 +4,52 @@ argument-hint: [name] [path]  ·  omit both to list all  ·  --remove to drop on
 allowed-tools: Bash(python:*), Read
 ---
 
-Kullanıcının sorgusu: `$ARGUMENTS`
+User query: `$ARGUMENTS`
 
-Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `~/.claude/muto-atlas`).
+Plugin root: `${CLAUDE_PLUGIN_ROOT}` (if it cannot be found, the muto-atlas folder that contains `scripts/assetdb.py`).
 
-Tüm dış yolların **tek kütüğü** `data/config.json`. `data/` .gitignore'da
-olduğu için kişisel yol bilgisi **asla repoya girmez**.
+The **single registry** of all external paths is `data/config.json`. Because `data/` is in .gitignore,
+personal path information **never enters the repo**.
 
 ```bash
-# hepsini göster (var/yok işaretli)
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" yol
+# show all of them (marked present/missing)
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" path
 
-# tek birini göster
+# show one
 python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" path codewalker
 
-# ayarla
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" path codewalker "C:\Araclar\CodeWalker\CodeWalker.Core.dll"
+# set it
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" path codewalker "C:\Tools\CodeWalker\CodeWalker.Core.dll"
 
-# kaydı kaldır
+# remove the entry
 python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" path blender --remove
 ```
 
-## Bilinen adlar
+## Known names
 
-| ad | ne | tip |
+| name | what | type |
 |---|---|---|
-| `codewalker` | `CodeWalker.Core.dll` — 30 betik buna bağlı | dosya |
-| `gta` | GTA V kurulum klasörü — veri katmanlarının kaynağı | klasör |
-| `sunucu` | FiveM sunucusunun `resources` klasörü | klasör |
-| `blender` | `blender.exe` | dosya |
+| `codewalker` | `CodeWalker.Core.dll` — 30 scripts depend on it | file |
+| `gta` | GTA V install folder — the source of the data layers | folder |
+| `server` | the FiveM server's `resources` folder | folder |
+| `blender` | `blender.exe` | file |
 
-## Liste kapalı değil — istediğin adı kaydedebilirsin
+## The list is not closed — you can store any name you want
 
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" yol gizmo "C:\Araclar\Gizmo.exe"
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" yol gizmo
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" path gizmo "C:\Tools\Gizmo.exe"
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" path gizmo
 ```
 
-Yeni bir araç için kod değiştirmek gerekmez.
+A new tool needs no code change.
 
-## Sonucu sunarken
+## When presenting the result
 
-- **Diskte olmayan yol kabul edilmez.** `ayarla` önce varlığını doğrular;
-  bozuk kaydı sessizce tutmaktansa hemen söyler.
-- **"config'de yazılı ama diskte yok" ayrı bir durumdur** ve öyle raporlanır
-  — "ayarladım ama çalışmıyor"un en sık sebebi budur, "hiç ayarlı değil"
-  ile karıştırma.
-- Çıkış kodu: `0` hepsi bulundu · `1` en az biri eksik · `2` verilen yol geçersiz.
-- Bir betik "CodeWalker bulunamadı" diyorsa çözüm `/paths codewalker "<yol>"` —
-  betiği düzenleme, hepsi aynı kütüğü okuyor.
+- **A path that does not exist on disk is not accepted.** Setting a path first checks that it exists;
+  it says so at once rather than silently keeping a broken entry.
+- **"written in the config but not on disk" is a separate state** and is reported as such
+  — it is the most common cause of "I set it but it doesn't work"; do not confuse it with
+  "never set".
+- Exit code: `0` all found · `1` at least one missing · `2` the given path is invalid.
+- If a script says "CodeWalker not found", the fix is `/paths codewalker "<path>"` —
+  do not edit the script; they all read the same registry.

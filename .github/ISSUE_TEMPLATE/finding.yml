@@ -1,0 +1,54 @@
+name: Finding
+description: A measured fact the docs lack, or one they get wrong
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English or Turkish is fine.
+
+        A finding needs a way to reproduce it. If you only have a hunch, write it anyway and say so — someone may be able to measure it.
+  - type: textarea
+    id: claim
+    attributes:
+      label: "The claim"
+      description: "One or two sentences."
+      placeholder: "Lights with TimeFlags 0 stay off inside interiors at every hour."
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: "Evidence"
+      description: "What produced it (command, file, source line), how many samples, and the output."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: "How to reproduce"
+    validations:
+      required: true
+  - type: dropdown
+    id: confidence
+    attributes:
+      label: "How sure are you?"
+      description: "Confidence bands used across the docs"
+      options:
+        - "95%+ — two independent sources agree, cross-checked on large data"
+        - "85–94% — one strong source, partly cross-checked"
+        - "70–84% — one source, consistent, no counter-example found"
+        - "50–69% — structure verified, details not"
+        - "Below 50% — a claim without a measurement yet"
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: "Which file should it go in? (optional)"
+      placeholder: "skills/fivem-assets/trunk/flags.md"
+  - type: input
+    id: build
+    attributes:
+      label: "Game build and tool versions"
+      placeholder: "Legacy b3258, Sollumz 2.9, Blender 4.2"

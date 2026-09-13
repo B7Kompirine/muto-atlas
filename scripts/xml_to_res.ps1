@@ -1,11 +1,11 @@
-﻿# xml_to_res.ps1 — .yft.xml / .ydd.xml / .ydr.xml / .ybn.xml / .ypt.xml /
-# .ytd.xml dosyasini oyuna hazir binary'ye cevirir. res_to_xml.ps1'in TERSIDIR.
+﻿# xml_to_res.ps1 - converts a .yft.xml / .ydd.xml / .ydr.xml / .ybn.xml / .ypt.xml /
+# .ytd.xml file into a game-ready binary. It is the REVERSE of res_to_xml.ps1.
 #
-# NEDEN GEREKLI: bir asset'i XML'e dokup elle duzeltip (or. bozuk bir dugumu
-# cikarip) geri derlemek gerekebiliyor. Sollumz bunu yapamaz; CodeWalker.Core
-# yapar ama GUI'siz cagrilmasi gerekir.
+# WHY IT IS NEEDED: sometimes you have to dump an asset to XML, fix it by hand (e.g. remove
+# a broken node) and compile it back. Sollumz cannot do this; CodeWalker.Core
+# can, but it has to be called without the GUI.
 #
-# Kullanim:
+# Usage:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File xml_to_res.ps1 -XmlPath <...>.yft.xml
 #   powershell -NoProfile -ExecutionPolicy Bypass -File xml_to_res.ps1 -XmlPath <...>.ydd.xml -OutPath <...>.ydd
 
@@ -17,13 +17,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# DIKKAT: yol icinde [peds] gibi kose parantez varsa Test-Path onu JOKER
-# sanip dosyayi bulamaz -> -LiteralPath sart.
-if (-not (Test-Path -LiteralPath $XmlPath)) { throw "XML bulunamadi: $XmlPath" }
+# CAREFUL: if the path contains square brackets such as [peds], Test-Path reads them as a
+# WILDCARD and cannot find the file -> -LiteralPath is required.
+if (-not (Test-Path -LiteralPath $XmlPath)) { throw "XML not found: $XmlPath" }
 if (-not $OutPath) { $OutPath = $XmlPath -replace '\.xml$', '' }
 
-$CodeWalker = & "$PSScriptRoot\yol.ps1" codewalker $CodeWalker
-if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll bulunamadi." }
+$CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
+if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll not found." }
 
 $cwDir = Split-Path $CodeWalker -Parent
 $script:cwDir = $cwDir
@@ -57,76 +57,76 @@ public static class XmlToRes
             case ".yft":
             {
                 var yft = XmlYft.GetYft(doc);
-                if (yft == null) { Console.WriteLine("[!] XmlYft.GetYft null dondu."); return; }
+                if (yft == null) { Console.WriteLine("[!] XmlYft.GetYft returned null."); return; }
                 data = yft.Save();
                 break;
             }
             case ".ydd":
             {
                 var ydd = XmlYdd.GetYdd(doc);
-                if (ydd == null) { Console.WriteLine("[!] XmlYdd.GetYdd null dondu."); return; }
+                if (ydd == null) { Console.WriteLine("[!] XmlYdd.GetYdd returned null."); return; }
                 data = ydd.Save();
                 break;
             }
             case ".ydr":
             {
                 var ydr = XmlYdr.GetYdr(doc);
-                if (ydr == null) { Console.WriteLine("[!] XmlYdr.GetYdr null dondu."); return; }
+                if (ydr == null) { Console.WriteLine("[!] XmlYdr.GetYdr returned null."); return; }
                 data = ydr.Save();
                 break;
             }
             case ".ybn":
             {
                 var ybn = XmlYbn.GetYbn(doc);
-                if (ybn == null) { Console.WriteLine("[!] XmlYbn.GetYbn null dondu."); return; }
+                if (ybn == null) { Console.WriteLine("[!] XmlYbn.GetYbn returned null."); return; }
                 data = ybn.Save();
                 break;
             }
             case ".ypt":
             {
-                // Gomulu dokular (.dds) XML ile AYNI klasorde aranir; res_to_xml
-                // onlari zaten oraya yazar. Klasor yanlissa doku sessizce dusmez,
-                // XmlYpt null doner.
+                // Embedded textures (.dds) are looked up in the SAME folder as the XML; res_to_xml
+                // already writes them there. If the folder is wrong the texture is not silently dropped;
+                // XmlYpt returns null.
                 var inputFolder = Path.GetDirectoryName(Path.GetFullPath(xmlPath));
                 var ypt = XmlYpt.GetYpt(doc, inputFolder);
-                if (ypt == null) { Console.WriteLine("[!] XmlYpt.GetYpt null dondu."); return; }
+                if (ypt == null) { Console.WriteLine("[!] XmlYpt.GetYpt returned null."); return; }
                 data = ypt.Save();
                 break;
             }
             case ".ytd":
             {
-                // Doku sozlugu. .ypt gibi, <FileName> ile gosterilen .dds'ler
-                // XML ile AYNI klasorde aranir.
+                // Texture dictionary. Like .ypt, the .dds files named by <FileName>
+                // are looked up in the SAME folder as the XML.
                 //
-                // NEDEN GEREKLI: Sollumz bir drawable'a .ytd uretmeyi
-                // atlayabiliyor (olculdu: uc drawable export edildi, yalnizca
-                // birine .ytd yazildi; bilesen modelinin dokulari hicbir
-                // sozluge girmedi ve oyunda dokusuz cikacakti). Elle .ytd
-                // derlemek disinda telafisi yok.
+                // WHY IT IS NEEDED: Sollumz can skip building a .ytd for a drawable
+                // (measured: three drawables were exported, a .ytd was written for only
+                // one of them; the component model's textures went into no
+                // dictionary and would have shown up untextured in the game). There is no
+                // fix other than compiling the .ytd by hand.
                 var ytdFolder = Path.GetDirectoryName(Path.GetFullPath(xmlPath));
                 var ytd = XmlYtd.GetYtd(doc, ytdFolder);
-                if (ytd == null) { Console.WriteLine("[!] XmlYtd.GetYtd null dondu."); return; }
+                if (ytd == null) { Console.WriteLine("[!] XmlYtd.GetYtd returned null."); return; }
                 data = ytd.Save();
                 break;
             }
             default:
-                Console.WriteLine("[!] desteklenmeyen uzanti: " + ext);
+                Console.WriteLine("[!] unsupported extension: " + ext);
                 return;
         }
 
         File.WriteAllBytes(outPath, data);
-        Console.WriteLine(string.Format("[+] {0,-42} -> {1:N0} bayt", name, data.Length));
+        Console.WriteLine(string.Format("[+] {0,-42} -> {1:N0} bytes", name, data.Length));
     }
 }
 '@
 
 $refs = @($CodeWalker, (Join-Path $cwDir 'SharpDX.dll'), (Join-Path $cwDir 'SharpDX.Mathematics.dll'),
           'netstandard', 'System.Xml',
-          # PowerShell 7 (.NET 8+) altinda bu tipler netstandard'dan forward
-          # edilmistir; referans verilmezse Add-Type CS1069/CS0103 ile coker.
-          # XmlDocument icin 'System.Xml' YETMEZ -> 'System.Xml.ReaderWriter'
-          # gerekir. 'System.Private.Xml' EKLEME: ayni tipi o da tanimlar ve
-          # CS0433 (type exists in both assemblies) hatasi verir.
+          # Under PowerShell 7 (.NET 8+) these types are forwarded from
+          # netstandard; without a reference Add-Type crashes with CS1069/CS0103.
+          # For XmlDocument 'System.Xml' is NOT ENOUGH -> 'System.Xml.ReaderWriter'
+          # is needed. Do NOT ADD 'System.Private.Xml': it defines the same type too and
+          # gives CS0433 (type exists in both assemblies).
           'System.Xml.ReaderWriter',
           'System.Collections', 'System.Runtime', 'System.Linq',
           'System.Console', 'System.IO.Compression', 'System.Text.RegularExpressions')
