@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""setup.py — setup. Builds all 28 layers from the USER'S OWN data.
+"""setup.py — setup. Builds every data layer from the USER'S OWN data.
 
   python scripts/setup.py --save --gta "<GTA V>" --codewalker "<...\\CodeWalker.Core.dll>" \\
                           --resources "<server>/resources"

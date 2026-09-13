@@ -419,6 +419,13 @@ for f in ("README.md", os.path.join("docs", "README.tr.md")):
     if os.path.exists(os.path.join(A, f)):
         docs[f] = read(os.path.join(A, f))
 all_docs = "\n".join(docs.values())
+# the layer count is also written in the plugin manifests and the contributor guides
+layer_docs = dict(docs)
+for f in (os.path.join(".claude-plugin", "plugin.json"), os.path.join(".claude-plugin", "marketplace.json"),
+          "AGENTS.md", "CONTRIBUTING.md", os.path.join("docs", "CONTRIBUTING.tr.md")):
+    if os.path.exists(os.path.join(A, f)):
+        layer_docs[f] = read(os.path.join(A, f))
+layer_text = "\n".join(layer_docs.values())
 
 # 11a. data layers: setup.py's OWN list (imported, not guessed)
 layer_count = None
@@ -436,12 +443,17 @@ except Exception as e:
 if layer_count:
     # an exit-code line such as "2 data layers not installed" is not a claim about the total
     claims = re.findall(r"(\d+)\s*(?:offline data layers|çevrimdışı veri katmanı|veri katmanı|data layers)(?!\s*(?:kurulu|not installed))",
-                        all_docs)
+                        layer_text)
     for written in sorted(set(claims)):
         if int(written) != layer_count:
             problems.append(L("SAYAC KAYMASI: belgede '%s veri katmani' yaziyor, setup.py'de %d katman var" % (written, layer_count),
                               "COUNTER DRIFT: the docs say '%s data layers', setup.py has %d" % (written, layer_count)))
-    for f, t in docs.items():
+    # setup.py's own docstring once said "all 28 layers" while its list had 24
+    for written in sorted(set(re.findall(r"\ball\s+(\d+)\s+(?:data\s+)?layers\b", read(os.path.join(A, "scripts", "setup.py"))))):
+        if int(written) != layer_count:
+            problems.append(L("SAYAC KAYMASI: scripts/setup.py 'all %s layers' diyor, kendi listesinde %d katman var" % (written, layer_count),
+                              "COUNTER DRIFT: scripts/setup.py says 'all %s layers', its own list has %d" % (written, layer_count)))
+    for f, t in layer_docs.items():
         for written in set(re.findall(r"N/(\d+)\s*(?:katman|layers)", t)):
             problems.append(L("SABIT KATMAN SAYISI: %s icinde 'N/%s' — sayiyi yazma, setup.py hesaplar" % (f, written),
                               "HARD-CODED LAYER COUNT: 'N/%s' in %s — do not write the number, setup.py computes it" % (written, f)))

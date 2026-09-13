@@ -1,0 +1,55 @@
+name: checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: audit · scripts · data · public text · links
+    # Windows: the scripts target Windows PowerShell 5.1 and a Windows code page.
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install the Python packages the checks need
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Plugin audit (knowledge tree, links, counters)
+        if: ${{ !cancelled() }}
+        run: python scripts/audit_plugin.py
+
+      - name: Repository checks (scripts, data tables, public text, links)
+        if: ${{ !cancelled() }}
+        run: python scripts/check_repo.py --strict
+
+      - name: Knowledge database builds and answers a search
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          python scripts/build_atlas_db.py --tagger rules --out "$RUNNER_TEMP/atlas.db"
+          python scripts/build_atlas_db.py --search TimeFlags --limit 3 --out "$RUNNER_TEMP/atlas.db"
+
+      - name: Skills meet the Agent Skills spec
+        if: ${{ !cancelled() }}
+        run: python scripts/install_skills.py --check
+
+      - name: MCP server registers its tools
+        if: ${{ !cancelled() }}
+        run: python scripts/mcp_server.py --list-tools

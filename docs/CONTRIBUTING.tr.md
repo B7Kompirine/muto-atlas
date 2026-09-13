@@ -71,8 +71,8 @@ gövdeye; tek kategoriye aitse o `_branch.md`'ye; tek göreve özgüyse yaprağa
 - **Yeni kullanıcı mesajları `scripts/i18n.py` üzerinden** hem `en` hem `tr`
   karşılığıyla eklenir. Eksik anahtar kendisini yazdırır, böylece boşluk
   görünür kalır.
-- **PowerShell betikleri Windows PowerShell 5.1'de çalışmalı.** UTF-8 *BOM'lu*
-  kaydet, yoksa 5.1 ASCII dışı karakterleri yanlış okur.
+- **PowerShell betikleri Windows PowerShell 5.1'de çalışmalı.** Tamamen ASCII tut
+  ya da UTF-8 *BOM'lu* kaydet, yoksa 5.1 ASCII dışı karakterleri yanlış okur.
 
 ## Değişikliğini yerelde test etmek
 
@@ -85,14 +85,20 @@ gövdeye; tek kategoriye aitse o `_branch.md`'ye; tek göreve özgüyse yaprağa
 
 3. Katmanları bir kez kur (`/asset-setup`) ve değiştirdiğin komutu çalıştır.
    Çıktısını, çıkış kodu dahil, pull request'e yapıştır.
-4. Eklentinin kendi denetimini çalıştır. `0` ile çıkmalı:
+4. Eklentinin kendi kontrollerini çalıştır. İkisi de `0` ile çıkmalı:
 
    ```bash
+   python -m pip install -r requirements-dev.txt
    python scripts/audit_plugin.py
+   python scripts/check_repo.py
    ```
 
-   Hiç hata vermeyen kusurları yakalar: kırık bağlantı, dal tablosunda olmayan
-   yaprak, kaymış sayaç, BOM'suz `.ps1`.
+   `audit_plugin.py` bilgi ağacında hiç hata vermeyen kusurları yakalar: kırık
+   bağlantı, dal tablosunda olmayan yaprak, kaymış sayaç, BOM'suz `.ps1`.
+   `check_repo.py` gerisine bakar: her betik derleniyor ve `--help`'e cevap
+   veriyor mu, her `.ps1` ayrıştırılıyor mu, `data/` tabloları şemasına uyuyor mu,
+   bir dosyada kişisel yol, e-posta adresi ya da gizli anahtar var mı, her göreli
+   bağlantı bir dosyaya gidiyor mu.
 5. Bilgi ağacını değiştirdiysen veritabanını çevrimdışı yeniden üret ve snippet'ini bul:
 
    ```bash
@@ -100,6 +106,8 @@ gövdeye; tek kategoriye aitse o `_branch.md`'ye; tek göreve özgüyse yaprağa
    python scripts/build_atlas_db.py --search "değişikliğindeki bir kelime"
    ```
 
+Her pull request aynı kontrolleri GitHub Actions'ta çalıştırır
+(`.github/workflows/checks.yml`); başarısız bir kontrol dosyayı ve satırı gösterir.
 Bunun dışında otomatik test paketi yok. Pull request'teki ölçüm, testin kendisidir.
 
 ## Pull request

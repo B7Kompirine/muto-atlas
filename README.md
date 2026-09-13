@@ -5,7 +5,7 @@
 **Ground truth for FiveM / GTA V development.** A Claude Code plugin that answers
 questions about the game's actual data instead of guessing.
 
-[Türkçe dokümantasyon →](docs/README.tr.md)
+[Türkçe dokümantasyon →](docs/README.tr.md) · [![checks](https://github.com/B7Kompirine/muto-atlas/actions/workflows/checks.yml/badge.svg)](https://github.com/B7Kompirine/muto-atlas/actions/workflows/checks.yml)
 
 ---
 
@@ -95,6 +95,7 @@ The plugin also checks **itself**:
 
 ```bash
 python scripts/audit_plugin.py     # exit 1 if anything is broken
+python scripts/check_repo.py       # scripts, data tables, public text, links
 ```
 
 It catches the failures that never raise an error: a command pointing at a

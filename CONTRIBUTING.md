@@ -71,8 +71,8 @@ branch → trunk; true for one category → that `_branch.md`; true for one task
   symptom was a "0 scanned" line.
 - **New user-facing messages go through `scripts/i18n.py`** with both `en` and
   `tr` entries. A missing key prints the key itself, so gaps stay visible.
-- **PowerShell scripts must run on Windows PowerShell 5.1.** Save them as
-  UTF-8 *with BOM*, or 5.1 misreads non-ASCII characters.
+- **PowerShell scripts must run on Windows PowerShell 5.1.** Keep them pure
+  ASCII or save them as UTF-8 *with BOM*, or 5.1 misreads non-ASCII characters.
 
 ## Testing your change locally
 
@@ -85,14 +85,20 @@ branch → trunk; true for one category → that `_branch.md`; true for one task
 
 3. Build the layers once (`/asset-setup`) and run the command you changed.
    Paste its output, including the exit code, into the pull request.
-4. Run the plugin's own check. It must exit `0`:
+4. Run the plugin's own checks. Both must exit `0`:
 
    ```bash
+   python -m pip install -r requirements-dev.txt
    python scripts/audit_plugin.py
+   python scripts/check_repo.py
    ```
 
-   It catches what never raises an error: broken links, a leaf missing from its
-   branch table, drifted counters, a `.ps1` without a BOM.
+   `audit_plugin.py` catches what never raises an error in the knowledge tree:
+   broken links, a leaf missing from its branch table, drifted counters, a `.ps1`
+   without a BOM. `check_repo.py` checks the rest: every script compiles and
+   answers `--help`, every `.ps1` parses, the tables in `data/` match their
+   schemas, no personal path, e-mail address or secret sits in a file, and every
+   relative link resolves.
 5. If you changed the knowledge tree, rebuild the database offline and find your snippet:
 
    ```bash
@@ -100,6 +106,8 @@ branch → trunk; true for one category → that `_branch.md`; true for one task
    python scripts/build_atlas_db.py --search "a word from your change"
    ```
 
+Every pull request runs the same checks in GitHub Actions
+(`.github/workflows/checks.yml`); a failing check names the file and the line.
 Beyond that there is no automated test suite. The measurement in your pull
 request is the test.
 
