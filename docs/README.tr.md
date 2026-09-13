@@ -148,7 +148,8 @@ güncellenmez. Slash komutları yalnız Claude Code'dadır.
 `scripts/mcp_server.py` aynı sorguları MCP aracı olarak sunar: asset ve kapı sorgusu, animasyon
 ve partikül adları, bayrak çözme, native doğrulama, bilgi ağacı ve — yalnız yerelde — `doctor`,
 yapısal diff, ışık çözme ve Lua linter. Her sonuç çıkış koduyla ve o kodun anlamıyla başlar.
-`mcp` Python paketi gerekir (1.28 ile denendi): `python -m pip install "mcp>=1.28"`.
+`mcp` Python paketinin 1.x sürümü gerekir (1.28 ve 1.30 ile denendi; mcp 2.x sunucu API'sini
+değiştirdi, henüz desteklenmiyor): `python -m pip install "mcp>=1.28,<2"`.
 
 Claude Desktop (`claude_desktop_config.json`), Cursor (`~/.cursor/mcp.json`) ve Gemini CLI
 (`~/.gemini/settings.json`) şu biçimi kullanır; VS Code (`.vscode/mcp.json`) aynı girdiyi

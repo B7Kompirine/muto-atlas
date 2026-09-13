@@ -41,8 +41,19 @@ TIMEOUT = 300
 try:
     from mcp.server.fastmcp import FastMCP
     from mcp.types import ToolAnnotations
-except ImportError:
-    sys.stderr.write('mcp package missing: python -m pip install "mcp>=1.28"\n')
+except ImportError as exc:
+    # mcp 2.x renamed FastMCP to MCPServer and changed other APIs; this server is written for mcp 1.x.
+    # "missing" would be a wrong diagnosis when a 2.x package is installed, so name the version.
+    try:
+        from importlib.metadata import version as _version
+        _installed = _version("mcp")
+    except Exception:
+        _installed = None
+    if _installed:
+        sys.stderr.write(f"mcp {_installed} is installed, but this server needs mcp 1.x ({exc}).\n"
+                         'Install a compatible version: python -m pip install "mcp>=1.28,<2"\n')
+    else:
+        sys.stderr.write('mcp package missing: python -m pip install "mcp>=1.28,<2"\n')
     sys.exit(3)
 
 INSTRUCTIONS = (

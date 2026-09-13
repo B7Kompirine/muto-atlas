@@ -212,8 +212,9 @@ themselves. The slash commands stay Claude Code only.
 `scripts/mcp_server.py` exposes the same queries as MCP tools: asset and door lookups, animation
 and particle names, flag decoding, native checks, the knowledge tree, and — locally only —
 `doctor`, structural diff, light decoding and the Lua linter. Every result starts with its exit
-code and what that code means. It needs the `mcp` Python package (tested with 1.28):
-`python -m pip install "mcp>=1.28"`.
+code and what that code means. It needs the `mcp` Python package, version 1.x (tested with 1.28
+and 1.30; mcp 2.x renamed the server API and is not supported yet):
+`python -m pip install "mcp>=1.28,<2"`.
 
 Claude Desktop (`claude_desktop_config.json`), Cursor (`~/.cursor/mcp.json`) and Gemini CLI
 (`~/.gemini/settings.json`) use this shape; VS Code (`.vscode/mcp.json`) takes the same entry

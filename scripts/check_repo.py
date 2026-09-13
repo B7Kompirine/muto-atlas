@@ -141,7 +141,8 @@ def check_scripts(files, strict):
             if left_behind:
                 problem("scripts", L(f"--help dosya yazdi: {left_behind[:3]}", f"--help wrote files: {left_behind[:3]}"), rel)
             continue
-        missing = re.search(r"ModuleNotFoundError: No module named '([^']+)'", err)
+        missing = (re.search(r"ModuleNotFoundError: No module named '([^']+)'", err)
+                   or re.search(r"^(mcp) (?:package missing|[\w.]+ is installed, but)", err, re.M))
         if missing and not strict:
             note("scripts", L(f"{rel}: --help atlandi, '{missing.group(1)}' paketi kurulu degil "
                               f"(python -m pip install -r requirements-dev.txt)",
