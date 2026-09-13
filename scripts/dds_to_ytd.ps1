@@ -1,8 +1,14 @@
 # dds_to_ytd.ps1 -- klasordeki .dds dosyalarindan .ytd doku sozlugu uretir.
 #
-# NEDEN: Sollumz .ytd URETEMEZ (sollum_type listesinde texture dictionary yok)
-#        ve Blender DDS YAZAMAZ. Bu iki bosluktan ikincisi bake_to_gta.py ile,
-#        birincisi bu betikle kapanir.
+# NEDEN: Blender DDS YAZAMAZ (128 baytlik baslik elle yazilir ve Blender
+#        pikselleri alttan uste tutar) -- o bosluk bake_to_gta.py / make_dds.py
+#        ile kapanir; bu betik de elde .dds varken .ytd'yi kurar.
+#
+#        SURUM NOTU (olculdu 2026-08-23): "Sollumz .ytd uretemez" ARTIK GENEL
+#        DOGRU DEGIL. Sollumz 2.9.0'da bpy.ops.sollumz.export_ytd VAR.
+#        Bu betik yine de gerekli: Blender'in disinda uretilmis .dds
+#        klasorlerinden .ytd kurar ve uretimden sonra GERI OKUYARAK dogrular --
+#        Sollumz'un export'u boyle bir denetim yapmaz.
 #
 # !! Cikis boyutu gecerlilik olcutu DEGILDIR -- RSC7 zlib sikistirilmistir.
 #    Bu yuzden betik uretimden sonra dosyayi GERI OKUR ve doku sayisi/adi/
@@ -26,6 +32,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Yol verilmediyse data/config.json'dan oku (build_ytyp.ps1 ile ayni davranis).
+if (-not $CodeWalker) {
+    $cfg = Join-Path (Split-Path $PSScriptRoot -Parent) 'data\config.json'
+    if (Test-Path -LiteralPath $cfg) {
+        $CodeWalker = (Get-Content -LiteralPath $cfg -Raw | ConvertFrom-Json).codeWalker
+    }
+}
 if (-not (Test-Path -LiteralPath $CodeWalker)) { throw "CodeWalker.Core.dll yok: $CodeWalker" }
 if (-not (Test-Path -LiteralPath $Girdi))      { throw "girdi klasoru yok: $Girdi" }
 Add-Type -Path $CodeWalker

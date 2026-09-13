@@ -42,7 +42,7 @@ body:
     id: plugin-version
     attributes:
       label: "muto-atlas version · muto-atlas sürümü"
-      placeholder: "2.5.0"
+      placeholder: "3.0.0"
     validations:
       required: true
   - type: dropdown

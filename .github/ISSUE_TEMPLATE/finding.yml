@@ -34,7 +34,7 @@ body:
     id: confidence
     attributes:
       label: "How sure are you? · Ne kadar eminsin?"
-      description: "Bands from YETENEK-DURUMU.md · YETENEK-DURUMU.md'deki güven bantları"
+      description: "Confidence bands used across the docs · Belgelerde kullanılan güven bantları"
       options:
         - "95%+ — two independent sources agree, cross-checked on large data · iki bağımsız kaynak kesişti, büyük veride doğrulandı"
         - "85–94% — one strong source, partly cross-checked · tek güçlü kaynak, kısmi çapraz kontrol"
@@ -47,7 +47,7 @@ body:
     id: where
     attributes:
       label: "Which file should it go in? (optional) · Hangi dosyaya girmeli? (isteğe bağlı)"
-      placeholder: "skills/fivem-assets/references/ytyp-ymap-bayraklari.md"
+      placeholder: "skills/fivem-assets/govde/bayraklar.md"
   - type: input
     id: build
     attributes:

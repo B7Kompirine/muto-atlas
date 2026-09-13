@@ -96,12 +96,18 @@ def main() -> int:
     # bayrak tum sozcugu degistirir. Donorun degerini birebir vermek icin.
     ap.add_argument("--doku-bayrak", default=None,
                     help="UsageFlags'i elle yaz (orn. 'X32, X64, X128, UNK24')")
-    # `m_sizeScalarKFP`'nin OLCEGI COZULMEDI: vanilla dagiliminda medyan
-    # 57.6 (yuzde gibi) ama donorde 0.4437 degeriyle gorunur parcacik
-    # uretiyor (carpan gibi). Iki model de tek basina tutmuyor. Bu kol
-    # sadece OLCMEK icin var -- degeri degistirip oyunda etkisine bakilir.
+    # `m_sizeScalarKFP` YUZDEDIR, notr deger 100. (KFPs.md: "Size Scalar --
+    # width/height/depth percentages, max 1000%".) Olculdu: donorlerin
+    # dagilimi 34 ile 694 arasinda -- `weap_veh_turb_dust` %693,6 ile
+    # gokyuzunu kapatiyor, `td_blood_nose` %34,1 ile neredeyse gorunmuyor.
+    # Donoru oldugu gibi almak efekti donorun sahnesine gore olceklendirir;
+    # kendi efektimiz icin bandina oturtulmasi gerekir.
     ap.add_argument("--boyut-olcek", type=float, default=None,
-                    help="m_sizeScalarKFP degerini elle yazar (olcegi BELIRSIZ)")
+                    help="m_sizeScalarKFP (YUZDE, notr=100)")
+    ap.add_argument("--oran", type=float, default=None,
+                    help="m_spawnRateOverTimeKFP (adet/sn)")
+    ap.add_argument("--omur", type=float, default=None,
+                    help="m_particleLifeKFP (saniye)")
     a = ap.parse_args()
 
     s = open(a.kaynak_xml, encoding="utf-8", errors="replace").read()
@@ -189,6 +195,55 @@ def main() -> int:
             olcekle, emitter, flags=re.S)
         print(f"[i] m_sizeScalarKFP = {v:g}" if emitter != once
               else "[!] UYARI: m_sizeScalarKFP bulunamadi")
+
+    def emitter_kfp_yaz(blok_adi, deger, etiket):
+        """Emitter kuralinda bir KFP'yi `deger` ORTALAMASINA olcekler.
+
+        R = min, G = maks yuvasidir.
+
+        ⛔ IKISINI DE AYNI YAZMA -- aralik cokerse rastgelelik kalkar ve
+           butun parcaciklar ayni anda olur; goz bunu "mekanik" okur.
+           Olculdu (n=1989): vanilla emitterlerin **%90,3**'u parcacik
+           omrune min-max araligi verir, medyan maks/min **1.45**. Spawn
+           oraninda da %56,7. Yani duz sayi yazmak coğunluk vakada
+           vanilla'dan SAPMAKTIR.
+
+        Dogrusu: donorun kendi yayilma oranini koru, araligi istenen
+        ortalamaya tasi. Donorda aralik yoksa (min==max) duz kalir --
+        o da donorun kendi tercihidir.
+        """
+        def yaz(m):
+            govde = m.group(2)
+            k = re.findall(r"<(?:Red|Green)ChannelColour value=\"([-\d.eE+]+)\" />",
+                           govde)
+            if len(k) >= 2:
+                mn, mx = float(k[0]), float(k[1])
+                ort = (mn + mx) / 2.0
+                if ort > 1e-9:
+                    yeni = (mn * deger / ort, mx * deger / ort)
+                else:
+                    yeni = (deger, deger)
+            else:
+                yeni = (deger, deger)
+            it = iter(yeni)
+            govde = re.sub(
+                r"<(RedChannelColour|GreenChannelColour) value=\"[-\d.eE+]+\" />",
+                lambda q: f"<{q.group(1)} value=\"{next(it, deger):g}\" />",
+                govde, count=2)
+            return m.group(1) + govde + m.group(3)
+        return re.sub(r"(<Name>ptxEmitterRule:" + blok_adi + r"</Name>.*?<Keyframes>)"
+                      r"(.*?)(</Keyframes>)", yaz, emitter, flags=re.S), etiket
+
+    if a.oran is not None:
+        once = emitter
+        emitter, _ = emitter_kfp_yaz("m_spawnRateOverTimeKFP", a.oran, "oran")
+        print(f"[i] spawn orani = {a.oran:g}/sn" if emitter != once
+              else "[!] UYARI: m_spawnRateOverTimeKFP bulunamadi")
+    if a.omur is not None:
+        once = emitter
+        emitter, _ = emitter_kfp_yaz("m_particleLifeKFP", a.omur, "omur")
+        print(f"[i] parcacik omru = {a.omur:g} sn" if emitter != once
+              else "[!] UYARI: m_particleLifeKFP bulunamadi")
 
     # --- renk: yalniz ptxu_Colour'un RGB kanallari, alfa egrisi korunur ---
     if a.renk:

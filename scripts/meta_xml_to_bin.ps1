@@ -37,8 +37,8 @@ $asm = [System.Reflection.Assembly]::LoadFrom($CodeWalker)
 $mf  = $asm.GetType('CodeWalker.GameFiles.MetaFormat')
 
 $ext = [System.IO.Path]::GetExtension($OutPath).ToLowerInvariant()
-if ($ext -ne '.ytyp' -and $ext -ne '.ymap') {
-    throw "Desteklenmeyen uzanti '$ext'. Bu arac yalniz .ytyp / .ymap yazar."
+if ($ext -ne '.ytyp' -and $ext -ne '.ymap' -and $ext -ne '.ymt') {
+    throw "Desteklenmeyen uzanti '$ext'. Bu arac yalniz .ytyp / .ymap / .ymt yazar."
 }
 
 $doc = New-Object System.Xml.XmlDocument
@@ -52,7 +52,14 @@ if (-not $data) { throw "XmlMeta.GetData null dondu -- XML yapisi bozuk olabilir
 
 # GERI OKU. Boyut gecerlilik olcutu DEGILDIR (RSC7 zlib sikistirilmis);
 # tek gecerli olcut geri okumadir.
-if ($ext -eq '.ytyp') {
+if ($ext -eq '.ymt') {
+    # CPedVariationInfo vb. RSC meta. Geri oku, kok blok adini yaz.
+    $y = New-Object CodeWalker.GameFiles.YmtFile
+    $y.Load([System.IO.File]::ReadAllBytes($OutPath))
+    $root = if ($y.Meta -and $y.Meta.DataBlocks) { $y.Meta.DataBlocks.Count } else { 0 }
+    Write-Host ("[+] {0}  {1} bayt  -> meta blok={2}" -f [System.IO.Path]::GetFileName($OutPath), $data.Length, $root)
+    if ($root -eq 0) { Write-Host "[!] meta blok 0 -- dosya bos yazildi."; exit 1 }
+} elseif ($ext -eq '.ytyp') {
     $y = New-Object CodeWalker.GameFiles.YtypFile
     $y.Load([System.IO.File]::ReadAllBytes($OutPath))
     $na = if ($y.AllArchetypes) { $y.AllArchetypes.Count } else { 0 }

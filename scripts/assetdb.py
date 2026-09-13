@@ -81,7 +81,7 @@ EXPRS = os.path.join(DATA, "expressions.tsv.gz")
 # olculen kullanim NEYIN oyle etiketlendigini soyler.
 #
 # Tam tablo + capraz dogrulama:
-#   skills/fivem-assets/references/ytyp-ymap-bayraklari.md
+#   skills/fivem-assets/govde/bayraklar.md
 SPECIAL = {
     0:  ("None", "Duz obje. Oyunun KAPI SISTEMI bu objeyi tanimaz."),
     1:  ("Deprecated - Unused", "Motorda hicbir sey yapmaz; eski dosyalarla "
@@ -826,6 +826,7 @@ def cmd_scenario(args):
     return EXIT_NOTFOUND if not hits else EXIT_OK
 
 
+
 def cmd_propanim(args):
     """Bir PROP'un GERCEK animasyonlarini bul.
 
@@ -880,7 +881,7 @@ def cmd_propanim(args):
                 break
     print(f"\n{len(hits)} prop, {sum(len(v) for v in hits.values())} klip")
     print("Kullanim: ped klibi ve prop klibi AYNI dict icinde, AYNI sure ile")
-    print("          senkron oynatilir (bkz. SKILL.md senkron sahne bolumu).")
+    print("          senkron oynatilir.")
 
 
 FXTYPE = {
@@ -2086,12 +2087,6 @@ def cmd_cycle(args):
     return cycle.calistir(args)
 
 
-def cmd_sahne(args):
-    """Coklu obje sahnesi: ozet | --ymap. 0 tamam | 2 hata."""
-    import sahne
-    return sahne.calistir(args)
-
-
 def cmd_yol(args):
     """Dis arac yollari. 0 hepsi var | 1 eksik/bulunamadi | 2 gecersiz yol."""
     import yol
@@ -2336,20 +2331,6 @@ def main():
     s.add_argument("--guc", "--strength", dest="guc", type=float, default=1.0)
     s.add_argument("--liste", "--list", dest="liste", action="store_true")
     s.set_defaults(func=cmd_cycle)
-
-    s = sub.add_parser("scene", aliases=["sahne"],
-                       help="multi-object scene: summary, clip check, .ymap placement")
-    s.add_argument("--file", "--dosya", dest="dosya",
-                   help="scene json (loaded if present, changes written back)")
-    s.add_argument("--add", "--ekle", dest="ekle", action="append", metavar="MODEL",
-                   help="add a .ydr/.yft (repeatable)")
-    s.add_argument("--anim", action="append", metavar="YCD[:CLIP]",
-                   help="attach an animation to the object added last")
-    s.add_argument("--remove", "--sil", dest="sil", type=int, metavar="IDX",
-                   help="remove an object by index")
-    s.add_argument("--ymap", metavar="OUT", help="write the placement as a .ymap")
-    s.add_argument("--name", "--ad", dest="ad", help="ymap name (default: scene name)")
-    s.set_defaults(func=cmd_sahne)
 
     s = sub.add_parser("path", aliases=["yol"],
                        help="external tool paths: show / set (codewalker, gta, ...)")

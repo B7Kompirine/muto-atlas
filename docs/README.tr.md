@@ -38,20 +38,19 @@ claude plugin marketplace add B7Kompirine/muto-atlas
 claude plugin install muto-atlas@muto-atlas
 ```
 
-Claude Code'u yeniden başlat. Artık **23 komutun** ve **2 skill'in**
+Claude Code'u yeniden başlat. Artık **19 komutun** ve **2 skill'in**
 (`fivem-natives`, `fivem-assets`) var.
 
 | | |
 |---|---|
 | **Veriyi sorgula** | `/asset` `/native` `/where` `/anim` |
-| **Asset üret** | `/ped` `/retarget` `/clipset` `/yed` `/weapon` `/weaponfx` `/3dnui` `/rayfire` |
-| **Işık, decal & sahne** | `/light` `/decal` `/scene` |
-| **Denetle & kur** | `/asset-setup` `/asset-build` `/native-lint` |
+| **Dallar** (kurallar + yapraklar) | `/map` `/prop` `/clothing` `/particle` `/look` `/vehicle` |
+| **Denetle & kur** | `/asset-setup` `/asset-build` `/native-lint` `/help` |
 | **Araç yolları** | `/paths` `/codewalker` `/gta` `/server` `/blender` |
 
-> **Skill'ler plugin'in içinde gelir — ayrıca kurulmaz.** FiveM asset'i, native,
-> rigging ya da animasyon işi yaptığında, sen hiç komut yazmasan bile kendiliğinden
-> devreye girerler.
+> **Skill'ler plugin'in içinde gelir — ayrıca kurulmaz.** FiveM prop'u, harita,
+> görünüm, partikül ya da native işi yaptığında, sen hiç komut yazmasan bile
+> kendiliğinden devreye girerler.
 
 ### 2. Veri katmanlarını üret
 
@@ -244,7 +243,7 @@ Adlar **Sollumz 2.9 kaynağından** (`ytyp/properties/ytyp.py:53`), kapı yetene
 door physics taşıyor. `assetdb.py door` artık bayrağı da raporluyor.
 
 Tam tablo (21 değer) + entity/archetype bit tabloları + extension tipleri:
-`skills/fivem-assets/references/ytyp-ymap-bayraklari.md`
+`skills/fivem-assets/govde/bayraklar.md`
 
 ## Bayrak çözme
 

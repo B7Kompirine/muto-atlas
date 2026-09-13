@@ -32,7 +32,7 @@ param(
                  'ASSET_TYPE_DRAWABLEDICTIONARY','ASSET_TYPE_ASSETLESS')]
     [string] $AssetType,
     # Fragment'lerde physicsDictionary modelin KENDI adini gosterir (0 degil).
-    # Calisan referans (mairon_kapili_box) boyle; ClearDicts'ten sonra uygulanir.
+    # Calisan bir referans fragment boyle; ClearDicts'ten sonra uygulanir.
     [switch] $PhysicsDictSelf,
     [uint32] $Flags = 0,
     [single] $LodDist = 0,

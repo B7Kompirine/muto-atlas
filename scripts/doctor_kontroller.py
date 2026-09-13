@@ -53,7 +53,7 @@ def denetle_ycd(kok, yol, rap, derlenmis=False):
                 "tr": f"Animasyon #{i} <Hash> bos -> hash 0. Ayni anahtara "
                       f"dusen animasyonlar birbirini EZER.",
                 "en": f"Animation #{i} has empty <Hash> -> hash 0. Animations "
-                      f"colliding on one key OVERWRITE each other."}), "fix_ycd_xml.py")
+                      f"colliding on one key OVERWRITE each other."}), "Sollumz Clip panel -> Hash")
             continue
         if h in gorulen_anim:
             rap.ekle(SILENT, "YCD004", yol, _tr({
@@ -105,7 +105,7 @@ def denetle_ycd(kok, yol, rap, derlenmis=False):
                       f"sozlukte klipler ayrica birbirini ezer.",
                 "en": f"Clip '{ad or i}' has empty <Hash> -> the clip HAS NO NAME. "
                       f"TaskPlayAnim/PlayEntityAnim CANNOT find it. In a multi-clip "
-                      f"dictionary the clips also overwrite each other."}), "fix_ycd_xml.py")
+                      f"dictionary the clips also overwrite each other."}), "Sollumz Clip panel -> Hash")
         else:
             if h in gorulen_klip:
                 rap.ekle(SILENT, "YCD003", yol, _tr({
@@ -163,7 +163,7 @@ def denetle_ycd(kok, yol, rap, derlenmis=False):
                       f"AnimationHash -> hash 0. The clip is invoked, no animation is "
                       f"found. Positional matching is normal in the source XML; in a "
                       f"compiled file the link must already be RESOLVED."}),
-                "res_to_xml.ps1 + fix_ycd_xml.py")
+                "res_to_xml.ps1 + Sollumz Clip panel -> Hash")
         elif refsiz == len(klipler) and len(klipler) == len(animler):
             rap.ekle(WARN, "YCD009", yol, _tr({
                 "tr": f"Hicbir klip AnimationHash tasimiyor ({refsiz} klip) -> eslesme "
@@ -216,7 +216,7 @@ def denetle_ycd(kok, yol, rap, derlenmis=False):
 # =============================================================================
 # .ytyp — archetype tanimlari
 # =============================================================================
-# Yapi (muto_spear_props.ytyp.xml uzerinde dogrulandi):
+# Yapi (bir custom prop .ytyp.xml uzerinde dogrulandi):
 #   CMapTypes/archetypes/Item[@type=CBaseArchetypeDef|CTimeArchetypeDef|
 #                             CMloArchetypeDef]
 #     lodDist, flags, bbMin, bbMax, name, assetName, extensions

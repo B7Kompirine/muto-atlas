@@ -31,20 +31,23 @@ that is useful too.
 Not sure where to start? Look for
 [`good first issue`](https://github.com/B7Kompirine/muto-atlas/labels/good%20first%20issue)
 and [`help wanted`](https://github.com/B7Kompirine/muto-atlas/labels/help%20wanted).
-Many open questions only need someone with the game and one evening —
-see section 4 of [`YETENEK-DURUMU.md`](YETENEK-DURUMU.md).
+Many open questions only need someone with the game and one evening.
 
 ## Where things live
 
 | Path | What goes there |
 |---|---|
-| `skills/fivem-assets/references/*.md` | Measured findings about assets: props, MLOs, animation, peds, lights, particles |
-| `skills/fivem-natives/references/*.md` | Natives, framework API and Lua pitfalls |
-| `skills/*/SKILL.md` | Routing: which reference to open for which topic. A new reference file must be linked here, or nothing will ever read it |
+| `skills/fivem-assets/SKILL.md` + `govde/` | The trunk: rules that hold in **every** branch — engine invariants, tool traps, the verification ladder, flags, bone tags |
+| `skills/fivem-assets/dallar/<branch>/_dal.md` | One branch: its category-wide rules and the table of its leaves |
+| `skills/fivem-assets/dallar/<branch>/<leaf>.md` | One task. A new leaf must be listed in its branch's `_dal.md` table, or nothing will ever read it |
+| `skills/fivem-assets/kaynaklar/` | Notes on outside tools and community resources — sources, not rules |
+| `skills/fivem-natives/` | Natives, framework API and Lua pitfalls |
 | `commands/*.md` | Slash commands, one file each, with a `description:` front-matter line |
 | `scripts/` | Python and PowerShell tools |
 | `data/*.tsv` | Only the three hand-written tables are tracked. Everything else in `data/` is generated locally and gitignored |
-| `YETENEK-DURUMU.md` | Capability status, confidence bands and open questions |
+
+A finding is written **once**, in the widest place where it holds: true in every
+branch → trunk; true for one category → that `_dal.md`; true for one task → the leaf.
 
 ## Never commit
 
@@ -82,9 +85,17 @@ see section 4 of [`YETENEK-DURUMU.md`](YETENEK-DURUMU.md).
 
 3. Build the layers once (`/asset-setup`) and run the command you changed.
    Paste its output, including the exit code, into the pull request.
+4. Run the plugin's own check. It must exit `0`:
 
-There is no automated test suite yet. The measurement in your pull request is
-the test.
+   ```bash
+   python scripts/denetle_plugin.py
+   ```
+
+   It catches what never raises an error: broken links, a leaf missing from its
+   branch table, drifted counters, a `.ps1` without a BOM.
+
+Beyond that there is no automated test suite. The measurement in your pull
+request is the test.
 
 ## Pull requests
 

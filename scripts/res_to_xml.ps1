@@ -1,4 +1,4 @@
-﻿# res_to_xml.ps1 — binary .ycd / .yed / .yft / .ydd / .ypt dosyasini XML'e dokur.
+﻿# res_to_xml.ps1 — binary .ycd / .yed / .yft / .ydd / .yld / .ypt dosyasini XML'e dokur.
 #
 # NEDEN GEREKLI: Sollumz binary .ycd ve .yed OKUYAMAZ. Import denendiginde
 # sessizce
@@ -6,8 +6,6 @@
 # uyarisi verip "Imported in 0.0 seconds" der — hata firlatmaz, sahneye de
 # hicbir sey gelmez. Animasyonu Blender'da kare kare incelemek icin once
 # XML'e cevirmek ZORUNLU.
-#
-# xml_to_ycd.ps1 bunun TERSIDIR (XML -> binary, oyuna hazir).
 #
 # Kullanim:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File res_to_xml.ps1 -Path <dosya>
@@ -96,11 +94,29 @@ public static class ResToXml
                 xml = YdrXml.GetXml(f);
                 break;
             }
+            case ".yld":
+            {
+                // Ped cloth sozlugu (.ydd'nin yanindaki ayni adli dosya)
+                var f = RpfFile.GetResourceFile<YldFile>(data);
+                f.Name = name;
+                xml = YldXml.GetXml(f);
+                break;
+            }
             case ".ybn":
             {
                 var f = RpfFile.GetResourceFile<YbnFile>(data);
                 f.Name = name;
                 xml = YbnXml.GetXml(f);
+                break;
+            }
+            case ".ymt":
+            {
+                // Ped variation / creature metadata vb. Meta/PSO kaynagi; ytyp gibi kendi Load'u.
+                var f = new YmtFile();
+                f.Load(data);
+                f.Name = name;
+                string _fn;
+                xml = MetaXml.GetXml(f, out _fn);
                 break;
             }
             case ".ytyp":

@@ -6,7 +6,7 @@
 # Kullanim:
 #   pwsh ytd_ara.ps1 -Hash 232020629 -GtaFolder 'C:\...\GTAV'
 #
-# Ayrinti: references/vanilla-parca-degistirme.md §4
+# Ayrinti: dallar/map/vanilla-parca-degistirme.md §4
 
 param([Parameter(Mandatory=$true)][uint32]$Hash,[string]$GtaFolder,[string]$CodeWalker)
 $ErrorActionPreference='Stop'

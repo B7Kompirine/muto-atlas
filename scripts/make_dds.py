@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """make_dds.py — partikul sprite'i icin DXT5 + mip zincirli DDS uretir.
 
-NEDEN ELLE: Blender DDS YAZAMAZ ve Sollumz .ytd uretemez (CLAUDE.md §10).
+NEDEN ELLE: Blender DDS YAZAMAZ (128 baytlik baslik elle yazilir; Blender
+pikselleri alttan uste, DDS ustten alta tutar).
+SURUM NOTU (olculdu 2026-08-23): Sollumz 2.9.0'da .ytd export VAR
+(bpy.ops.sollumz.export_ytd); eski 'Sollumz .ytd uretemez' notu eskidi.
+DDS uretimi yine buradan gecer.
 
 ⛔ SIKISTIRILMAMIS FORMAT KULLANMA. Bu betigin ilk hali A8R8G8B8 (tek mip)
    yaziyordu ve gerekcesi "GTA sikistirilmamisi da kabul eder" VARSAYIMIYDI.

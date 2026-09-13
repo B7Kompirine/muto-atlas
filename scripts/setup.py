@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""setup.py — kurulum. 24 katmanın tamamını KULLANICININ KENDİ verisinden üretir.
+"""setup.py — kurulum. 28 katmanın tamamını KULLANICININ KENDİ verisinden üretir.
 
   python scripts/setup.py --save --gta "<GTA V>" --codewalker "<...\\CodeWalker.Core.dll>" \\
                           --resources "<sunucu>/resources"
@@ -16,16 +16,24 @@ Ağır katmanlar bu yüzden İSTEĞE BAĞLI DEĞİL, VARSAYILANDIR. Yol biliniyo
 kurulur. Kullanıcının elindeki gerçek veriyi kullanmamak, aracın var oluş
 sebebine aykırıdır: veri yoksa sorgu EXIT 2 döner ve model TAHMİNE düşer.
 
-NEDEN DAĞITILMIYOR
-------------------
-İki sebep, ikisi de ölçüldü:
-  1. `entities.db` tek başına 214 MB; GitHub'ın dosya sınırı 100 MB.
-     Push teknik olarak reddedilir.
-  2. Rockstar'ın verisi. Yeniden dağıtımı telif sorunudur.
+NE DAĞITILIR, NE DAĞITILMAZ
+---------------------------
+Bu public sürümde oyun verisi DAĞITILMAZ: bütün katmanlar kullanıcının kendi
+GTA V kurulumundan ve kendi sunucusundan yerelde üretilir. Depoda yalnız elle
+yazılmış üç küçük tablo durur (collision_materials, collision_flag_presets,
+light_presets).
 
-Yan faydası: herkesin katmanı kendi oyun sürümünden gelir. Merkezî bir
-kopya dağıtılsaydı herkes tek bir sürüme mahkûm olurdu — ölçüldü, bu
-kurulumda `m26_*` 1271 arketip var, dump'ta 0.
+Hiçbir durumda dağıtılmayan üç şey:
+  1. `entities.db` (214 MB) — TÜRETİLMİŞ; kurulumda yerelde üretilir.
+  2. `framework_api.tsv.gz` — KULLANICININ KENDİ SUNUCUSU. Her net event,
+     her export, dosya yolu ve satır numarasıyla. Yayınlanması gizlilik
+     değil GÜVENLİK sorunudur. Herkes kendi sunucusundan üretir.
+  3. `config.json` / `assets.meta.json` / `dumps.meta.json` — yerel yol
+     ve kullanıcı adı içerir.
+
+⚠ SÜRÜM: katmanlar üretildikleri oyun sürümüne bağlıdır (ölçüldü: bir
+kurulumda 1271 adet `m26_*` arketip var, eski bir dump'ta 0). Oyun
+güncellenince `/asset-build`.
 """
 from __future__ import annotations
 
@@ -69,7 +77,9 @@ KATMANLAR = [
     ("framework_api.tsv.gz", "hafif", "QBCore/ox export-event indeksi", "FRAMEWORK"),
     ("archetypes.tsv.gz", "agir", "316k arketip (kapi, pivot, fizik)",
      "powershell -File scripts/build_archetypes.ps1"),
-    ("entities.db", "agir", "3M dunya yerlesimi",
+    # entities.tsv.gz depoda gelir; .db ondan uretilir. Tsv yoksa (ya da
+    # kullanici kendi surumunden istiyorsa) once CodeWalker ile cikarilir.
+    ("entities.db", "agir", "3M dunya yerlesimi (entities.tsv.gz'den kurulur)",
      "powershell -File scripts/build_entities.ps1 && python scripts/build_entities_db.py"),
     ("ymap_lod.tsv.gz", "agir", "3.1M ymap LOD zinciri",
      "powershell -File scripts/build_ymap_lod.ps1"),
@@ -274,6 +284,13 @@ def main():
 
     # --- AGIR KADEME ---
     print("\n" + "-" * 68)
+    # --- HIZLI YOL: depodan gelen tsv'den entities.db kur ---
+    # Klonlayan kullanicinin ilk karsilastigi eksik bu; CodeWalker'a hic
+    # gerek yok cunku kaynak tsv zaten depoda.
+    if var("entities.tsv.gz") and not var("entities.db"):
+        calistir("entities.db — entities.tsv.gz'den kuruluyor (CodeWalker gerekmez)",
+                 "python scripts/build_entities_db.py", a.plan)
+
     print("2) KENDI OYUNUNDAN URETILEN KATMANLAR  (varsayilan)")
     print("-" * 68)
     if not gta or not cw:
@@ -284,8 +301,8 @@ def main():
             eksik.append("CodeWalker.Core.dll")
         print(f"\n  ⛔ YOL GEREKIYOR — bulunamadi: {', '.join(eksik)}")
         print()
-        print("  Bu katmanlar oyunun KENDI dosyalarindan uretilir; dagitilmazlar")
-        print("  (Rockstar'in verisi + ~290 MB, GitHub'in dosya siniri 100 MB).")
+        print("  Vanilla katmanlarin cogu depoda GELIR; asagidakiler ise senin")
+        print("  oyun surumunden uretilmek istenirse ya da depoda yoksa gerekir.")
         print("  Bu araci kullanan herkeste GTA V ve CodeWalker zaten vardir;")
         print("  eksik olan sey veri degil, YOL bilgisidir.")
         print()

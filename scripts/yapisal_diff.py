@@ -73,7 +73,7 @@ def karsilastir(a_sayac, b_sayac):
     # Adet farkinda da SINIR raporlanir. Bir dugum 3'e 1 farkliysa butun
     # cocuklari da 3'e 1 farklidir; 12 satirin tamami tek sebepten cikar.
     # Yalnizca EBEVEYNININ adetleri esit olan yollar bildirilir: farkin
-    # basladigi yer. (Olculdu: spear prop vs vanilla supurge -> 12 satir 2'ye
+    # basladigi yer. (Olculdu: custom prop vs vanilla supurge -> 12 satir 2'ye
     # dustu, bilgi kaybi olmadan.)
     adet = []
     for y in sorted(ortak):

@@ -12,7 +12,7 @@
 #
 # Zincir ymap DOSYALARINI asar:  X.ymap -> X_lod.ymap -> X_slod.ymap
 # CodeWalker'daki karsiligi: entity 'LOD Hierarchy' sekmesi (ParentIndex +
-# NumChildren). Ayrinti: skills/fivem-assets/references/ytyp-ymap-bayraklari.md
+# NumChildren). Ayrinti: skills/fivem-assets/govde/bayraklar.md
 #
 # Kullanim:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File build_ymap_lod.ps1

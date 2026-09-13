@@ -8,7 +8,7 @@
 #   pwsh ytd_index.ps1 -Roots @('C:\cikarilan\ytd') -Cikti idx.tsv
 # Cikti: her satir  "<doku adi>	<ytd dosya adi>"
 #
-# Ayrinti: references/vanilla-parca-degistirme.md §4
+# Ayrinti: dallar/map/vanilla-parca-degistirme.md §4
 
 param([Parameter(Mandatory=$true)][string[]]$Roots,[Parameter(Mandatory=$true)][string]$Out,
       [string]$CodeWalker)

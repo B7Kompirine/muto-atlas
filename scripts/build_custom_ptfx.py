@@ -159,7 +159,8 @@ def uret_xml(ad, doku, renk, omur, boyut, oran, hiz, yaricap,
              yukselme=0.4, alfa=1.0, sheet_kare=1, anim_hiz=0.0,
              dbayrak="X64, Y64, X256, Y512, UNK24", renk2=None,
              ivme=0.0, donme=0.0, gurultu=0.0, sekme=0.0,
-             isik=0.0, isik_menzil=3.0, parlama=0.0):
+             isik=0.0, isik_menzil=3.0, parlama=0.0,
+             anim_c8=1, anim_cc="0x1010100"):
     r, g, b = renk
     # ⛔ OMUR BOYUNCA RENK GECISI. Colour davranisinin keyframe'leri
     #    parcacigin OMRU boyunca interpole edilir: ilk kare dogum,
@@ -368,7 +369,7 @@ def uret_xml(ad, doku, renk, omur, boyut, oran, hiz, yaricap,
                (("ptxu_AnimateTexture:m_animRateKFP",
                  [kf(r=anim_hiz, g=anim_hiz, girinti=8)] if anim_hiz else []),),
                (("C0", "0"), ("C4", str(max(0, sheet_kare - 1))),
-                ("C8", "0"), ("CC", "0x1000100")), taban=31488)
+                ("C8", str(anim_c8)), ("CC", anim_cc)), taban=31488)
            if sheet_kare > 1 else "")
         # ⛔ Light: parcacik GERCEK ISIK yayar -- zemini ve cevreyi
         #    aydinlatir. "Yerde duran duz renk" hissini kiran sey budur.
@@ -471,7 +472,7 @@ def main() -> int:
     ap.add_argument("--omur", type=float, default=2.5, help="parcacik omru (sn)")
     ap.add_argument("--boyut", type=float, default=0.35, help="parcacik boyutu (m)")
     ap.add_argument("--oran", type=float, default=8.0,
-                    help="spawn orani (adet/sn). Vanilla medyani 5, %75'lik dilim 16.")
+                    help="spawn orani (adet/sn). Vanilla medyani 5, %%75'lik dilim 16.")
     ap.add_argument("--hiz", type=float, default=1.2,
                     help="speedScalar: target domain'e dogru hiz carpani "
                          "(vanilla medyani 0.85). Yon degil, HIZ.")
@@ -506,6 +507,13 @@ def main() -> int:
                     help="sprite sheet kare sayisi (16 = 4x4). 1 = animasyon yok")
     ap.add_argument("--animhiz", type=float, default=0.0,
                     help="cirpma hizi; 0 = motor varsayilani")
+    # AnimateTexture'in anlami cozulmemis iki alani. Vanilla dagilimi:
+    #   C8: 1 x476 · 0 x251 · 2 x5 · 4 x1        (C4>0 olan kurallarda)
+    #   CC: 0x01010100 x367 baskin; 0x01000100 / 0x01000000 / 0x01010000
+    # Ikisi de AYNI doku icin degisiyor, yani izgarayi kodlamiyorlar --
+    # ama varsayilan olarak BASKIN kombinasyon yazilir.
+    ap.add_argument("--animc8", type=int, default=1, help="AnimateTexture C8")
+    ap.add_argument("--animcc", default="0x1010100", help="AnimateTexture CC")
     a = ap.parse_args()
 
     dds = os.path.join(a.klasor, a.doku + ".dds")
@@ -532,9 +540,28 @@ def main() -> int:
         if k * k != a.sheet:
             sys.exit(f"HATA: --sheet {a.sheet} tam kare degil. Izgara kare "
                      f"olmali (4/9/16/25/36...).")
+        # ⛔ IZGARANIN DOKUYU TAM BOLMESI GEREKMEZ - bu sart YANLISTI ve
+        #    zincirin tamamini bozdu. Vanilla `ptfx_smoke_wispy_anim`
+        #    1024x1024 uzerinde 7x7'dir: 1024/7 = 146.29. Motor UV uzayinda
+        #    1/k adimlarla orneklter, piksel hizasi aramaz. Bu yanlis sart
+        #    yuzunden 36 kare reddedildi ve 64 kareye (8x8) gecildi -> asagiya bak.
         if dgen % k or dyuk % k:
-            sys.exit(f"HATA: doku {dgen}x{dyuk}, {k}x{k} izgaraya tam bolunmuyor.")
-        print(f"[i] sheet: {k}x{k} = {a.sheet} kare, hucre {dgen//k}x{dyuk//k}px "
+            print(f"[i] not: {dgen}x{dyuk} dokuda {k}x{k} izgara tam bolunmuyor "
+                  f"(hucre {dgen/k:.2f}px). Vanilla'da da boyle -- sorun degil.")
+
+        # ⛔ KARE SAYISI VANILLA BANDINI ASMAMALI. core.ypt'te 781
+        #    AnimateTexture davranisi olculdu: `Unknown_C4h` **maks 49**,
+        #    yani en fazla 50 kare; C4 > 63 olan kural SIFIR. 64 kare (C4=63)
+        #    denendi ve oyunda motor izgarayi HIC uygulamadi -- her sprite
+        #    8x8 sayfanin TAMAMINI tek karede cizdi. Belirti "animasyon
+        #    yavas/donuk" degil, "kucuk goruntulerden olusan bir izgara".
+        #    Guvenli tavan olculmus vanilla bandidir: 36 (6x6) ya da 49 (7x7).
+        if a.sheet > 49:
+            sys.exit(f"HATA: --sheet {a.sheet} vanilla bandinin disinda "
+                     f"(olculen maks 50 kare / C4=49). Motor izgarayi "
+                     f"uygulamaz ve sayfanin tamamini tek karede cizer. "
+                     f"36 (6x6) ya da 49 (7x7) kullan.")
+        print(f"[i] sheet: {k}x{k} = {a.sheet} kare, hucre {dgen/k:.1f}x{dyuk/k:.1f}px "
               f"-> UnknownC4={a.sheet-1}")
     dbayrak = DOKU_BAYRAK.get((dgen, dyuk))
     if dbayrak is None:
@@ -546,7 +573,8 @@ def main() -> int:
                    a.yaricap, dgen, dyuk, dmip, dfmt, a.yukselme, a.alfa,
                    a.sheet, a.animhiz, dbayrak, a.renk2,
                    a.ivme, a.donme, a.gurultu, a.sekme,
-                   a.isik, a.isik_menzil, a.parlama)
+                   a.isik, a.isik_menzil, a.parlama,
+                   anim_c8=a.animc8, anim_cc=a.animcc)
 
     # KENDI CIKTIINI DOGRULA: ayristirilamayan XML oyunda sessizce yuklenmez
     import xml.etree.ElementTree as ET

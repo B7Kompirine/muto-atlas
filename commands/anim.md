@@ -44,7 +44,7 @@ Türkçe sorguyu İngilizce terime çevirerek ara: `oturma` → `sit`, `sigara` 
 - Kullanım kalıbı: `RequestAnimDict` → `HasAnimDictLoaded` bekle → `TaskPlayAnim`.
 - **Prop'lu sahne isteniyorsa** `--dict` çıktısındaki
   *"ayni sure, FARKLI iskelet: ped + prop cifti"* işaretine bak; ped ve prop
-  kliplerini senkron sahneyle birlikte oynat (bkz. `fivem-assets` skill).
+  kliplerini senkron sahneyle birlikte oynat.
 - Prop'un iskeleti yoksa `PlayEntityAnim` çalışmaz — `bones` ile önce doğrula.
 - Sonuç çıkmadıysa terimi değiştirerek 2-3 kez dene; hâlâ yoksa
   "bu isimde animasyon indekste yok" de, **benzerini uydurma**.

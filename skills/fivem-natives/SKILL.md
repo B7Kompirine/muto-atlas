@@ -12,6 +12,31 @@ sırası üretilir ve script sessizce patlar. Bu skill bunu ölçülebilir hale 
 **Kural: Bir native adını ezberden yazma. Emin olmadığın her native için önce
 `check` çalıştır.**
 
+
+## ⛔ VERİ EKSİKSE TAHMİN ETME — önce kapı
+
+Bu skill'in her cevabı `data/` altındaki katmanlara dayanır. Bir katman
+yoksa sorgu **exit 2** döner. O noktada yapılacak tek şey **durmak**:
+
+```bash
+python "${CLAUDE_PLUGIN_ROOT}/scripts/setup.py" --plan     # hiçbir şey yazmaz, durumu gösterir
+python "${CLAUDE_PLUGIN_ROOT}/scripts/setup.py"            # eksik katmanları kurar
+```
+
+`--plan` çıktısı "N/M katman kurulu" der ve eksik olanı adıyla listeler
+(M sabit değildir, `setup.py` hesaplar — buraya sayı yazma).
+Kurulum kullanıcının **kendi GTA V kurulumundan** üretir; komut `/asset-setup`.
+
+⛔ **Veri yokken cevap üretme.** Exit 2 gördüğünde kullanıcıya hangi katmanın
+eksik olduğunu ve tek satırlık kurulum komutunu söyle. Tahmine düşmek bu
+aracın var oluş sebebine aykırıdır — yanlış bir `fxName`, yanlış bir bayrak
+ya da olmayan bir prop adı **sessizce** kabul edilir ve tur kaybettirir.
+
+ℹ️ **Veri neden repoda gelmiyor:** `entities.db` tek başına 214 MB (GitHub
+dosya sınırı 100 MB) ve içerik Rockstar'a ait — yeniden dağıtımı telif
+sorunudur. Yan faydası: katman herkesin **kendi oyun sürümünden** gelir.
+Merkezî tek kopya dağıtılsaydı herkes tek sürüme mahkûm olurdu (ölçüldü:
+bu kurulumda 1271 `m26_*` arketip var, hazır dump'ta 0).
 ## Veri
 
 `data/` içinde çevrimdışı, birleştirilmiş indeks:
@@ -50,7 +75,7 @@ python "$P/scripts/nativedb.py" search vehicle fuel --apiset server
 python "$P/scripts/nativedb.py" ns VEHICLE --apiset server
 
 # Yazdığın Lua'yı denetle
-python "$P/scripts/lint_lua.py" resources/muto-lumber
+python "$P/scripts/lint_lua.py" resources/<kaynak-adi>
 ```
 
 `check` var olmayan native bulursa **exit 1** döner ve yakın isimleri önerir.
@@ -113,6 +138,22 @@ tanımın lint kapsamındaki dosyalarda olduğundan emin ol.
 Per-frame maliyet, entity önbellekleme ve resmon hedefleri için
 `references/performance.md`. Sık karıştırılan native çiftleri ve doğru karşılıkları
 için `references/pitfalls.md`.
+
+## Framework çağrıları — native değil ama aynı şekilde sessiz
+
+`lint_lua.py` yalnız **GTA native**'lerini doğrular. Bir QBCore/Qbox/ESX/ox
+kaynağındaki hataların çoğu native'de değil **framework çağrısındadır** ve
+hiçbiri hata fırlatmaz: olmayan event tetiklenir (log bile yok), olmayan export
+çağrılır (`nil value` ancak o satır çalışınca), `lib.showTextUi` küçük harfle
+yazılır (modül yok, sessiz).
+
+```bash
+python scripts/assetdb.py framework <ad>
+python scripts/assetdb.py framework --denetle
+```
+
+⛔ **Otorite kurulu sunucudur, upstream GitHub değil.**
+Tam katman: `references/framework-api.md`
 
 ## Güncelleme
 

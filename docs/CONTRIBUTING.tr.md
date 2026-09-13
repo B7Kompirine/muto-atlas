@@ -31,19 +31,23 @@ Nereden başlayacağını bilmiyorsan
 [`good first issue`](https://github.com/B7Kompirine/muto-atlas/labels/good%20first%20issue)
 ve [`help wanted`](https://github.com/B7Kompirine/muto-atlas/labels/help%20wanted)
 etiketlerine bak. Açık soruların çoğu yalnızca oyunu olan birinin bir akşamını
-istiyor — [`YETENEK-DURUMU.md`](../YETENEK-DURUMU.md), 4. bölüm.
+istiyor.
 
 ## Neler nerede
 
 | Yol | Oraya ne girer |
 |---|---|
-| `skills/fivem-assets/references/*.md` | Asset'ler hakkında ölçülmüş bulgular: prop, MLO, animasyon, ped, ışık, partikül |
-| `skills/fivem-natives/references/*.md` | Native'ler, framework API ve Lua tuzakları |
-| `skills/*/SKILL.md` | Yönlendirme: hangi konuda hangi referans açılır. Yeni bir referans dosyası buraya bağlanmalı, yoksa onu hiçbir şey okumaz |
+| `skills/fivem-assets/SKILL.md` + `govde/` | Gövde: **her** dalda geçerli kurallar — motor değişmezleri, araç tuzakları, doğrulama merdiveni, bayraklar, kemik tag'i |
+| `skills/fivem-assets/dallar/<dal>/_dal.md` | Bir dal: kategorinin geniş kuralları ve yaprak tablosu |
+| `skills/fivem-assets/dallar/<dal>/<yaprak>.md` | Tek bir görev. Yeni yaprak dalının `_dal.md` tablosuna yazılmalı, yoksa onu hiçbir şey okumaz |
+| `skills/fivem-assets/kaynaklar/` | Dış araçlar ve topluluk kaynakları hakkında notlar — kaynak, kural değil |
+| `skills/fivem-natives/` | Native'ler, framework API ve Lua tuzakları |
 | `commands/*.md` | Slash komutları; her biri ayrı dosya, başında `description:` satırı |
 | `scripts/` | Python ve PowerShell araçları |
 | `data/*.tsv` | Depoda yalnız elle yazılmış üç tablo durur. `data/` içindeki geri kalan her şey yerelde üretilir ve gitignore'dadır |
-| `YETENEK-DURUMU.md` | Yetenek durumu, güven bantları ve açık sorular |
+
+Bir bulgu **bir kez**, geçerli olduğu en geniş yere yazılır: her dalda geçerliyse
+gövdeye; tek kategoriye aitse o `_dal.md`'ye; tek göreve özgüyse yaprağa.
 
 ## Asla commit'leme
 
@@ -81,8 +85,16 @@ istiyor — [`YETENEK-DURUMU.md`](../YETENEK-DURUMU.md), 4. bölüm.
 
 3. Katmanları bir kez kur (`/asset-setup`) ve değiştirdiğin komutu çalıştır.
    Çıktısını, çıkış kodu dahil, pull request'e yapıştır.
+4. Eklentinin kendi denetimini çalıştır. `0` ile çıkmalı:
 
-Henüz otomatik test paketi yok. Pull request'teki ölçüm, testin kendisidir.
+   ```bash
+   python scripts/denetle_plugin.py
+   ```
+
+   Hiç hata vermeyen kusurları yakalar: kırık bağlantı, dal tablosunda olmayan
+   yaprak, kaymış sayaç, BOM'suz `.ps1`.
+
+Bunun dışında otomatik test paketi yok. Pull request'teki ölçüm, testin kendisidir.
 
 ## Pull request
 
