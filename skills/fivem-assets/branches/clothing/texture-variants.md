@@ -1,32 +1,31 @@
-# Doku / renk varyantı / skintone (`_r`) giysiler
+# Texture / colour variants / skintone (`_r`) garments
 
-**Ne zaman okunur:** aynı giysiye a-z doku varyantı, ten rengi gösteren (`_r`) giysi, "ten rengi çalışmıyor", doku adlandırması.
-**When to read:** a-z texture variants of one garment, a skin-tone (`_r`) garment, "skin tone is not working", texture naming.
-**Kaynak:** `notlar/03` §3, §4 adlandırma (2026-08) · **Ölçüm:** video; `_r` üç sessiz hatası Sollumz Discord'da bağımsız teyitli
-**Önce:** `branches/clothing/_branch.md` · gövde › `trunk/tool-pitfalls.md` §1
+**When to read:** a-z texture variants of the same garment, a garment that shows skin tone (`_r`), "skin tone is not working", texture naming.
+**Source:** `notes/03` §3, §4 naming (2026-08) · **Measured:** video; the three silent failures of `_r` independently confirmed on the Sollumz Discord
+**Read first:** `branches/clothing/_branch.md` · trunk › `trunk/tool-pitfalls.md` §1
 
 ---
 
-**Doku adlandırma kuralı** dalın tamamında geçerlidir → `branches/clothing/_branch.md`.
+**The texture naming rule** holds for the whole branch → `branches/clothing/_branch.md`.
 
-## 3. `_r` (skintone) giysiler — üç sessiz hata (`sJO_Fd__2nw`)
+## 3. `_r` (skintone) garments — three silent failures (`sJO_Fd__2nw`)
 
-**Ten rengi dokusu giysinin kendi `.ytd`'sinde DEĞİLDİR.** Oyun
-`streamedpeds_mp / MP overlay TXD` içindeki `mp_fm_skin...` setinden okur.
-Bu yüzden giysinin dokusundaki bacak/ayak alanı **boş bırakılabilir**.
+**The skin tone texture is NOT in the garment's own `.ytd`.** The game
+reads it from the `mp_fm_skin...` set in `streamedpeds_mp / MP overlay TXD`.
+So the leg/foot area in the garment's texture **can be left empty**.
 
-1. ⛔ **Ten rengi UV'sini KAYDIRMA.** Erkek bacakları dokuda hep **sol alt köşede**,
-   kadın ayakları hep **alt yarıda** durur. Oynatırsan dövme ve kan haritalaması
-   bozulur. Kendi dokun için **çevresindeki** boşluğu kullan.
-   Pantolon gibi bacağı tamamen kapatan bir şey yapıyorsan o alanı kullanabilirsin,
-   ama görünen kısmın (ör. bilekler) UV'si **yerinde kalmalı**.
-2. ⛔ **Gömülü doku adları Rockstar'ın kuralına uymalı**:
-   `<bileşen>_spec_<NN>` → `feet_spec_000`, `lower_spec_000`, `upper_spec_000`.
-   Rastgele isim → **ten rengi sessizce çalışmaz**.
-3. ⛔ **Ten rengi maskesi specular dokusunun ALFA kanalıdır.**
-   Alfa "burada ten rengi kullan" der; **beyaz = normal kumaş** (ten rengi yok).
-   RGB kanallarını ve alfayı düzenleyebilen bir program şart.
-   En iyi başlangıç: **base game (DLC değil)** kadın `lower_15` spec,
-   erkek `lower_14` spec — en çok bacak gösterenler.
-4. ⛔ **Doku KARE olmalı** (1024×1024, 512×512…). 1024×512 gibi bir oran UV'yi
-   gerer ve ten rengini yine bozar.
+1. ⛔ **Do NOT MOVE the skin tone UV.** Male legs always sit in the **bottom-left corner** of the texture,
+   female feet always in the **bottom half**. If you move them, tattoos and blood mapping
+   break. Use the space **around** them for your own texture.
+   If you are making something that covers the leg completely, like trousers, you can use that area,
+   but the UV of the visible part (e.g. the ankles) **must stay in place**.
+2. ⛔ **Embedded texture names must follow Rockstar's rule**:
+   `<component>_spec_<NN>` → `feet_spec_000`, `lower_spec_000`, `upper_spec_000`.
+   A random name → **skin tone silently does not work**.
+3. ⛔ **The skin tone mask is the ALPHA channel of the specular texture.**
+   Alpha says "use skin tone here"; **white = normal fabric** (no skin tone).
+   You need a program that can edit the RGB channels and the alpha.
+   Best starting point: **base game (not DLC)** female `lower_15` spec,
+   male `lower_14` spec — the ones that show the most leg.
+4. ⛔ **The texture must be SQUARE** (1024×1024, 512×512…). A ratio such as 1024×512 stretches the UV
+   and breaks the skin tone again.

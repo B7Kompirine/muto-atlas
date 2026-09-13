@@ -1,230 +1,232 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""ptfx_motion.py — parcacigin HAREKETINI yazar (devralmaz).
+"""ptfx_motion.py — writes the particle's MOTION (does not inherit it).
 
-⛔ NEDEN VAR: donorun hareketini oldugu gibi devralmak, o efekti yeni renk
-   giydirmekten baska bir sey degildir. Gozun okudugu sey harekettir.
-   Olculen uc vaka:
+⛔ WHY IT EXISTS: inheriting the donor's motion as-is is nothing more than
+   dressing that effect in a new colour. What the eye reads is the motion.
+   Three measured cases:
 
-     · `cokme_tozu`  <- env_dust_devil_rural_lrg  : donorde `ptxAttractorDomain`
-       var (dis 20.6 / ic 6.8). Attractor parcaciklari iceri-yukari sarmalar;
-       oyunda HORTUM goruldu. Cunku donor bizzat bir toz seytani.
-     · `bulasma_dalgasi` <- fire_extinguish : `ptxTargetDomain` 3.5 m yukariyi
-       hedefliyor -- yangin sondurucu jeti. Halka spriteiyle halka fiskirtti.
-     · `beton_kirilma` <- ent_ray_fam3_dust_motes : dogus hacmi **5x5x1 m**
-       kutu. Kiymik carpma noktasindan degil, 5 metrelik alana sacilarak
-       doguyor.
+     · `collapse_dust`  <- env_dust_devil_rural_lrg  : the donor has a
+       `ptxAttractorDomain` (outer 20.6 / inner 6.8). The attractor spirals
+       particles inward and up; in game a TORNADO was seen. Because the donor
+       is itself a dust devil.
+     · `infection_wave` <- fire_extinguish : `ptxTargetDomain` aims 3.5 m up
+       -- a fire extinguisher jet. With a ring sprite it sprayed rings.
+     · `concrete_break` <- ent_ray_fam3_dust_motes : spawn volume is a
+       **5x5x1 m** box. Splinters spawn scattered over a 5 metre area, not
+       from the impact point.
 
-Olculen anlamlar (n=231 uygun donor):
-   `ptxCreationDomain:m_sizeOuterKFP`  -> parcaciklarin DOGDUGU hacim
-   `ptxTargetDomain:m_positionKFP`     -> yon x mesafe (hiz)
-   `ptxu_Acceleration:m_xyzMin/MaxKFP` -> yercekimi / yukselis
-   `ptxu_Dampening:m_xyzMin/MaxKFP`    -> surtunme
-Ornekler: damla hedef [0,0,-4] ivme [0,0,-20] · zemin sisi hedef [0,0.3,0.01]
-ivme [0,0,0] · kor hedef [0,0,0.1] · dusen enkaz hedef [0,0,-8].
+Measured meanings (n=231 suitable donors):
+   `ptxCreationDomain:m_sizeOuterKFP`  -> the volume particles SPAWN in
+   `ptxTargetDomain:m_positionKFP`     -> direction x distance (speed)
+   `ptxu_Acceleration:m_xyzMin/MaxKFP` -> gravity / rise
+   `ptxu_Dampening:m_xyzMin/MaxKFP`    -> damping
+Examples: drop target [0,0,-4] accel [0,0,-20] · ground fog target [0,0.3,0.01]
+accel [0,0,0] · ember target [0,0,0.1] · falling debris target [0,0,-8].
 
-Domain turleri: CreationDomain ve TargetDomain **%100** var; Attractor
-yalnizca **%6** (14/231) -- hortum riski oradan gelir, silinir.
+Domain types: CreationDomain and TargetDomain present in **100%**; Attractor
+only in **6%** (14/231) -- the tornado risk comes from there, it is removed.
 """
 from __future__ import annotations
 
 import re
 
-# ALFA keyframe'i: RGB + alfa birlikte. `KARE` yalnizca RGB yazar
-# (hareket alanlari icin); zarf yaziminda alfa da gerekli.
-KARE_A = ("       <Item>\n"
-          "        <InterpolationInterval value=\"%g\" />\n"
-          "        <KeyFrameMultiplier value=\"%g\" />\n"
-          "        <RedChannelColour value=\"%g\" />\n"
-          "        <GreenChannelColour value=\"%g\" />\n"
-          "        <BlueChannelColour value=\"%g\" />\n"
-          "        <AlphaChannelColour value=\"%g\" />\n"
-          "       </Item>\n")
+# ALPHA keyframe: RGB + alpha together. `KEYFRAME_RGB` writes RGB only
+# (for motion fields); writing an envelope needs alpha as well.
+KEYFRAME_RGBA = ("       <Item>\n"
+                 "        <InterpolationInterval value=\"%g\" />\n"
+                 "        <KeyFrameMultiplier value=\"%g\" />\n"
+                 "        <RedChannelColour value=\"%g\" />\n"
+                 "        <GreenChannelColour value=\"%g\" />\n"
+                 "        <BlueChannelColour value=\"%g\" />\n"
+                 "        <AlphaChannelColour value=\"%g\" />\n"
+                 "       </Item>\n")
 
-KARE = ("       <Item>\n"
-        "        <InterpolationInterval value=\"0\" />\n"
-        "        <KeyFrameMultiplier value=\"0\" />\n"
-        "        <RedChannelColour value=\"%g\" />\n"
-        "        <GreenChannelColour value=\"%g\" />\n"
-        "        <BlueChannelColour value=\"%g\" />\n"
-        "        <AlphaChannelColour value=\"0\" />\n"
-        "       </Item>\n")
+KEYFRAME_RGB = ("       <Item>\n"
+                "        <InterpolationInterval value=\"0\" />\n"
+                "        <KeyFrameMultiplier value=\"0\" />\n"
+                "        <RedChannelColour value=\"%g\" />\n"
+                "        <GreenChannelColour value=\"%g\" />\n"
+                "        <BlueChannelColour value=\"%g\" />\n"
+                "        <AlphaChannelColour value=\"0\" />\n"
+                "       </Item>\n")
 
 
-def kfp_yaz(blok, tam_ad, xyz):
-    """Bir KFP'nin ilk keyframe'ini `xyz` yapar. (metin, yazildi_mi)
+def write_kfp(block, full_name, xyz):
+    """Sets the first keyframe of a KFP to `xyz`. (text, was_written)
 
-    ⛔ Alan BOS olabilir (`<Keyframes />`, kendi kapanan). O durumda
-       `</Keyframes>` aranan desen yoktur; bunu gozden kacirmak bir tur
-       boyunca KOMSU alanin degerini okutmustu. Burada bos hali de
-       doldurulur -- yoksa hareket yazilamaz.
+    ⛔ The field can be EMPTY (`<Keyframes />`, self-closing). Then the
+       `</Keyframes>` pattern being searched for does not exist; missing this
+       once made it read a NEIGHBOURING field's value for a whole round. The
+       empty case is filled here too -- otherwise the motion cannot be written.
     """
-    i = blok.find("<Name>%s</Name>" % tam_ad)
+    i = block.find("<Name>%s</Name>" % full_name)
     if i < 0:
-        return blok, False
-    j = blok.find("<Name>", i + 6)
-    son = j if j > 0 else len(blok)
-    kesit = blok[i:son]
-    yeni_kf = "<Keyframes>\n" + (KARE % tuple(xyz)) + "      </Keyframes>"
-    if "<Keyframes />" in kesit:
-        kesit2 = kesit.replace("<Keyframes />", yeni_kf, 1)
-    elif "<Keyframes>" in kesit:
-        kesit2 = re.sub(r"<Keyframes>.*?</Keyframes>", yeni_kf, kesit,
-                        count=1, flags=re.S)
+        return block, False
+    j = block.find("<Name>", i + 6)
+    end = j if j > 0 else len(block)
+    section = block[i:end]
+    new_kf = "<Keyframes>\n" + (KEYFRAME_RGB % tuple(xyz)) + "      </Keyframes>"
+    if "<Keyframes />" in section:
+        section2 = section.replace("<Keyframes />", new_kf, 1)
+    elif "<Keyframes>" in section:
+        section2 = re.sub(r"<Keyframes>.*?</Keyframes>", new_kf, section,
+                          count=1, flags=re.S)
     else:
-        return blok, False
-    return blok[:i] + kesit2 + blok[son:], True
+        return block, False
+    return block[:i] + section2 + block[end:], True
 
 
-def domain_tipi_yaz(blok, indeks, tip):
-    """`<DomainN><Type value="X" />` alanini degistirir."""
-    d = "<Domain%d>" % indeks
-    i = blok.find(d)
+def write_domain_type(block, index, shape):
+    """Changes the `<DomainN><Type value="X" />` field."""
+    d = "<Domain%d>" % index
+    i = block.find(d)
     if i < 0:
-        return blok, False
-    kesit = blok[i:i + 200]
-    yeni = re.sub(r"<Type value=\"\w+\" />", "<Type value=\"%s\" />" % tip,
-                  kesit, count=1)
-    return blok[:i] + yeni + blok[i + 200:], yeni != kesit
+        return block, False
+    section = block[i:i + 200]
+    new = re.sub(r"<Type value=\"\w+\" />", "<Type value=\"%s\" />" % shape,
+                 section, count=1)
+    return block[:i] + new + block[i + 200:], new != section
 
 
-def attractor_sil(blok):
-    """Attractor domain'i etkisizlestirir -- hortum/sarmal buradan gelir.
+def remove_attractor(block):
+    """Neutralises the attractor domain -- the tornado/spiral comes from it.
 
-    ⛔ Dugumu SILME: `<DomainN>` yuvalari konumsaldir, birini kaldirmak
-       kalanlarin indekslerini kaydirir. Yaricapi sifirlamak hem guvenli
-       hem yeterli (cekim alani yok olur).
+    ⛔ Do NOT DELETE the node: the `<DomainN>` slots are positional, removing
+       one shifts the indices of the rest. Zeroing the radius is both safe
+       and enough (the pull field disappears).
     """
     n = 0
-    for ad in ("ptxAttractorDomain:m_sizeOuterKFP",
-               "ptxAttractorDomain:m_sizeInnerKFP"):
-        blok, ok = kfp_yaz(blok, ad, (0.0, 0.0, 0.0))
+    for name in ("ptxAttractorDomain:m_sizeOuterKFP",
+                 "ptxAttractorDomain:m_sizeInnerKFP"):
+        block, ok = write_kfp(block, name, (0.0, 0.0, 0.0))
         n += 1 if ok else 0
-    return blok, n
+    return block, n
 
 
-# hareket sozlugu anahtari -> (hangi blok, tam KFP adi)
-#   "em" = emitter rule govdesi, "pr" = particle rule govdesi
-# ⛔ BOYUT DA YAZILMALI. Hareket yazildi ama boyut donorden birakildi ve
-#    donorler birbiriyle uyumsuz cikti: olculdu, 56 ailenin **38'i** 0.2 m
-#    altinda kaldi (besi tam 0.000) -- oyunda hicbir sey gorunmedi; ote
-#    yandan `kan_sisi` 9.7 m ile ekrani kapladi. Vanilla bandi:
-#    whdMin p50=1.0 p95=7.0 · whdMax p50=1.6 p95=9.9; whdMin'i sifir olan
-#    kural yalnizca **68 / 1724 (%3,9)**.
+# motion dict key -> (which block, full KFP name)
+#   "em" = emitter rule body, "pr" = particle rule body
+# ⛔ SIZE MUST BE WRITTEN TOO. Motion was written but size was left from the
+#    donor, and the donors turned out mutually incompatible: measured, **38**
+#    of 56 families stayed under 0.2 m (five exactly 0.000) -- nothing was
+#    visible in game; on the other hand `blood_haze` at 9.7 m covered the
+#    screen. Vanilla band: whdMin p50=1.0 p95=7.0 · whdMax p50=1.6 p95=9.9;
+#    rules with a zero whdMin are only **68 / 1724 (3.9%)**.
 #
-# ⚠ `m_sizeScalarKFP` YUZDEDIR (notr 100). Boyutu whd ile yazip scalar'i
-#   100'e sabitlemek gerekir; yoksa donorun scalar'i (0.44'ten 949'a)
-#   yazdigimiz whd'yi carpitir.
-ALANLAR = {
-    "boy":     ("pr", "ptxu_Size:m_whdMinKFP"),
-    "boy_maks": ("pr", "ptxu_Size:m_whdMaxKFP"),
-    "dogus":   ("em", "ptxCreationDomain:m_sizeOuterKFP"),
-    "dogus_ic": ("em", "ptxCreationDomain:m_sizeInnerKFP"),
-    "hedef":   ("em", "ptxTargetDomain:m_positionKFP"),
-    "hedef_boy": ("em", "ptxTargetDomain:m_sizeOuterKFP"),
-    "ivme":    ("pr", "ptxu_Acceleration:m_xyzMinKFP"),
-    "ivme_maks": ("pr", "ptxu_Acceleration:m_xyzMaxKFP"),
-    "surtunme": ("pr", "ptxu_Dampening:m_xyzMinKFP"),
-    "surtunme_maks": ("pr", "ptxu_Dampening:m_xyzMaxKFP"),
+# ⚠ `m_sizeScalarKFP` IS A PERCENTAGE (neutral 100). Write the size with whd and
+#   pin the scalar to 100; otherwise the donor's scalar (0.44 to 949)
+#   distorts the whd we wrote.
+MOTION_FIELDS = {
+    "size":        ("pr", "ptxu_Size:m_whdMinKFP"),
+    "size_max":    ("pr", "ptxu_Size:m_whdMaxKFP"),
+    "spawn":       ("em", "ptxCreationDomain:m_sizeOuterKFP"),
+    "spawn_inner": ("em", "ptxCreationDomain:m_sizeInnerKFP"),
+    "target":      ("em", "ptxTargetDomain:m_positionKFP"),
+    "target_size": ("em", "ptxTargetDomain:m_sizeOuterKFP"),
+    "accel":       ("pr", "ptxu_Acceleration:m_xyzMinKFP"),
+    "accel_max":   ("pr", "ptxu_Acceleration:m_xyzMaxKFP"),
+    "damping":     ("pr", "ptxu_Dampening:m_xyzMinKFP"),
+    "damping_max": ("pr", "ptxu_Dampening:m_xyzMaxKFP"),
 }
 
 
-def _bolge(s, sozluk):
-    """Bir sozlugun belgedeki (bas, son) araligi."""
-    i = s.find("<%s>" % sozluk)
-    j = s.find("</%s>" % sozluk)
+def _region(s, dictionary):
+    """The (start, end) range of a dictionary in the document."""
+    i = s.find("<%s>" % dictionary)
+    j = s.find("</%s>" % dictionary)
     return (i, j) if i >= 0 and j > i else (0, len(s))
 
 
-def _bolgede_yaz(s, sozluk, tam_ad, xyz):
-    """KFP'yi YALNIZ o sozlugun icinde arar ve yazar.
+def _write_in_region(s, dictionary, full_name, xyz):
+    """Searches for and writes the KFP ONLY inside that dictionary.
 
-    ⛔ BELGE GENELINDE ARAMA. `ptxEmitterRule:m_sizeScalarKFP` belgede IKI
-       yerde gecer: EffectRule'un `EventEmitters/UnknownData/Unknown10`
-       override listesinde ve asil EmitterRule'da. Ilk bulunana yazmak
-       override listesini degistirir, gercek deger DOKUNULMADAN kalir --
-       build "sizeScalar -> 100" der ama dosyada donorun 6.41'i durur ve
-       parcacik 0.003 m cikip gorunmez. Bolgeye kilitle.
+    ⛔ DO NOT SEARCH THE WHOLE DOCUMENT. `ptxEmitterRule:m_sizeScalarKFP`
+       appears in TWO places: in the EffectRule's
+       `EventEmitters/UnknownData/Unknown10` override list and in the real
+       EmitterRule. Writing to the first hit changes the override list and the
+       real value stays UNTOUCHED -- the build says "sizeScalar -> 100" but the
+       file keeps the donor's 6.41 and the particle comes out 0.003 m and
+       invisible. Lock to the region.
     """
-    i, j = _bolge(s, sozluk)
-    kesit, ok = kfp_yaz(s[i:j], tam_ad, xyz)
-    return s[:i] + kesit + s[j:], ok
+    i, j = _region(s, dictionary)
+    section, ok = write_kfp(s[i:j], full_name, xyz)
+    return s[:i] + section + s[j:], ok
 
 
-def uygula_belge(s, hareket):
-    """Hareketi TEK emitterli/particle'li bir `.ypt.xml` belgesine yazar.
+def apply_to_document(s, motion):
+    """Writes the motion into a `.ypt.xml` document with a SINGLE emitter/particle.
 
-    (Cok emitterli bir belgede bunu KULLANMA.)
+    (Do NOT use this on a multi-emitter document.)
     """
-    notlar = []
-    if hareket.get("attractor_sil"):
-        _i, _j = _bolge(s, "EmitterRuleDictionary")
-        _k, n = attractor_sil(s[_i:_j])
+    notes = []
+    if motion.get("remove_attractor"):
+        _i, _j = _region(s, "EmitterRuleDictionary")
+        _k, n = remove_attractor(s[_i:_j])
         s = s[:_i] + _k + s[_j:]
         if n:
-            notlar.append("attractor sifirlandi")
-    if "zarf" in hareket:
-        # ⛔ ALFA ZARFI DA YAZILABILMELI. `zarf_onar` yalniz BOZUK zarfi
-        #    (tek keyframe / sonda pop) duzeltir; donorun gecerli ama
-        #    ailemize UYMAYAN zarfina dokunmaz. Olculdu: kivilcim donoru
-        #    `water_splash_veh_out` 0.75 sn'de alfayi 0.06'ya dusuruyor --
-        #    su sicramasi icin dogru, kivilcim icin erken. Kivilcim omrunun
-        #    cogunda PARLAK kalip sonda sonmeli.
-        nok = hareket["zarf"]          # [(t, alfa), ...]
-        for ad in ("ptxu_Colour:m_rgbaMinKFP", "ptxu_Colour:m_rgbaMaxKFP"):
-            i0, j0 = _bolge(s, "ParticleRuleDictionary")
-            kesit = s[i0:j0]
-            i = kesit.find("<Name>%s</Name>" % ad)
+            notes.append("attractor zeroed")
+    if "envelope" in motion:
+        # ⛔ THE ALPHA ENVELOPE MUST BE WRITABLE TOO. `repair_envelope` only fixes
+        #    a BROKEN envelope (single keyframe / pop at the end); it does not
+        #    touch the donor's valid envelope that does NOT FIT our family.
+        #    Measured: spark donor `water_splash_veh_out` drops alpha to 0.06 at
+        #    0.75 s -- right for a water splash, too early for a spark. A spark
+        #    should stay BRIGHT for most of its life and fade at the end.
+        points = motion["envelope"]          # [(t, alpha), ...]
+        for name in ("ptxu_Colour:m_rgbaMinKFP", "ptxu_Colour:m_rgbaMaxKFP"):
+            i0, j0 = _region(s, "ParticleRuleDictionary")
+            section = s[i0:j0]
+            i = section.find("<Name>%s</Name>" % name)
             if i < 0:
                 continue
-            j = kesit.find("<Name>", i + 6)
-            alt = kesit[i:j if j > 0 else len(kesit)]
+            j = section.find("<Name>", i + 6)
+            sub = section[i:j if j > 0 else len(section)]
             m = re.search(r"<RedChannelColour value=\"([-0-9.eE]+)\" />\s*"
                           r"<GreenChannelColour value=\"([-0-9.eE]+)\" />\s*"
-                          r"<BlueChannelColour value=\"([-0-9.eE]+)\" />", alt)
+                          r"<BlueChannelColour value=\"([-0-9.eE]+)\" />", sub)
             r, g, b = (float(x) for x in m.groups()) if m else (1.0, 1.0, 1.0)
-            kare = ""
-            for n2, (t, a2) in enumerate(nok):
-                mult = 0.0 if n2 == 0 else 1.0 / max(t - nok[n2 - 1][0], 1e-4)
-                kare += (KARE_A % (t, mult, r, g, b, a2))
-            yeni_alt = re.sub(r"<Keyframes\s*/>|<Keyframes>.*?</Keyframes>",
-                              "<Keyframes>\n" + kare + "      </Keyframes>",
-                              alt, count=1, flags=re.S)
-            kesit = kesit[:i] + yeni_alt + kesit[(j if j > 0 else len(kesit)):]
-            s = s[:i0] + kesit + s[j0:]
-        notlar.append("zarf yazildi: %d kare, tepe %.2f"
-                      % (len(nok), max(a2 for _, a2 in nok)))
+            frames = ""
+            for n2, (t, a2) in enumerate(points):
+                mult = 0.0 if n2 == 0 else 1.0 / max(t - points[n2 - 1][0], 1e-4)
+                frames += (KEYFRAME_RGBA % (t, mult, r, g, b, a2))
+            new_sub = re.sub(r"<Keyframes\s*/>|<Keyframes>.*?</Keyframes>",
+                             "<Keyframes>\n" + frames + "      </Keyframes>",
+                             sub, count=1, flags=re.S)
+            section = section[:i] + new_sub + section[(j if j > 0 else len(section)):]
+            s = s[:i0] + section + s[j0:]
+        notes.append("envelope written: %d keyframes, peak %.2f"
+                     % (len(points), max(a2 for _, a2 in points)))
 
-    if "tek_atim" in hareket:
-        # ⛔ SUREKLI mi TEK ATIM mi -- emitter'daki `Unknown628`.
-        #    Olculdu (n=964): `bul_*` mermi carpmalarinin **48/48'i**,
-        #    `exp_*` patlamalarin **%80'i** 1; buna karsilik `fire_*`
-        #    0/38, `wheel_*` 0/58, `env_*` 0/27. Yani 1 = tek atim/burst,
-        #    0 = surekli. Carpma efekti 0 kalirsa sonsuza kadar puskurur.
-        i0, j0 = _bolge(s, "EmitterRuleDictionary")
-        kesit = s[i0:j0]
-        yeni_k, n = re.subn(r"<Unknown628 value=\"[-0-9.]+\" />",
-                            '<Unknown628 value="%d" />'
-                            % (1 if hareket["tek_atim"] else 0), kesit)
-        s = s[:i0] + yeni_k + s[j0:]
-        notlar.append("tek_atim=%s (%d emitter)"
-                      % (bool(hareket["tek_atim"]), n))
-    if "tip" in hareket:
-        s, ok = domain_tipi_yaz(s, 1, hareket["tip"])
+    if "one_shot" in motion:
+        # ⛔ CONTINUOUS or ONE SHOT -- `Unknown628` on the emitter.
+        #    Measured (n=964): **48/48** of the `bul_*` bullet impacts and
+        #    **80%** of the `exp_*` explosions are 1; whereas `fire_*`
+        #    0/38, `wheel_*` 0/58, `env_*` 0/27. So 1 = one shot/burst,
+        #    0 = continuous. An impact effect left at 0 sprays forever.
+        i0, j0 = _region(s, "EmitterRuleDictionary")
+        section = s[i0:j0]
+        new_section, n = re.subn(r"<Unknown628 value=\"[-0-9.]+\" />",
+                                 '<Unknown628 value="%d" />'
+                                 % (1 if motion["one_shot"] else 0), section)
+        s = s[:i0] + new_section + s[j0:]
+        notes.append("one_shot=%s (%d emitters)"
+                     % (bool(motion["one_shot"]), n))
+    if "shape" in motion:
+        s, ok = write_domain_type(s, 1, motion["shape"])
         if ok:
-            notlar.append("dogus tipi -> %s" % hareket["tip"])
-    if "boy" in hareket:
-        # scalar'i notre cek ki whd gercek metre olsun
-        s, ok = _bolgede_yaz(s, "EmitterRuleDictionary",
-                             "ptxEmitterRule:m_sizeScalarKFP",
-                             (100.0, 100.0, 0.0))
+            notes.append("spawn shape -> %s" % motion["shape"])
+    if "size" in motion:
+        # pull the scalar to neutral so whd is real metres
+        s, ok = _write_in_region(s, "EmitterRuleDictionary",
+                                 "ptxEmitterRule:m_sizeScalarKFP",
+                                 (100.0, 100.0, 0.0))
         if ok:
-            notlar.append("sizeScalar -> 100 (notr)")
+            notes.append("sizeScalar -> 100 (neutral)")
         else:
-            # ⛔ Bazi donorde `m_sizeScalarKFP` YOK (olculdu: fly_swarm,
-            #    moths_swarm). O zaman scalar donorde ne ise oyle kalir ve
-            #    yazdigimiz whd onunla CARPILIR -- `sinek_bulutu` 0.003 m
-            #    cikti, gorunmez. Telafi: whd'yi 100/scalar ile buyut.
+            # ⛔ Some donors have NO `m_sizeScalarKFP` (measured: fly_swarm,
+            #    moths_swarm). Then the scalar stays whatever it is in the donor
+            #    and the whd we write is MULTIPLIED by it -- `fly_cloud` came
+            #    out 0.003 m, invisible. Compensation: scale whd by 100/scalar.
             import re as _re
             g = None
             i = s.find("<Name>ptxEmitterRule:m_sizeScalarKFP</Name>")
@@ -235,62 +237,62 @@ def uygula_belge(s, hareket):
                 if k2:
                     g = float(k2.group(1))
             if g and g > 1e-6:
-                kat = 100.0 / g
-                hareket = dict(hareket)
-                hareket["boy"] = tuple(x * kat for x in hareket["boy"])
-                notlar.append("sizeScalar yazilamadi (%.3g) -> boy x%.1f telafi"
-                              % (g, kat))
+                factor = 100.0 / g
+                motion = dict(motion)
+                motion["size"] = tuple(x * factor for x in motion["size"])
+                notes.append("sizeScalar could not be written (%.3g) -> size x%.1f compensation"
+                             % (g, factor))
             else:
-                notlar.append("sizeScalar yazilamadi ⛔")
-    SOZ = {"em": "EmitterRuleDictionary", "pr": "ParticleRuleDictionary"}
-    for anah, (nere, tam) in ALANLAR.items():
-        if anah not in hareket:
+                notes.append("sizeScalar could not be written ⛔")
+    DICTS = {"em": "EmitterRuleDictionary", "pr": "ParticleRuleDictionary"}
+    for key, (where, full) in MOTION_FIELDS.items():
+        if key not in motion:
             continue
-        v = hareket[anah]
-        s, ok = _bolgede_yaz(s, SOZ[nere], tam, v)
-        notlar.append("%s=[%g,%g,%g]%s"
-                      % (anah, v[0], v[1], v[2], "" if ok else " ⛔YAZILAMADI"))
-        ikiz = anah + "_maks"
-        if not anah.endswith("_maks") and ikiz in ALANLAR and ikiz not in hareket:
-            # ⚠ Vanilla'da whdMax / whdMin ~1.6 (p50 1.0 / 1.6). Ayni degeri
-            #   yazmak butun parcaciklari ayni boyda yapar -- mekanik durur.
-            kat = 1.6 if anah == "boy" else 1.0
-            s, _ = _bolgede_yaz(s, SOZ[ALANLAR[ikiz][0]], ALANLAR[ikiz][1],
-                                tuple(x * kat for x in v))
-    return s, notlar
+        v = motion[key]
+        s, ok = _write_in_region(s, DICTS[where], full, v)
+        notes.append("%s=[%g,%g,%g]%s"
+                     % (key, v[0], v[1], v[2], "" if ok else " ⛔NOT WRITTEN"))
+        twin = key + "_max"
+        if not key.endswith("_max") and twin in MOTION_FIELDS and twin not in motion:
+            # ⚠ In vanilla whdMax / whdMin is ~1.6 (p50 1.0 / 1.6). Writing the
+            #   same value makes every particle the same size -- it looks mechanical.
+            factor = 1.6 if key == "size" else 1.0
+            s, _ = _write_in_region(s, DICTS[MOTION_FIELDS[twin][0]], MOTION_FIELDS[twin][1],
+                                    tuple(x * factor for x in v))
+    return s, notes
 
 
-def uygula(emitter, particle, hareket):
-    """Hareket spec'ini emitter+particle bloklarina yazar.
+def apply(emitter, particle, motion):
+    """Writes the motion spec into the emitter+particle blocks.
 
-    hareket: {"dogus": (x,y,z), "hedef": (x,y,z), "ivme": (x,y,z),
-              "surtunme": (x,y,z), "tip": "Sphere", "attractor_sil": True}
-    Doner: (emitter, particle, notlar)
+    motion: {"spawn": (x,y,z), "target": (x,y,z), "accel": (x,y,z),
+             "damping": (x,y,z), "shape": "Sphere", "remove_attractor": True}
+    Returns: (emitter, particle, notes)
     """
-    notlar = []
-    if hareket.get("attractor_sil"):
-        emitter, n = attractor_sil(emitter)
+    notes = []
+    if motion.get("remove_attractor"):
+        emitter, n = remove_attractor(emitter)
         if n:
-            notlar.append("attractor sifirlandi (%d alan)" % n)
-    if "tip" in hareket:
-        emitter, ok = domain_tipi_yaz(emitter, 1, hareket["tip"])
+            notes.append("attractor zeroed (%d fields)" % n)
+    if "shape" in motion:
+        emitter, ok = write_domain_type(emitter, 1, motion["shape"])
         if ok:
-            notlar.append("dogus hacmi tipi -> %s" % hareket["tip"])
+            notes.append("spawn volume shape -> %s" % motion["shape"])
 
-    for anah, (nere, tam) in ALANLAR.items():
-        if anah not in hareket:
+    for key, (where, full) in MOTION_FIELDS.items():
+        if key not in motion:
             continue
-        v = hareket[anah]
-        if nere == "em":
-            emitter, ok = kfp_yaz(emitter, tam, v)
+        v = motion[key]
+        if where == "em":
+            emitter, ok = write_kfp(emitter, full, v)
         else:
-            particle, ok = kfp_yaz(particle, tam, v)
-        notlar.append("%s = [%g, %g, %g]%s"
-                      % (anah, v[0], v[1], v[2], "" if ok else "  ⛔ YAZILAMADI"))
-        # ⚠ ivme/surtunme min-maks CIFTIDIR; yalniz min yazmak arali
-        #    donorun eski maks'iyla birakir. Maks acikca verilmediyse esitle.
-        ikiz = anah + "_maks"
-        if nere == "pr" and not anah.endswith("_maks") and ikiz not in hareket \
-                and ikiz in ALANLAR:
-            particle, _ = kfp_yaz(particle, ALANLAR[ikiz][1], v)
-    return emitter, particle, notlar
+            particle, ok = write_kfp(particle, full, v)
+        notes.append("%s = [%g, %g, %g]%s"
+                     % (key, v[0], v[1], v[2], "" if ok else "  ⛔ NOT WRITTEN"))
+        # ⚠ accel/damping are a min-max PAIR; writing only min leaves the range
+        #    with the donor's old max. If max is not given explicitly, match it.
+        twin = key + "_max"
+        if where == "pr" and not key.endswith("_max") and twin not in motion \
+                and twin in MOTION_FIELDS:
+            particle, _ = write_kfp(particle, MOTION_FIELDS[twin][1], v)
+    return emitter, particle, notes

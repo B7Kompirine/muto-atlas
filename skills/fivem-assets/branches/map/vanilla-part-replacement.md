@@ -1,75 +1,74 @@
-# Vanilla parçayı kendi modelimle değiştir (yol, prop, yapı)
+# Replace a vanilla part with my own model (road, prop, structure)
 
-**Ne zaman okunur:** haritadaki bir yol dilimini, prop'u, yapı parçasını gizleyip yerine kendi modelini koyacaksın; "yakından temiz uzaktan duruyor", Z-fighting, beyaz yüzey, harita collision'ı gitti.
-**When to read:** replacing a vanilla road, prop or structure with your own model; recovering its textures; custom split normals.
-**Kaynak:** `vanilla-part-replacement.md` (tamamı, 2026-08) · bir yol yıkımı çalışması (2026-09-01) · **Ölçüm:** hw1_27 vinç + fwy_01/dt1_rd1 otoyol; entities.db ile doğrulanmış LOD zinciri ve `hei_` ikizleri
-**Önce:** `branches/map/_branch.md` · gövde › `trunk/flags.md`, `trunk/tool-pitfalls.md`
-
----
-
-
-Bir yol dilimini, bir prop'u ya da bir yapı parçasını **kendi modelinle
-değiştirmek** iki ayrı iştir ve ikisi de sessiz hatalarla doludur:
-
-> ⭐ **Topluluk teyidi (`trunk/tool-pitfalls.md` §7 / Sollumz Discord):** bir `.ydd` sözlüğünün
-> içindeki objeyi **SİLME, dünyanın altına taşı.** Silmek sözlükteki **diğer bağlı
-> objelerin özelliklerini de bozuyor** ve o bölgenin dokusu bulanık/düşük kaliteli
-> görünmeye başlıyor. Aşağıdaki §1 ile aynı kural, bağımsız kaynaktan.
-> Ayrıca: tek bir `.ydd` değiştirmek için **ytyp/ymap gerekmez.**
-
-1. vanilla olanı **görünmez yapmak** (silmeden — §1)
-2. kendi modelini **vanilla'nın kendi verisinden üretmek** (§3) ve
-   **dokularını geri bağlamak** (§4)
-
-Buradaki her sayı hw1_27 vinç + fwy_01/dt1_rd1 otoyol işinde ölçüldü.
+**When to read:** hiding a road slice, prop or structure part on the map and putting your own model in its place; recovering its textures; custom split normals; "clean up close, still there from afar", Z-fighting, white surfaces, map collision gone.
+**Source:** former vanilla part replacement reference (2.5.0, in full, 2026-08) · a road destruction job (2026-09-01) · **Measured:** hw1_27 crane + fwy_01/dt1_rd1 freeway; LOD chain and `hei_` twins verified with entities.db
+**Read first:** `branches/map/_branch.md` · trunk › `trunk/flags.md`, `trunk/tool-pitfalls.md`
 
 ---
 
-## 1. Vanilla entity'yi gizleme
 
-### Silme, AŞAĞI TAŞI
+**Replacing** a road slice, a prop or a structure part **with your own
+model** is two separate jobs, and both are full of silent failures:
 
-Child LOD'u olan bir entity silinirse dizideki indeksler kayar ve başka
-ymap'lerin `parentIndex` değerleri sessizce yanlış entity'yi gösterir.
-Doğrusu `position.z -= 600`. İndeksler ve sayılar korunur, geri alınabilir.
+> ⭐ **Community confirmation (`trunk/tool-pitfalls.md` §7 / Sollumz Discord):** do NOT DELETE an object
+> inside a `.ydd` dictionary, move it under the world. Deleting **also breaks the properties of the other
+> linked objects** in the dictionary and the texture of that area starts to look
+> blurry/low quality. Same rule as §1 below, from an independent source.
+> Also: changing a single `.ydd` **does not need a ytyp/ymap.**
 
-### ⛔ EXTENT'LERE DOKUNMA
+1. make the vanilla one **invisible** (without deleting — §1)
+2. **build your own model from vanilla's own data** (§3) and
+   **link its textures back** (§4)
 
-Entity'yi 600 m aşağı taşıyınca "extent dışında kaldı" diye
-`entitiesExtentsMin` / `streamingExtentsMin` değerlerini büyütme.
-**Ölçüldü: bir ymap'in streaming hacmini derinleştirmek o bölgenin akışını
-ve fizik ızgarasını çökertiyor — haritanın tamamında collision kayboldu.**
+Every number here was measured on the hw1_27 crane + fwy_01/dt1_rd1 freeway job.
 
-| dosya | orijinal ent/str z | benim yazdığım | sonuç |
+---
+
+## 1. Hiding the vanilla entity
+
+### Do not delete, MOVE IT DOWN
+
+If an entity with a child LOD is deleted, the indices in the array shift and the
+`parentIndex` values of other ymaps silently point at the wrong entity.
+The right way is `position.z -= 600`. Indices and counts are kept, and it can be undone.
+
+### ⛔ DO NOT TOUCH THE EXTENTS
+
+After moving the entity 600 m down, do not enlarge
+`entitiesExtentsMin` / `streamingExtentsMin` because "it is outside the extent".
+**Measured: deepening a ymap's streaming volume crashes that area's streaming
+and physics grid — collision disappeared across the whole map.**
+
+| file | original ent/str z | what I wrote | result |
 |---|---|---|---|
-| hw1_27_strm_0 | 31.0 / −111.1 | −650 / −650 | harita geneli collision gitti |
-| dt1_rd1_strm_2 | 28.3 / −111.4 | −650 / −650 | aynı |
+| hw1_27_strm_0 | 31.0 / −111.1 | −650 / −650 | collision gone map-wide |
+| dt1_rd1_strm_2 | 28.3 / −111.4 | −650 / −650 | same |
 
-Entity zaten extent **dışına** çıkınca hiç akmıyor; gizlemek için o yeterli.
-Extent'e dokunmak gerekli değil, zararlı.
+Once the entity is **outside** the extent it does not stream at all; that alone hides it.
+Touching the extent is not needed, it is harmful.
 
-### LOD ZİNCİRİNİN TAMAMINI yamalamak gerekir
+### The WHOLE LOD CHAIN must be patched
 
-Tek bir görsel nesne haritada **üç ayrı katmanda** durur:
+A single visual object sits on the map in **three separate layers**:
 
 ```
-X_strm_N.ymap   HD          (yakın)
-X.ymap          LOD + SLOD1 (orta)
-X_lod.ymap      SLOD2       (uzak, birden fazla bloğu tek modele kaynatır)
+X_strm_N.ymap   HD          (near)
+X.ymap          LOD + SLOD1 (mid)
+X_lod.ymap      SLOD2       (far, welds several blocks into one model)
 ```
 
-`parent` alanı zinciri verir: `hw1_27_strm_0 → hw1_27 → hw1_lod`.
-Sadece HD'yi gizlersen yakında temiz, **uzaktan hayalet** görürsün.
+The `parent` field gives the chain: `hw1_27_strm_0 → hw1_27 → hw1_lod`.
+Hide only the HD and it is clean up close, a **ghost from afar**.
 
-**SLOD2 genelde gizlenemez**: `hw1_lod_22_23_26_27` adlı SLOD2'nin
-**15 çocuğu** var; gizlemek 15 başka yapının uzak görüntüsünü de götürür.
-Çözümü ymap değil **model cerrahisi** (o drawable'dan ilgili kısmı kesmek).
+**SLOD2 usually cannot be hidden**: the SLOD2 named `hw1_lod_22_23_26_27`
+has **15 children**; hiding it also takes away the distant view of 15 other structures.
+The fix is not a ymap but **model surgery** (cutting the relevant part out of that drawable).
 
-### ⛔ `hei_` İKİZLERİNİ UNUTMA — bu bir tur kaybettirdi
+### ⛔ DO NOT FORGET THE `hei_` TWINS — this cost a round
 
-mpheist DLC aktifken haritanın çoğu ymap'inin `hei_` önekli bir kopyası
-vardır ve **gerçekte yüklenen odur**. Base sürümü yamalayıp `hei_`'yi
-atlamak "yakından temiz, uzaktan duruyor" belirtisini verir.
+With the mpheist DLC active, most ymaps of the map have a copy with the `hei_`
+prefix, and **that is what actually loads**. Patching the base version and skipping
+the `hei_` one gives the "clean up close, still there from afar" symptom.
 
 ```
 hw1_27_strm_0      +  hei_hw1_27_strm_0        (HD)
@@ -78,381 +77,381 @@ fwy_01             +  hei_fwy_01
 dt1_rd1            +  hei_dt1_rd1
 ```
 
-Her yamada ikisini birden ara: `extract_asset.ps1 -Pattern 'hei_X*.ymap'`.
+Look for both on every patch: `extract_asset.ps1 -Pattern 'hei_X*.ymap'`.
 
-### Ayak izindeki HER ŞEYİ önce say
+### Count EVERYTHING in the footprint first
 
-Tahminle entity aramak yerine veritabanını sorgula — bir ayak izi içindeki
-her entity'yi ymap'iyle birlikte listele (`data/entities.tsv.gz`):
+Instead of guessing which entities to look for, query the database — list every
+entity inside a footprint together with its ymap (`data/entities.tsv.gz`):
 
 ```python
-# (x,y) -> (s,u) yerel çerçeveye çevir, z bandıyla birlikte süz
-if -52<=s<=3 and -26<=u<=24 and 36<=z<=46: bul.append(...)
+# convert (x,y) -> (s,u) local frame, filter together with the z band
+if -52<=s<=3 and -26<=u<=24 and 36<=z<=46: found.append(...)
 ```
 
-Bu tarama olmadan **`fwy_01_rd_09_ov`** atlandı ve iki tur Z-fighting
-kovalandı (§5).
+Without this scan **`fwy_01_rd_09_ov`** was missed and Z-fighting was chased
+for two rounds (§5).
 
 ---
 
-## 2. Ne gizlemek gerektiğini belirleme: overlay ve decal
+## 2. Deciding what must be hidden: overlay and decal
 
-Yol yüzeyi tek model değildir. En az üç katman vardır:
+A road surface is not a single model. There are at least three layers:
 
-| sonek | ne | atlanırsa |
+| suffix | what | if skipped |
 |---|---|---|
-| `X_rd_NN` | asıl yol yüzeyi | yol yok olur |
-| `X_ovly_NN` | yol kaplaması | — |
-| `X_rd_NN_ov` | **decal** (shader adı birebir `decal`) | senin yüzeyinle **aynı düzlemde** kalır → Z-fighting |
+| `X_rd_NN` | the actual road surface | the road disappears |
+| `X_ovly_NN` | road overlay | — |
+| `X_rd_NN_ov` | **decal** (shader name exactly `decal`) | stays **in the same plane** as your surface → Z-fighting |
 
-`fwy_01_rd_09_ov` ölçümü: çöken dilimin ayak izinde **3.417 vertex**,
-bunların 2.128'i z>40, medyan z **42.47** — bizim plakaların üst yüzeyi
-41.6–42.6. Yani birebir aynı düzlem.
+`fwy_01_rd_09_ov` measurement: **3,417 vertices** in the footprint of the collapsing slice,
+2,128 of them at z>40, median z **42.47** — the top faces of our plates are at
+41.6–42.6. So exactly the same plane.
 
-**Kapı:** kendi modelini koyduğun ayak izindeki her vanilla entity için
-"yüzeyi benimkiyle çakışıyor mu" diye geometriyi oku — ekranda görünen
-üçgen deseni Z-fighting'in kesin işaretidir ama sebebini söylemez.
+**Gate:** for every vanilla entity in the footprint where you place your own model, read the geometry
+and ask "does its surface overlap mine" — a triangle pattern on screen is a sure sign of
+Z-fighting but does not tell you the cause.
 
 ---
 
-## 3. Kendi modelini vanilla'dan kesme
+## 3. Cutting your own model from vanilla
 
-### Kesim tümleyen olmalı
+### The cut must be complementary
 
-Ayak izi içi + dışı = orijinalin tamamı. Yüz merkezine göre kesim bunu
-matematiksel olarak garanti eder ve ölçüyle doğrulanır:
+Inside the footprint + outside = the whole original. A cut by face centre guarantees this
+mathematically and is verified by measurement:
 
 ```
-kaynak toplam 14.956 yuz = disarida 13.058 + iceride 1.898
+source total 14,956 faces = outside 13,058 + inside 1,898
 ```
 
-Boşluk da yok, çakışma da yok. İki farklı ölçüte göre iki kez kesme
-(bir yerde yüz merkezi, başka yerde `bisect_plane`) tümleyenliği bozar.
+No gap, no overlap. Cutting twice by two different criteria
+(face centre in one place, `bisect_plane` in another) breaks complementarity.
 
-### ⛔ MATERYAL İNDEKSİNİ TAHMİN ETME
+### ⛔ DO NOT GUESS THE MATERIAL INDEX
 
-Bir kesim/birleştirme adımı materyal indekslerini sıfırlayabiliyor
-(`farkli indeks = 1` görürsen tam olarak bu olmuştur). Kaybolan atamayı
-"en yakın vanilla poligonundan" geri türetmek **çalışmaz**: ölçülen medyan
-hata 0.7 m ve sonuç gözle bozuk (asfaltın yerine bariyer atlası çizildi).
+A cut/join step can reset material indices
+(if you see `distinct indices = 1`, that is exactly what happened). Re-deriving the lost assignment
+"from the nearest vanilla polygon" **does not work**: the measured median
+error was 0.7 m and the result is visibly broken (a barrier atlas was drawn instead of asphalt).
 
-Doğrusu: atamayı türetme, **orijinalden yeniden kes**. Yüzler vanilla'nın
-kendisi olduğu için materyal ve UV tanım gereği doğru olur.
+The right way: do not derive the assignment, **cut again from the original**. Since the faces are vanilla's
+own, material and UV are right by definition.
 
-Denetim: kesimden sonra poligon sayıları orijinalle birebir tutmalı
-(9235 / 316 / 2636 / 871 gibi) ve `farkli indeks` sayısı slot sayısına
-yakın olmalı.
+Check: after the cut the polygon counts must match the original exactly
+(like 9235 / 316 / 2636 / 871) and the `distinct indices` count must be close
+to the slot count.
 
-### Blender tuzakları (hepsi yaşandı, hepsi sessiz)
+### Blender pitfalls (all happened, all silent)
 
-- **`bpy.ops.object.transform_apply` hiçbir şey yapmayabilir** → mesh 124 m
-  kaydı, hata çıkmadı. Operatöre güvenme, dönüşümü veriye pişir:
+- **`bpy.ops.object.transform_apply` may do nothing** → the mesh shifted 124 m,
+  no error. Do not trust the operator, bake the transform into the data:
   `d.data.transform(d.matrix_world)` + `d.matrix_world = Identity`.
-- **Elle bmesh birleştirme UV ve renk katmanlarını düşürür.** `bm.faces.new()`
-  loop verisini taşımaz. `mesh.transform()` + `bpy.ops.object.join()` kullan;
-  join katmanları ada göre birleştirir.
-- **Vertex grubunu SİLMEK ağırlığı da siler.** Mesh'i atadıktan sonra
-  grupları temizlersen ağırlık verisi gider ve export "hiçbir vertex
-  ağırlıklı değil" der. Mesh'i ata, grupları **silme**.
+- **A manual bmesh join drops UV and color layers.** `bm.faces.new()`
+  does not carry loop data. Use `mesh.transform()` + `bpy.ops.object.join()`;
+  join merges layers by name.
+- **DELETING a vertex group also deletes the weights.** If you clear the groups after
+  assigning the mesh, the weight data is gone and export says "no vertex is
+  weighted". Assign the mesh, **do not delete** the groups.
 
 ---
 
-## 4. Doku kurtarma — vanilla modelin dokuları modelde DEĞİLDİR
+## 4. Texture recovery — a vanilla model's textures are NOT in the model
 
-### Ölçüm
-
-```
-dt1_rd1_r1_06        shader=21  gomulu doku=0   istenen doku=61
-fwy_01_rd_01         shader=22  gomulu doku=0   istenen doku=51
-prop_towercrane_02a  shader= 9  gomulu doku=0   istenen doku=15
-```
-
-**Yedi kaynak modelin hiçbirinde gömülü doku yok.** Hepsi dış sözlük
-kullanıyor. Arketipin `textureDictionary` alanı ilk halkadır, gerisi
-**ebeveyn zinciridir**.
-
-### Zinciri izleme
-
-1. `assetdb.py show <model>` → `textureDict` hash'i.
-2. Hash'i isme çöz (jenkins). Çıkmazsa oyundaki tüm `.ytd` adlarını tarat.
-3. `gtxd.meta` ebeveynleri verir (`GlobalRoads`, `DowntownRD`, `CityEastRD`…).
-4. Paylaşılan ebeveyn sözlükler burada: **`x64g.rpf/levels/gta5/generic/gtxd.rpf`**
-   (771 ytd). Prop dokuları için ayrıca modelin `+hi` / `+hidr` ikizleri.
-5. Detay dokuları (`env_*`) **`x64a.rpf/mapdetail.ytd`** içindedir.
-
-### Doku adı indeksi çıkar, tahmin etme
-
-`scripts/ytd_index.ps1` — bir klasördeki tüm `.ytd`'lerin doku **adlarını**
-listeler (DDS yazmadan). 948 sözlük / 13.003 doku indekslendi; istenen 131
-dokunun 116'sı 9 sözlükte bulundu.
-
-### ⛔ AYNI AD, FARKLI İÇERİK
-
-175 doku birden fazla sözlükte var; **22'sinin içeriği gerçekten farklı**
-(md5 ile ölçüldü). Kopyalar arasından **boyuta göre seçme** — 174.888 bayt
-512×512 DXT1 + mip zincirinin standart boyutu, yani boyut hiçbir şey
-söylemez. Seçim GTA'nın kendi çözüm sırasına göre yapılır:
+### Measurement
 
 ```
-modelin KENDI sozlugu  ->  ebeveynleri  ->  yabancilar (en son)
+dt1_rd1_r1_06        shader=21  embedded tex=0   wanted tex=61
+fwy_01_rd_01         shader=22  embedded tex=0   wanted tex=51
+prop_towercrane_02a  shader= 9  embedded tex=0   wanted tex=15
+```
+
+**None of the seven source models has an embedded texture.** All of them use an external
+dictionary. The archetype's `textureDictionary` field is the first link, the rest is
+**the parent chain**.
+
+### Following the chain
+
+1. `assetdb.py show <model>` → the `textureDict` hash.
+2. Resolve the hash to a name (jenkins). If that fails, scan all `.ytd` names in the game.
+3. `gtxd.meta` gives the parents (`GlobalRoads`, `DowntownRD`, `CityEastRD`…).
+4. The shared parent dictionaries are here: **`x64g.rpf/levels/gta5/generic/gtxd.rpf`**
+   (771 ytd). For prop textures, also the model's `+hi` / `+hidr` twins.
+5. Detail textures (`env_*`) are in **`x64a.rpf/mapdetail.ytd`**.
+
+### Build a texture name index, do not guess
+
+`scripts/ytd_index.ps1` — lists the texture **names** of all `.ytd`s in a folder
+(without writing DDS). 948 dictionaries / 13,003 textures indexed; 116 of the 131
+wanted textures were found in 9 dictionaries.
+
+### ⛔ SAME NAME, DIFFERENT CONTENT
+
+175 textures exist in more than one dictionary; **the content of 22 really differs**
+(measured with md5). **Do not pick** among the copies **by size** — 174,888 bytes is
+the standard size of 512×512 DXT1 + mip chain, so the size tells
+you nothing. Pick in GTA's own resolution order:
+
+```
+the model's OWN dictionary  ->  its parents  ->  strangers (last)
 fwy_01, dt1_rd1_1 …    ->  freewayrd, globalroads …  ->  paletoroadtemp …
 ```
 
-### Sollumz'un uydurduğu adlar
+### Names Sollumz makes up
 
-- `ABAB_a` biçimli **birleşik adlar**: Sollumz materyali diffuse+alpha
-  adını birleştirerek adlandırır. Bunların bir kısmı GTA'da gerçekten
-  vardır (vanilla `.ydr` de aynı adı kullanır), bir kısmı yoktur.
-- `<model>_pal`: bağlanamayan palet örnekleyicisine model adından türetilmiş
-  ad. **Oyunda böyle bir doku yoktur**, aramaya değmez.
+- **Combined names** of the form `ABAB_a`: Sollumz names the material by joining the diffuse+alpha
+  names. Some of them really exist in GTA
+  (the vanilla `.ydr` uses the same name), some do not.
+- `<model>_pal`: a name derived from the model name for a palette sampler that could not be bound.
+  **No such texture exists in the game**, not worth searching for.
 
-Ayrım: vanilla `.ydr`'yi XML'e dök ve doku parametre adlarına bak. Vanilla
-da o adı kullanıyorsa ad gerçektir, yoksa Sollumz uydurmuştur.
+Telling them apart: dump the vanilla `.ydr` to XML and look at the texture parameter names. If vanilla
+also uses that name, the name is real; otherwise Sollumz made it up.
 
-### `.ytd` üretimi
+### Building the `.ytd`
 
-`scripts/dds_to_ytd.ps1` — üretimden sonra dosyayı **geri okur** ve doku
-sayısı/adı/formatını doğrular. Boyut geçerlilik ölçütü değildir.
-Ölçüm: 129 doku → 12 MB `.ytd`, geri okumada 114/114 md5 birebir.
+`scripts/dds_to_ytd.ps1` — after building, it **reads back** the file and verifies texture
+count/name/format. Size is not a validity criterion.
+Measured: 129 textures → 12 MB `.ytd`, 114/114 md5 identical on read back.
 
-**Arketipin `textureDictionary`'si var olmayan bir adı gösterirse hiçbir
-doku çözülmez.** Tüm arketipleri tek kendi sözlüğüne bağla.
-
----
-
-## 5. `cpv_only` ve decal katmanı — beyaz yüzeylerin gerçek sebebi
-
-`cpv_only` **dokusu olmayan** bir shader'dır; yalnızca vertex renginden
-çizilir. Yolun **taban katmanıdır** ve vanilla'da üstünü decal örter.
-
-Ölçüm (25 plaka): `cpv_only` 3.412 m² kaplıyor; üstteki 128 yüzün **113'ü
-başka yüzeylerin altında gömülü**, 15'i açıkta.
-
-Decal'i ayak izinden kaldırırsan bu çıplak taban ortaya çıkar ve **büyük
-beyaz üçgenler** olarak görünür. Materyal uydurmak yanlış çözümdür.
-
-**Doğrusu:** decal'i de aynı hücrelere böl ve parçalara **kat** — yol
-kırılınca kaplaması da onunla kırılsın (2.280 yüz).
+**If the archetype's `textureDictionary` points at a name that does not exist, no
+texture resolves.** Link all archetypes to one dictionary of your own.
 
 ---
 
-## 6. Normaller — kalınlaştırmanın sessiz bedeli
+## 5. `cpv_only` and the decal layer — the real cause of white surfaces
 
-### Ölçüm
+`cpv_only` is a shader **with no texture**; it draws from vertex color only.
+It is the **base layer** of the road, and in vanilla the decal covers it.
 
-Vanilla harita mesh'leri **custom split normal** taşır:
-`has_custom_normals=True`, sharp kenar **0**, flat yüz **0**. Tüm
-gölgelendirme baked normalden gelir.
+Measurement (25 plates): `cpv_only` covers 3,412 m²; of the 128 faces on top,
+**113 are buried under other surfaces**, 15 are exposed.
 
-Kalınlaştırma (solidify) yüzeyi katı bloğa çevirir; **üst yüzey ile dikey
-kenar aynı vertex'leri paylaşır**, smooth gölgelendirmede 90°'lik köşede
-normaller ortalanır ve yan yüz kısmen yukarı bakan normal alır — güneşi
-üst yüzey gibi yansıtır, patlamış beyaz görünür.
+Remove the decal from the footprint and this bare base shows and appears as **big
+white triangles**. Making up a material is the wrong fix.
 
-### Ölçüt
+**The right way:** split the decal into the same cells too and **merge** it into the parts — when the road
+breaks, its overlay breaks with it (2,280 faces).
 
-Vertex normalinin z bileşenine göre dağılım; "ARA" = `0.2 ≤ |nz| ≤ 0.85`:
+---
+
+## 6. Normals — the silent cost of solidify
+
+### Measurement
+
+Vanilla map meshes carry **custom split normals**:
+`has_custom_normals=True`, sharp edges **0**, flat faces **0**. All
+shading comes from baked normals.
+
+Solidify turns the surface into a solid block; **the top face and the vertical
+edge share the same vertices**, with smooth shading the normals at the 90° corner
+are averaged and the side face gets a partly upward-facing normal — it reflects the sun
+like the top face and looks blown-out white.
+
+### Criterion
+
+Distribution by the z component of the vertex normal; "MID" = `0.2 ≤ |nz| ≤ 0.85`:
 
 ```
-VANILLA fwy_01_rd_01     ARA=22%
-VANILLA dt1_rd1_r1_06    ARA=14%
-VANILLA towercrane_02d   ARA=21%
-BIZIM  (bozuk)           ARA=38%
-BIZIM  (duzeltilmis)     ARA=20%
+VANILLA fwy_01_rd_01     MID=22%
+VANILLA dt1_rd1_r1_06    MID=14%
+VANILLA towercrane_02d   MID=21%
+OURS   (broken)          MID=38%
+OURS   (fixed)           MID=20%
 ```
 
-**Bu ölçüt yalnızca devrilmemiş geometride anlamlıdır** — enkaz hâlinde
-parçalar eğik olduğu için ARA doğal olarak %46'ya çıkar, kusur değildir.
+**This criterion only means something on geometry that has not tipped over** — in the debris state
+parts are tilted, so MID naturally rises to 46%; that is not a defect.
 
-### Düzeltme
+### Fix
 
-Toptan "normalleri yeniden hesapla" **yapma**: vanilla'nın baked normalleri
-yüz normalinden medyan 0.7° sapıyor ama **%10'u 24°'den fazla** sapıyor,
-silmek yolun gölgelendirmesini değiştirir.
+**Do not** do a blanket "recalculate normals": vanilla's baked normals
+deviate from the face normal by a median of 0.7° but **10% deviate by more than 24°**;
+wiping them changes the road's shading.
 
 ```python
-# UST yuzlerin baked normalini KORU, kalinlastirmadan gelen
-# yeni yuzlere DUZ (yuz normali) yaz.
+# KEEP the baked normal of the TOP faces, write FLAT (face normal)
+# on the new faces that come from solidify.
 nv=[Vector(me.corner_normals[i].vector) for i in range(len(me.loops))]
 for p in me.polygons:
-    if p.normal.z > 0.5: continue      # UST: dokunma
+    if p.normal.z > 0.5: continue      # TOP: do not touch
     for li in p.loop_indices: nv[li]=p.normal.copy()
 me.normals_split_custom_set(nv)
 ```
 
-Ayrıca kalınlaştırmayı **yalnızca aşağı** yap (`offset=-1`): üst yüzey
-vanilla kotunda kalır, yukarı taşıp decal'lerle yarışmaz. Ölçüm: üst yüzey
-yükseklik farkı medyan **0.000 m**.
+Also solidify **downward only** (`offset=-1`): the top face stays at the vanilla
+level and does not rise to fight the decals. Measured: top face
+height difference median **0.000 m**.
 
-Alt ve yan yüzlere gerçek doku ver (alt = `freeway_ubderbelly_new_01`,
-kenar = `mh_bridgebase03`), UV'yi düzlemsel projeksiyonla üret ve ölçeği
-**üst yüzeylerden ölç** (bu işte 0.167–0.197 UV/m, yani 1 tekrar ≈ 5–6 m).
+Give the bottom and side faces a real texture (bottom = `freeway_ubderbelly_new_01`,
+edge = `mh_bridgebase03`), build the UV with a planar projection and **measure the scale
+from the top faces** (0.167–0.197 UV/m on this job, so 1 repeat ≈ 5–6 m).
 
 ---
 
-## 7. LOD — orijinal prop ne yapıyorsa o
+## 7. LOD — whatever the original prop does
 
-Ölçüm:
+Measurement:
 
 ```
-prop_towercrane_02a  ucgen H=3455 M= 706  M/H=0.20  lodDist 70
+prop_towercrane_02a  tris H=3455 M= 706  M/H=0.20  lodDist 70
 prop_towercrane_02b  H=1544 M= 338        M/H=0.22  lodDist 70
 prop_towercrane_02c  H= 740 M= 326        M/H=0.44  lodDist 70
 prop_towercrane_02d  H=8006 M=5924        M/H=0.74  lodDist 75
-fwy_01_rd_01         LOD YOK (High tek)   lodDist 9998
-dt1_rd1_r1_06        LOD YOK              lodDist 9998
+fwy_01_rd_01         NO LOD (High only)   lodDist 9998
+dt1_rd1_r1_06        NO LOD               lodDist 9998
 ```
 
-- **Prop'ta Medium LOD vardır**, oran ~%20–44.
-- **Yol modellerinde LOD yoktur** — yolun uzak görüntüsü ayrı `_lod`
-  arketiplerinden gelir. Kendi yol drawable'ına LOD ekleme.
+- **A prop has a Medium LOD**, ratio ~20–44%.
+- **Road models have no LOD** — the distant view of a road comes from separate `_lod`
+  archetypes. Do not add a LOD to your own road drawable.
 
-Sollumz'da: `obj.sz_lods.medium.mesh` + `drawable.drawable_properties
+In Sollumz: `obj.sz_lods.medium.mesh` + `drawable.drawable_properties
 .lod_dist_high / _med / _low / _vlow`.
 
-⛔ **Decimate 4-etki kuralını bozar.** Vertex birleşince ağırlık birden
-fazla gruba dağılır. Rijit parçalarda LOD üretiminden sonra tek gruba %100
-geri çek ve **çok-gruplu vertex = 0** olduğunu doğrula.
+⛔ **Decimate breaks the 4-influence rule.** When vertices merge, the weight spreads over more
+than one group. On rigid parts, after building the LOD pull it back to 100% on one group
+and verify **multi-group vertices = 0**.
 
 ---
 
-## 8. Kapı listesi (oyuna girmeden)
+## 8. Gate list (without entering the game)
 
-| ne | nasıl | eşik |
+| what | how | threshold |
 |---|---|---|
-| extent bozulmamış | yamalı ymap'i orijinaliyle karşılaştır | birebir aynı |
-| tüm LOD katmanları gizli | base **ve** `hei_` sürümlerde say | HD+LOD+SLOD1 |
-| kesim tümleyen | iç + dış = orijinal yüz sayısı | birebir |
-| materyal taşınmış | `farkli indeks` sayısı | slot sayısına yakın |
-| UV/renk katmanı | `me.uv_layers`, `me.color_attributes` | `UVMap 0`, `Color 1` |
-| obje transformu | export'tan **hemen önce** matrix_world | identity |
-| doku çözülüyor | `.ydr` doku parametreleri ∩ `.ytd` indeksi | eksik ≈ 0 |
-| normaller | ARA oranı | vanilla bandı %14–22 |
-| LOD ağırlıkları | çok-gruplu / ağırlıksız vertex | 0 / 0 |
+| extent intact | compare the patched ymap with the original | identical |
+| all LOD levels hidden | count in the base **and** `hei_` versions | HD+LOD+SLOD1 |
+| cut is complementary | inside + outside = original face count | exact |
+| material carried over | `distinct indices` count | close to the slot count |
+| UV/color layer | `me.uv_layers`, `me.color_attributes` | `UVMap 0`, `Color 1` |
+| object transform | matrix_world **right before** export | identity |
+| textures resolve | `.ydr` texture parameters ∩ `.ytd` index | missing ≈ 0 |
+| normals | MID ratio | vanilla band 14–22% |
+| LOD weights | multi-group / unweighted vertices | 0 / 0 |
 
 
 ---
 
-## Çalışılmış örnek — 10 m'lik yol yarığı (`dt1_rd1_r1_28`, 2026-09-01)
+## Worked example — a 10 m road crack (`dt1_rd1_r1_28`, 2026-09-01)
 
-Bir vanilla yol parçasını değiştirirken **önce çıkarılması gereken** taban verinin tamamı; aynı sırayı kendi hedefin için tekrarla.
+The complete base data that **must be extracted first** when replacing a vanilla road part; repeat the same order for your own target.
 
-### Hedef (kullanıcı kararı)
+### Target (user decision)
 
-| olcu | deger |
+| measure | value |
 |---|---|
-| uzunluk | 10 m |
-| genislik | ort. 2 m (bir uc genis, uzakta incelir) |
-| derinlik | 3 m |
-| dip | gorunur moloz + kaya (oyuncu duser, dipte durur) |
-| hat | genis baslar, uzaga dogru catlaga incelir |
+| length | 10 m |
+| width | avg. 2 m (one end wide, narrows further away) |
+| depth | 3 m |
+| bottom | visible rubble + rock (the player falls in, stops at the bottom) |
+| line | starts wide, narrows into a crack further away |
 
-### Hedef asset
+### Target asset
 
-| alan | deger |
+| field | value |
 |---|---|
-| HD arketip | `dt1_rd1_r1_28` hash **700810582** |
+| HD archetype | `dt1_rd1_r1_28` hash **700810582** |
 | ytyp | `downtown_01_metadata_002_strm.ytyp` |
-| konum | 252.06, -946.04, 25.78 |
+| position | 252.06, -946.04, 25.78 |
 | bbox | -51.6977,-81.9242,-2.6449 / 51.6876,83.4316,2.6808 |
 | lodDist | 148 |
 | flags | 8192 = Dont Cast Shadows |
-| textureDict | **`dt1_rd1_1`** (hash 1203152392 — jenkins ile DOGRULANDI) |
-| physicsDict | 0 -> collision ayri .ybn'de |
+| textureDict | **`dt1_rd1_1`** (hash 1203152392 — VERIFIED with jenkins) |
+| physicsDict | 0 -> collision in a separate .ybn |
 
-Overlay (yol cizgileri, ayri entity):
+Overlay (road lines, separate entity):
 
-| alan | deger |
+| field | value |
 |---|---|
-| ad | `dt1_rd1_r1_ovly_38` hash 1433796416 |
-| konum | 251.91, -946.21, 25.77 (HD'ye 0.23 m) |
+| name | `dt1_rd1_r1_ovly_38` hash 1433796416 |
+| position | 251.91, -946.21, 25.77 (0.23 m from the HD) |
 | lodDist | 93 |
 | bbox | +-49.02 x +-67.48 x +-2.64 |
-| textureDict | `dt1_rd1_1` (ayni) |
+| textureDict | `dt1_rd1_1` (same) |
 
-⛔ v1 bu overlay'i HIC saymadi. Kaldirilmazsa yarigin ustunde **havada asili
-yol cizgileri** kalir.
+⛔ v1 did NOT count this overlay at all. If it is not removed, **road lines hang
+in the air** above the crack.
 
-### LOD zinciri (assetdb.py lodchain — dogrulandi)
+### LOD chain (assetdb.py lodchain — verified)
 
-| # | ad | ymap | idx | lodDist |
+| # | name | ymap | idx | lodDist |
 |---|---|---|---|---|
 | 0 | `dt1_rd1_r1_28` | `dt1_rd1_strm_6.ymap` | 66 | 148 |
 | 1 | `3700422285` | `dt1_rd1.ymap` | 225 | 400 |
 | 2 | `dt1_lod_12_13_22_23` | `dt1_lod.ymap` | 33 | 1500 |
 
-SLOD2 (#2) **dokunulmuyor** — 10 m'lik yarik 1500 m'den gorunmez.
+SLOD2 (#2) **is not touched** — a 10 m crack is not visible from 1500 m.
 
-LOD ebeveyni `3700422285` cozuldu (kullanicinin verdigi 4 deger buydu):
+LOD parent `3700422285` resolved (these were the 4 values the user gave):
 
-| alan | deger |
+| field | value |
 |---|---|
 | ytyp | `downtown_01_metadata_001.ytyp` |
 | assetType | ASSET_TYPE_DRAWABLEDICTIONARY |
 | assetName | `dt1_rd1_r5h_slod1_children` (.ydd) |
-| textureDict | `dt1_rd1_lod` (hash 2280611059 — DOGRULANDI) |
+| textureDict | `dt1_rd1_lod` (hash 2280611059 — VERIFIED) |
 | lodDist | 400, flags 8192 |
 
-### Dokunulacak 4 ymap + DOGRU base surumler
+### The 4 ymaps to touch + the RIGHT base versions
 
-⛔ Ayni ymap birden fazla RPF'te var ve **surumler farkli**. `-Flatten $true`
-ile cikarmak sessizce yanlis surumu birakir (sonuncusu kazanir).
+⛔ The same ymap is in more than one RPF and **the versions differ**. Extracting with
+`-Flatten $true` silently leaves the wrong version (the last one wins).
 
-| ymap | DOGRU kaynak | md5(12) |
+| ymap | RIGHT source | md5(12) |
 |---|---|---|
 | `dt1_rd1_strm_6.ymap` | **patchday27ng** | 4d16ad79331d |
 | `dt1_rd1.ymap` | **patchday27ng** | dfe50afe6540 |
 | `hei_dt1_rd1_strm_6.ymap` | **update.rpf/dlc_patch/mpheist** | 3d2d93bdd35b |
 | `hei_dt1_rd1.ymap` | **update.rpf/dlc_patch/mpheist** | a8f3e2f171da |
 
-Dordunde de patchday27ng / dlc_patch surumu digerlerinden FARKLI.
-Dogru kopyalar: `vanilla/dogru/`.
+In all four the patchday27ng / dlc_patch version DIFFERS from the others.
+Right copies: `vanilla/correct/`.
 
-`hei_` ikizi **VAR** — v1'in `VANILLA_KALDIR.md` dosyasindaki
-"hei_ ikizi YOK (olculdu)" satiri YANLISTI (entities.db ile dogrulandi).
+The `hei_` twin **EXISTS** — the line "no hei_ twin (measured)" in v1's
+`VANILLA_REMOVE.md` notes WAS WRONG (verified with entities.db).
 
 ### Collision
 
-`dt1_rd1` collision'i 12 .ybn'e bolunmus. Hedefi kapsayan **TEK** dosya:
+`dt1_rd1` collision is split into 12 .ybn files. The **ONLY** file that covers the target:
 
 **`dt1_rd1_4.ybn`** — BoxMin 88.6,-981.9,23.1 / BoxMax 304.3,-768.4,53.0
 
-Yarik 10 m oldugu icin komsu ybn'lere tasmiyor. (Komsu `dt1_rd1_3` y=-969.6'da
-bitiyor, bizim hedef -946.)
+The crack is 10 m, so it does not spill into neighbouring ybn files. (The neighbour `dt1_rd1_3` ends
+at y=-969.6, our target is at -946.)
 
-### Vanilla yol geometrisi
+### Vanilla road geometry
 
-| olcu | deger |
+| measure | value |
 |---|---|
 | model | 1 |
 | geometry | 28 |
-| ucgen | 5660 |
-| LodDistHigh/Med/Low/Vlow | 9998 (hepsi) |
-| gomulu Skeleton | YOK |
-| gomulu Bound | YOK |
+| triangles | 5660 |
+| LodDistHigh/Med/Low/Vlow | 9998 (all) |
+| embedded Skeleton | NONE |
+| embedded Bound | NONE |
 
-Shader'lar (2 tur, jenkins ile cozuldu):
-- `normal_spec_detail` (3620052489) — asfalt govdesi, 22 geometry
-- `normal_spec_decal` (471606640) — kaplama/cizgi katmani, 6 geometry
+Shaders (2 kinds, resolved with jenkins):
+- `normal_spec_detail` (3620052489) — asphalt body, 22 geometries
+- `normal_spec_decal` (471606640) — overlay/line layer, 6 geometries
 
-### Cakisma (COZULMEDI — karar bekliyor)
+### Conflict (NOT RESOLVED — awaiting a decision)
 
-Uc kaynak ayni vanilla ymap'lerin **farkli duzenlenmis** surumlerini
-stream ediyor. FiveM'de biri kazanir, hangisi belirsiz.
+Three resources stream **differently edited** versions of the same vanilla ymaps.
+In FiveM one of them wins; which one is undefined.
 
-| ymap | cakisan kaynak |
+| ymap | conflicting resource |
 |---|---|
-| `dt1_rd1.ymap`, `hei_dt1_rd1.ymap` | `[harita]/my-test-map` |
+| `dt1_rd1.ymap`, `hei_dt1_rd1.ymap` | `[maps]/my-test-map` |
 | `hei_dt1_rd1_strm_6.ymap` | `[script]/crux_bennysautos/crux_crucialfix` |
 
-### CodeWalker.Core — dogru property adlari (bu oturumda olculdu)
+### CodeWalker.Core — right property names (measured in this session)
 
-⛔ Yanlis ad **hata vermez, $null doner** (§5). Olculmus dogru adlar:
+⛔ A wrong name **gives no error, it returns $null** (§5). Measured right names:
 
-| nesne | YANLIS | DOGRU |
+| object | WRONG | RIGHT |
 |---|---|---|
 | Bound | `BoundingBoxMin/Max` | **`BoxMin`** / **`BoxMax`** |
 | Drawable | `DrawableModelsHigh` | **`DrawableModels`** / **`AllModels`** |
 
-⛔ `ShaderGroup.Shaders` foreach'te **NotImplementedException** atar
-(`ResourcePointerArray64<T>`). Cozum: `.data_items` uzerinden gez.
+⛔ `ShaderGroup.Shaders` throws **NotImplementedException** in foreach
+(`ResourcePointerArray64<T>`). Fix: iterate over `.data_items`.

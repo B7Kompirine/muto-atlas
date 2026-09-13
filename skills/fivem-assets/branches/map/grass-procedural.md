@@ -1,196 +1,195 @@
-# Çim / prosedürel zemin / arazi
+# Grass / procedural ground / terrain
 
-**Ne zaman okunur:** "çimen yapalım" — hangi sistem; kendi arazin; `@ma` prosedürel collision; grass batch; fur grass; "çim görünmüyor".
-**When to read:** grass, procedural ground cover, terrain material and the procedural IDs that spawn it.
-**Kaynak:** `notlar/08` §1-7 (Stumpy Mason videoları, [video]) · SKILL proc/mat sorguları · **Ölçüm:** video adımları; veri tarafı `procedural.tsv` (255) ve `collision_materials.tsv` (185) ölçülü
-**Önce:** `branches/map/_branch.md` · gövde › `trunk/flags.md`, `trunk/tool-pitfalls.md`
+**When to read:** "let's make grass" — which system; your own terrain; `@ma` procedural collision; grass batch; fur grass; "grass does not show"; terrain material and the procedural IDs that spawn it.
+**Source:** former video notes 08 §1-7 (Stumpy Mason videos, [video]) · SKILL proc/mat queries · **Measured:** video steps; the data side `procedural.tsv` (255) and `collision_materials.tsv` (185) measured
+**Read first:** `branches/map/_branch.md` · trunk › `trunk/flags.md`, `trunk/tool-pitfalls.md`
 
 ---
 
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" proc [<ad>|--id N]   # prosedürel tablo (collision 'Procedural ID')
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" mat  [<ad>|--index N] # collision materyali + bayraklar
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" proc [<name>|--id N]   # procedural table (collision 'Procedural ID')
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" mat  [<name>|--index N] # collision material + flags
 ```
 
-⚠️ Aşağıdaki adımlar **video anlatımıdır** (tek üretici, çalıştığı gösterildi); sayılar `assetdb.py` ile doğrulanır.
+⚠️ The steps below are **a video walkthrough** (one author, shown working); verify the numbers with `assetdb.py`.
 
-## 1. GTA'da çim DÖRT ayrı sistemdir
+## 1. Grass in GTA is FOUR separate systems
 
-Bir "çimen yapalım" isteği geldiğinde **hangisi olduğu sorulmalı** — dördü
-tamamen farklı üretiliyor:
+When a "let's make grass" request comes in, **ask which one** — all four
+are built completely differently:
 
-| sistem | ne | nasıl |
+| system | what | how |
 |---|---|---|
-| **düz doku** | zeminin kendi dokusu | `terrain_cb_*` shader + vertex color karışımı |
-| **çim modelleri** | prop olarak yerleştirilmiş çim | ymap entity |
-| **fur grass** | tüy benzeri hacimli çim | `grass_fur` / `grass_fur_mask` shader'lı ayrı drawable |
-| **`@ma` prosedürel** | motorun kendiliğinden serpiştirdiği ot/çalı | **collision materyali** üzerinden |
-| **ymap grass batch** | fırçayla boyanan instance'lar | CodeWalker'da ymap içinde |
+| **flat texture** | the ground's own texture | `terrain_cb_*` shader + vertex color blend |
+| **grass models** | grass placed as props | ymap entity |
+| **fur grass** | fur-like volumetric grass | separate drawable with `grass_fur` / `grass_fur_mask` shader |
+| **`@ma` procedural** | weeds/bushes the engine scatters by itself | through the **collision material** |
+| **ymap grass batch** | instances painted with a brush | inside a ymap in CodeWalker |
 
-### ⛔ Fur grass CodeWalker'da GÖRÜNMEZ
-`fur_` ile başlayan drawable'ları açtığında **hiçbir geometri göremezsin** —
-wireframe'de bile. Sadece materyali görünür. Bu bozukluk değil, normal.
-(gövde: aracın göstermemesi ≠ yok.)
-
----
-
-## 2. Vanilla arazi modelinin anatomisi (çözümlendi)
-
-Bir vanilla zemin karosu açıldığında:
-- **Üç UV map** — her doku katmanı için ayrı
-- **İki color attribute:**
-  - **`Colour 1`** = aydınlatma bölgeleri. Ölçülen örnekte:
-    **mavi** = köprü altı / ay ışığı alan toprak · **pembe** = geneli ·
-    **kırmızı** = güneş gören tepe kısımları
-  - **`Colour 2`** = **hangi doku katmanının nerede görüneceği**
-    (ör. yeşil bölge → kumlu toprak)
-
-Yani katman karışımı `Colour 2`'de, aydınlatma `Colour 1`'de.
-
+### ⛔ Fur grass is INVISIBLE in CodeWalker
+When you open drawables starting with `fur_` you **see no geometry at all** —
+not even in wireframe. Only the material shows. This is not a defect, it is normal.
+(trunk: a tool not showing it ≠ it does not exist.)
 
 ---
 
-## 3. Kendi arazini üretme — ölçülü adımlar
+## 2. Anatomy of a vanilla terrain model (decoded)
 
-1. **Circle** (72 vertex, ~25 m) → Edit Mode → yüzü seç → **Grid Fill**
-   → `Ctrl+T` ile üçgenle.
-2. **Proportional Editing açık, falloff `Random`** → sadece Z'de oynat →
-   doğal tepe/çukur.
-3. Dış çemberi düzle: edge select ile dış halkayı çift tıkla →
-   **`S Z 0`** → 0'a koyduğun referans düzlemine snap'le, sonra düzlemi sil.
-4. **Sculpt Mode → Smooth** fırçası, **düşük strength** — sivri köşeleri al.
-   (Yazar strength'i yüksek bırakıp bozdu, sonra düşürdü.)
-5. Shader: **`terrain_cb_4lyr_pxm`** ailesi (arama kutusuna `4lyr`).
+When a vanilla ground tile is opened:
+- **Three UV maps** — one per texture layer
+- **Two color attributes:**
+  - **`Colour 1`** = lighting zones. In the measured sample:
+    **blue** = ground under a bridge / lit by moonlight · **pink** = the rest ·
+    **red** = hilltops that see the sun
+  - **`Colour 2`** = **which texture layer shows where**
+    (e.g. green area → sandy soil)
+
+So the layer blend is in `Colour 2`, lighting in `Colour 1`.
+
+
+---
+
+## 3. Building your own terrain — measured steps
+
+1. **Circle** (72 vertices, ~25 m) → Edit Mode → select the face → **Grid Fill**
+   → triangulate with `Ctrl+T`.
+2. **Proportional Editing on, falloff `Random`** → move only in Z →
+   natural hills/hollows.
+3. Flatten the outer ring: in edge select, double-click the outer ring →
+   **`S Z 0`** → snap to the reference plane you placed at 0, then delete the plane.
+4. **Sculpt Mode → Smooth** brush, **low strength** — take off sharp corners.
+   (The author left strength high and ruined it, then lowered it.)
+5. Shader: the **`terrain_cb_4lyr_pxm`** family (type `4lyr` in the search box).
 6. UV: select all → unwrap → **Cube Projection**,
-   ⭐ **cube size = 2** — *"çim için doku yoğunluğu iki."*
-7. `Colour 1`: her yere **magenta** (R=1, G=0, B=1). Beyaz kalan yer olmasın.
+   ⭐ **cube size = 2** — *"texture density for grass is two."*
+7. `Colour 1`: **magenta** everywhere (R=1, G=0, B=1). Leave no white spots.
 
 ### ⭐ Sollumz Vertex Painter — `Shift+T`
-Viewport'ta `Shift+T` panelini açar. İçinde:
-- **RGBA kanal izolasyonu**
-- palet
+Opens the `Shift+T` panel in the viewport. It has:
+- **RGBA channel isolation**
+- palette
 - **multi-object vertex paint**
-- ⭐ **Terrain Paint** — `texture 1/2/3/4` düğmeleriyle katman karışımını
-  doğrudan `Colour 2`'ye boyar
+- ⭐ **Terrain Paint** — the `texture 1/2/3/4` buttons paint the layer blend
+  straight into `Colour 2`
 
-Fırça boyutu sağ tık, strength ayarlanabilir. Katmanlar arasında geçiş yaparak
-"tiled" görünümü kırarsın. **Geometri ne kadar yoğunsa kontrol o kadar iyi.**
+Brush size on right click, strength is adjustable. Switch between layers to
+break up the "tiled" look. **The denser the geometry, the better the control.**
 
-⚠️ Color attribute'un yanındaki **kamera ikonu = "set render color"**:
-hangi katmanı **boyadığını** seçer; yandaki göz hangi katmanı **gördüğünü**.
-İkisi ayrı — karıştırırsan yanlış katmana boyarsın.
-
----
-
-## 4. Arazi collision'ı
-
-- Drawable'ı çoğalt → `.col` diye adlandır → **Composite**'e çevir
-- Collision materyalleri: **grass (short)**, **gravel small**
-- Edit Mode → tepeden bak → **circle select**, face modu → toprak görünen
-  yüzleri seç → **gravel** ata → **`Ctrl+I`** ile tersle → **grass** ata
-- ⭐ **Collision'dan dokuyu, UV map'leri ve color attribute'ları SİL** — gereksiz.
-- Oyunda sonuç: toprakta **ayak izleri**, çimde **çim ayak sesi**.
+⚠️ The **camera icon** next to a color attribute = **"set render color"**:
+it picks which layer you **paint**; the eye next to it picks which layer you **see**.
+They are separate — mix them up and you paint the wrong layer.
 
 ---
 
-## 5. Fur grass üretimi
+## 4. Terrain collision
 
-1. Arazi mesh'inden bir parçayı seç → `Shift+D` → `P` → **Separate by Selection**
-   → `Alt+P` → **Clear Parent, Keep Transform** (yerinde kalsın).
-2. UV map'leri ve dokuyu sil.
-3. Shader: **`grass_fur_mask`** (örnekte `SM_26` varyantı — maskesi olan bu).
-4. Cube projection, yine **doku yoğunluğu 2**.
-5. `UVMap 1`'de adaları **maskenin küçük adalarının içine** taşı.
-6. Edit Mode → her şeyi **Z'de +0.01** kaldır.
-7. **Subdivision Surface** ekle ve **hemen apply et**.
-8. Vertex select ile bazı vertex'leri dışarı çekerek düzensizlik ver.
-
-Oyunda: katmanlı nokta dizileri (stipple + height sampler'lar) → normal çimden
-**daha hacimli** duruyor, alfa tabanlı. Ev önü çimi gibi yerler için uygun.
-Kenarına çim→toprak geçişi koymak gerekiyor, yoksa kesik duruyor.
+- Duplicate the drawable → name it `.col` → convert to **Composite**
+- Collision materials: **grass (short)**, **gravel small**
+- Edit Mode → view from the top → **circle select**, face mode → select the faces where
+  soil shows → assign **gravel** → invert with **`Ctrl+I`** → assign **grass**
+- ⭐ **DELETE the texture, UV maps and color attributes from the collision** — not needed.
+- Result in game: **footprints** in the soil, **grass footstep sounds** on the grass.
 
 ---
 
-## 6. ymap **Grass Batch** — fırçayla prosedürel serpme
+## 5. Building fur grass
 
-CodeWalker Project → yeni ymap → **YMAP → New Grass Batch**.
+1. Select a part of the terrain mesh → `Shift+D` → `P` → **Separate by Selection**
+   → `Alt+P` → **Clear Parent, Keep Transform** (so it stays in place).
+2. Delete the UV maps and the texture.
+3. Shader: **`grass_fur_mask`** (the `SM_26` variant in the example — this one has the mask).
+4. Cube projection, again **texture density 2**.
+5. In `UVMap 1`, move the islands **inside the small islands of the mask**.
+6. Edit Mode → raise everything **+0.01 in Z**.
+7. Add **Subdivision Surface** and **apply it right away**.
+8. In vertex select, pull some vertices outward to add irregularity.
 
-Alanlar: **LOD distance · fade distance · orient to terrain · optimize batch ·
-ad** (ör. `proc_grasses01`).
-
-**Brush** sekmesi: radius · density · **color (RGB çarkı)** · ambient occlusion ·
-scale (**random** olabilir) · padding · brush mode.
-
-- **`Ctrl` basılı tut + sol tık sürükle** = instance boyar
-- radius = daire boyutu · density = daire içinde kaç adet
-- ⭐ **color = oyundaki rengi** — kırmızı boyarsan oyunda kırmızı çıkar
-- **Optimize Batch** çok sayıda instance'ı küçük gruplara böler
-- Model adları **Pleb Masters: Forge**'da `procedural` filtresiyle bulunur
-  (ör. `prop_brittle_bush_01`); tüm prosedürel modeller **`v_proc1.rpf`** içinde
-- Kaydet + **manifest üret**
-
-### ⛔ Grass batch KENDİ collision'ına boyamaz — ve çözümü GTA'yı kırıyor
-Grass batch **yalnız base game collision'ının üstüne** boyar. Kendi projendeki
-modelin üzerine boyamaya çalışırsan fırça **modelin altına** boyar.
-
-Videodaki çözüm (yazarın kendi deyimiyle *"sistemi hack'liyoruz"*):
-1. Bölgenin **base game `.ybn`**'ini XML olarak çıkar, Blender'a al.
-2. Kendi collision poly mesh'ini `Alt+P` ile serbest bırak, **dünya
-   koordinatlarını** Collision → object location/rotation alanına yapıştır,
-   base game YBN'in **BVH'sine** sürükle.
-3. Export et ve **base game RPF'ine geri yaz** (CodeWalker
-   *"base game dosyalarını doğrudan düzenliyorsun"* uyarısı verir).
-4. CodeWalker'ı yeniden başlat → artık kendi collision'ına boyayabiliyorsun.
-5. ⛔ **Oyun bütünlük kontrolünden geçmez, GTA açılmaz.**
-6. **Düzeltme:** Rockstar Launcher / Steam → **verify game files**
-   (~211 MB indirir). Dosyayı yazarken içinde bulunduğu klasörler
-   **şifresi çözülmüş** hâle geliyor, doğrulama onları yeniden şifreliyor.
-
-> **Değerlendirme:** çalışıyor ama base game dosyasına yazıyor ve geri alma
-> adımı zorunlu. Kullanıcıya önerirken **bu maliyeti söyle**; kendi ymap'inde
-> entity olarak çim prop'u koymak çoğu durumda yeterli olabilir.
-
-### ⛔⛔ "Çim görünmüyor" = önce GRAFİK AYARINA bak
-Yazar her şeyi doğru yaptıktan sonra oyunda **hiç çim göremedi**.
-Sebep: **Ayarlar → Grafik → `Grass Quality`** **Normal**'daydı.
-**Ultra** yapıp yeniden başlatınca çim çıktı.
-
-> Bu, atlasın *"ekran görüntüsü ölçüm değildir"* dersinin bir varyantı:
-> **çıktı görünmüyorsa önce oynatıcı/ayar tarafını ele.**
+In game: layered dot arrays (stipple + height samplers) → looks
+**more volumetric** than normal grass, alpha based. Suits places like a front lawn.
+The edge needs a grass→soil transition, otherwise it looks cut off.
 
 ---
 
-## 7. `@ma` prosedürel collision — çok kırılgan
+## 6. ymap **Grass Batch** — procedural scatter with a brush
 
-`@ma` collision'ları, materyal indeksine bağlı olarak motorun kendiliğinden
-ot/çalı serpiştirdiği bound mesh'lerdir.
+CodeWalker Project → new ymap → **YMAP → New Grass Batch**.
 
-- Bir `@ma` collision'ında birden çok materyal olur ve **liste aşağı indikçe
-  materyal indeksi birer birer artar** (en üst = 1).
-- Kendi tipini eklemek: listedeki en yüksek indeks + 1'e yeni bir materyal
-  ekle ve prosedürel adını ver (ör. `proc_high_flowers`).
-- Geometriyi `@ma` collision'ın bound poly mesh'ine **`Ctrl+J` ile birleştir**
-  (`Alt+P` → clear parent keep transform önce).
-- ⛔ **Yazarın bulabildiği tek yol: VAR OLAN bir `@ma` collision'ına EKLEMEK.**
-  Sıfırdan `@ma` collision üretmeyi başaramamış.
+Fields: **LOD distance · fade distance · orient to terrain · optimize batch ·
+name** (e.g. `proc_grasses01`).
 
-### Sonraki videoda (`A8ueX5UgmGE`) düzeltilen nokta
-- Bazı çim tipleri hiç çıkmadı. Sebep sanılanın aksine ad değil:
-  ⭐ **collision poligonu yeterince BÜYÜK olmalı.** Kareler büyütülünce
-  daha önce çalışmayan tiplerin **hepsi çalıştı**.
-- Tüm üçgenlere çim gelmiyor — performans amaçlı.
-- ⚠️ **Çok kırılgan, az kullan.** Su altı tipleri de var (test edilmemiş).
-- Doğrulanmış tip adları: `city_weeds_01` · `mountain_side_dry` ·
+**Brush** tab: radius · density · **color (RGB wheel)** · ambient occlusion ·
+scale (can be **random**) · padding · brush mode.
+
+- **Hold `Ctrl` + left-click drag** = paints instances
+- radius = circle size · density = how many inside the circle
+- ⭐ **color = the color in game** — paint red and it comes out red in game
+- **Optimize Batch** splits a large number of instances into small groups
+- Model names are found in **Pleb Masters: Forge** with the `procedural` filter
+  (e.g. `prop_brittle_bush_01`); all procedural models are in **`v_proc1.rpf`**
+- Save + **generate manifest**
+
+### ⛔ Grass batch does NOT paint onto your own collision — and the fix breaks GTA
+Grass batch paints **only on top of base game collision**. If you try to paint
+on a model in your own project, the brush paints **under the model**.
+
+The fix in the video (in the author's own words *"we're hacking the system"*):
+1. Export the area's **base game `.ybn`** as XML, bring it into Blender.
+2. Free your own collision poly mesh with `Alt+P`, paste its **world
+   coordinates** into the Collision → object location/rotation fields,
+   drag it into the base game YBN's **BVH**.
+3. Export and **write it back into the base game RPF** (CodeWalker
+   warns *"you are editing base game files directly"*).
+4. Restart CodeWalker → now you can paint onto your own collision.
+5. ⛔ **The game fails its integrity check, GTA does not start.**
+6. **Fix:** Rockstar Launcher / Steam → **verify game files**
+   (downloads ~211 MB). Writing the file leaves the folders it sits in
+   **decrypted**; verification encrypts them again.
+
+> **Assessment:** it works, but it writes to a base game file and the undo
+> step is mandatory. When suggesting it to the user, **state this cost**; placing grass
+> props as entities in your own ymap may be enough in most cases.
+
+### ⛔⛔ "Grass does not show" = check the GRAPHICS SETTING first
+After doing everything right, the author **saw no grass at all** in game.
+Cause: **Settings → Graphics → `Grass Quality`** was on **Normal**.
+Setting it to **Ultra** and restarting brought the grass in.
+
+> This is a variant of the atlas lesson *"a screenshot is not a measurement"*:
+> **if the output does not show, rule out the player/settings side first.**
+
+---
+
+## 7. `@ma` procedural collision — very fragile
+
+`@ma` collisions are bound meshes on which the engine scatters weeds/bushes
+by itself, depending on the material index.
+
+- An `@ma` collision has several materials, and **going down the list the
+  material index goes up by one** (top = 1).
+- Adding your own type: add a new material at the highest index in the list + 1
+  and give it the procedural name (e.g. `proc_high_flowers`).
+- **Join the geometry with `Ctrl+J`** into the bound poly mesh of the `@ma` collision
+  (`Alt+P` → clear parent keep transform first).
+- ⛔ **The only way the author found: ADD to an EXISTING `@ma` collision.**
+  They did not manage to build an `@ma` collision from scratch.
+
+### Corrected in the next video (`A8ueX5UgmGE`)
+- Some grass types did not show at all. The cause was not the name, as assumed:
+  ⭐ **the collision polygon must be BIG enough.** With the squares enlarged,
+  **all** the types that had not worked before worked.
+- Not every triangle gets grass — for performance.
+- ⚠️ **Very fragile, use sparingly.** There are underwater types too (not tested).
+- Verified type names: `city_weeds_01` · `mountain_side_dry` ·
   `mountain_side_lush` · `hill_side_lush` · `green_meadow_01` ·
   `city_weeds_sparse` · `city_weeds_litter` ·
   `AD_City_Industrial_Weeds_Lodo_01_Dense`
 
-> `assetdb.py proc` ve `assetdb.py mat` — **veri** elimizde. Eksik olan üretim tarafıydı: **poligon boyutu** ve
-> **var olana ekleme** zorunluluğu.
+> `assetdb.py proc` and `assetdb.py mat` — we have the **data**. What was missing was the production side: **polygon size** and
+> the requirement to **add to an existing one**.
 
 ---
 
 
-## Topluluk uyarısı — arazi karışımı
+## Community warning — terrain blend
 
-⛔ **Arazi karışımı `UVMap 1` olmadan hiç çalışmaz** (lookup sampler onu kullanır); ayrıca **`Colour 1`'in ALFASI siyah** olmalı (beyaz = lookup kapalı). (Sollumz Discord.)
+⛔ **Terrain blending does not work at all without `UVMap 1`** (the lookup sampler uses it); also the **ALPHA of `Colour 1` must be black** (white = lookup off). (Sollumz Discord.)

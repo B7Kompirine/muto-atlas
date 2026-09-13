@@ -1,57 +1,56 @@
-# Ped cloth — pelerin, etek, duvak: karakterle birlikte süzülen kumaş
+# Ped cloth — cape, skirt, veil: fabric that flows with the character
 
-**Ne zaman okunur:** ped'in üzerinde **hareketle** dalgalanması gereken kumaş (pelerin, etek, duvak, palto eteği). Prop cloth (`.yft` env cloth) bunu YAPAMAZ: attach edilmiş fragment'ın fizik hızı sıfırdır, sim taşıyıcının hareketini görmez; vanilla `prop_flag_*` bile takılınca öne/yanlara savrulur (ölçüm: 2026-09, 2 model).
-**When to read:** cloth on a ped that must react to the ped's motion (cape, skirt, veil). Environment cloth on an attached prop cannot do this.
-**Kaynak:** Sollumz kaynağı `ydr/cloth_char.py`, `ydr/vertex_buffer_builder.py`, `ydd/yddexport.py` (main, 2026-09) · vanilla `csb_bride.yld`/`.ydd` dökümü · **Ölçüm:** kaynak okuma + 1 vanilla dosya + **1 kendi export'umuz** (bir pelerin, Blender 5.2 headless, Sollumz 2.9.0, 2026-09: `.ydd` 705 KB + `.yld` 6,5 KB, 221 sim vertex / 13 sabit / 3 kapsül, Diagnostics sıfır uyarı; oyun testi bekliyor).
-**Önce:** `branches/clothing/_branch.md` · gövde › `trunk/tool-pitfalls.md` §1
+**When to read:** fabric on a ped that must ripple **with motion** (cape, skirt, veil, coat tail). Prop cloth (`.yft` env cloth) CANNOT do this: an attached fragment has zero physics velocity, so the sim does not see the carrier's motion; even vanilla `prop_flag_*` is flung forward/sideways when attached (measured: 2026-09, 2 models).
+**Source:** Sollumz source `ydr/cloth_char.py`, `ydr/vertex_buffer_builder.py`, `ydd/yddexport.py` (main, 2026-09) · vanilla `csb_bride.yld`/`.ydd` dump · **Measured:** source reading + 1 vanilla file + **1 export of our own** (a cape, Blender 5.2 headless, Sollumz 2.9.0, 2026-09: `.ydd` 705 KB + `.yld` 6.5 KB, 221 sim vertices / 13 pinned / 3 capsules, Diagnostics zero warnings; in-game test pending).
+**Read first:** `branches/clothing/_branch.md` · trunk › `trunk/tool-pitfalls.md` §1
 
 ---
 
-## Dosya sözleşmesi (vanilla)
+## File contract (vanilla)
 
-- Cloth, drawable'ın **yanında ayrı `.yld`** dosyasıdır, adı aynı: `csb_bride.ydd` + `csb_bride.yld`, `uppr_000_u.ydd` + `uppr_000_u.yld`. `.ydd`'nin içinde değil, ped `.yft`'sinde değil.
-- `.yld` içinde `Controller Type = 2` (env cloth `.yft`'de `3`), `BridgeSimGfx`, `VerletCloth1`, kemik ağırlıkları (`BoneIDs` + 4'lü `BoneWeightsIndices`) ve **yalnız Capsule** çocuklu bir Bound Composite.
-- Kumaş yüzlerinin shader'ı **`ped_cloth.sps`**; gövdenin kalanı `ped.sps` (csb_bride: hash 2AAAA841 / 203B2307).
-- `csb_bride`: 254 sim vertex, 24 sabit, 4 kapsül, 7 kemik (Pelvis, Spine0-3, iki Thigh).
+- Cloth is a **separate `.yld`** file **next to** the drawable, with the same name: `csb_bride.ydd` + `csb_bride.yld`, `uppr_000_u.ydd` + `uppr_000_u.yld`. It is not inside the `.ydd` and not in the ped `.yft`.
+- Inside the `.yld`: `Controller Type = 2` (env cloth in a `.yft` is `3`), `BridgeSimGfx`, `VerletCloth1`, bone weights (`BoneIDs` + 4-wide `BoneWeightsIndices`) and a Bound Composite with **Capsule-only** children.
+- The shader of the fabric faces is **`ped_cloth.sps`**; the rest of the body is `ped.sps` (csb_bride: hash 2AAAA841 / 203B2307).
+- `csb_bride`: 254 sim vertices, 24 pinned, 4 capsules, 7 bones (Pelvis, Spine0-3, two Thighs).
 
-## Sollumz iş akışı (kaynaktan)
+## Sollumz workflow (from the source)
 
-1. **İki mesh:** görünen giysi mesh'i (DRAWABLE_MODEL, normal ağırlık boyalı) + ayrı, düşük çözünürlüklü **sim mesh'i**. Sim mesh'in `sollum_type = Character Cloth Mesh`, **drawable'ın çocuğu** (drawable da Drawable Dictionary'nin çocuğu). **Materyali olmaz.**
-2. ⛔ **Sim mesh ≤ 254 vertex** (`CLOTH_CHAR_MAX_VERTICES = 254`); aşarsa hata basar ve cloth **export edilmez**. Pelerin için 12×18 ızgara = 216 yeter.
-3. Sim mesh **her vertex'i kemik vertex grubuyla ağırlıklı** — sadece sabitler değil. Grupsuz vertex root'a düşer, uyarı verir. Pelerin: sabit sıra `SKEL_Spine3` 1.0, gerisi Spine3/Spine2'ye azalan.
-4. Edit Mode → sidebar **Sollumz Tools → Cloth Tools**: üst sırayı seç → **Pin**. `Pin Radius → Fill Gradient` sabitlerden uzaklaşan yumuşak bağ verir. `Vertex Weight` (0.00001–1.0) kütle. Öznitelikler `.cloth.pinned`, `.cloth.weight`, `.cloth.pin_radius`, `.cloth.inflation_scale` olarak mesh'e yazılır.
-5. **Çarpışma:** sim mesh'in **doğrudan çocuğu** olarak Bound Composite, içinde **yalnız Bound Capsule**; her kapsül `Copy Transforms` constraint'iyle bir kemiğe (Spine, Pelvis, Thigh). Kapsül dışı tip → "Only BOUND_CAPSULE type is supported".
-6. **Görünen mesh'i bağla:** kumaşı takip edecek vertex'ler **`CLOTH` adlı vertex grubuna** (ağırlık 1.0). Export bu vertex'leri sim üçgenlerine barycentric bağlar; sim yüzeyine uzaklık **> 0.05 m** ise "Failed to bind N vertices" — görünen mesh sim mesh'in üstüne oturmalı.
-7. `CLOTH` grubundaki yüzlerin materyali **`ped_cloth`** shader olmalı; yoksa "using non-cloth material… will not be skinned correctly".
-8. Drawable Object Properties → **Character Cloth** paneli: `Weight`, `num_pin_radius_sets`. (`wind_scale`, `pin_radius_scale` runtime'da ezildiği için gizli.)
-9. Export: Drawable Dictionary export'u `.ydd` + aynı adlı **`.yld`** verir (`make_bundle(dwd, ("", cld))`). Cloth adı = drawable adı (`.001` soneki atılır).
-10. **Doğrulama kapısı:** Cloth Tools → **Diagnostics → Refresh**: "No material or binding errors." dışında her şey düzeltilir. Sonra `res_to_xml.ps1` ile `.yld`'yi dök: `VertexCount`, sabit sayısı, kapsül sayısı beklediğin mi.
+1. **Two meshes:** the visible garment mesh (DRAWABLE_MODEL, normally weight-painted) + a separate, low-resolution **sim mesh**. The sim mesh has `sollum_type = Character Cloth Mesh` and is a **child of the drawable** (the drawable is a child of the Drawable Dictionary). **It has no material.**
+2. ⛔ **Sim mesh ≤ 254 vertices** (`CLOTH_CHAR_MAX_VERTICES = 254`); above that it prints an error and the cloth is **not exported**. For a cape a 12×18 grid = 216 is enough.
+3. **Every vertex** of the sim mesh is weighted to a bone vertex group — not only the pinned ones. A vertex without a group falls to root and gives a warning. Cape: the pinned row `SKEL_Spine3` 1.0, the rest decreasing towards Spine3/Spine2.
+4. Edit Mode → sidebar **Sollumz Tools → Cloth Tools**: select the top row → **Pin**. `Pin Radius → Fill Gradient` gives a soft binding that fades away from the pins. `Vertex Weight` (0.00001–1.0) is mass. The attributes are written to the mesh as `.cloth.pinned`, `.cloth.weight`, `.cloth.pin_radius`, `.cloth.inflation_scale`.
+5. **Collision:** a Bound Composite as a **direct child** of the sim mesh, with **only Bound Capsules** inside; each capsule tied to a bone (Spine, Pelvis, Thigh) with a `Copy Transforms` constraint. A non-capsule type → "Only BOUND_CAPSULE type is supported".
+6. **Bind the visible mesh:** the vertices that should follow the fabric go into a **vertex group named `CLOTH`** (weight 1.0). The export binds these vertices barycentrically to the sim triangles; if the distance to the sim surface is **> 0.05 m** you get "Failed to bind N vertices" — the visible mesh must sit on top of the sim mesh.
+7. The material of the faces in the `CLOTH` group must be the **`ped_cloth`** shader; otherwise "using non-cloth material… will not be skinned correctly".
+8. Drawable Object Properties → **Character Cloth** panel: `Weight`, `num_pin_radius_sets`. (`wind_scale` and `pin_radius_scale` are hidden because they are overwritten at runtime.)
+9. Export: a Drawable Dictionary export gives a `.ydd` + a **`.yld`** with the same name (`make_bundle(dwd, ("", cld))`). Cloth name = drawable name (the `.001` suffix is dropped).
+10. **Verification gate:** Cloth Tools → **Diagnostics → Refresh**: fix everything other than "No material or binding errors.". Then dump the `.yld` with `res_to_xml.ps1`: are `VertexCount`, the pinned count and the capsule count what you expect?
 
-## Headless üretim (ölçüldü, 2026-09)
+## Headless build (measured, 2026-09)
 
-Sollumz API'si Blender'ı açmadan `blender.exe -b --python make_cape.py` ile çalışır; şablon script
-`sources/`'a değil projeye aittir, ama iskelet şu:
-`create_armature_parent(ad, try_load_asset(freemode.yft))` → DWD armature · `create_empty_object(DRAWABLE)` →
+The Sollumz API runs without opening Blender, via `blender.exe -b --python make_cape.py`; the template script
+belongs to the project, not to `sources/`, but the skeleton is:
+`create_armature_parent(name, try_load_asset(freemode.yft))` → DWD armature · `create_empty_object(DRAWABLE)` →
 `create_blender_object(DRAWABLE_MODEL, mesh)` + `sz_lods.high.mesh` + `add_armature_modifier` · sim mesh
 `create_blender_object(CHARACTER_CLOTH_MESH)` + `mesh_add_cloth_attribute(PINNED/VERTEX_WEIGHT)` ·
 `create_empty_object(BOUND_COMPOSITE)` → `create_blender_object(BOUND_CAPSULE)` + `create_capsule(axis="Y")` +
-`rotation_euler Z=-90°` (kapsül Y'si kemik X'ine) + `add_child_of_bone_constraint` · export
-`export_context_scope(ExportContext(ad, ExportSettings(targets=(AssetTarget(NATIVE, GEN8),)))) → export_ydd(dwd).save()`.
-- ⛔ **Kapsüle collision materyali ver** (`create_collision_material_from_index(0)`), yoksa uyarı basar ve `.yld`'ye **0 kapsül** yazar.
-- **Doku adı `image.filepath`'in taban adından** gelir (`image.name` değil). `accs_diff_000_a_uni.dds` diye kopyalayıp `filepath`'i ona çevir.
-- Normal + spec `texture_properties.embedded = True` ile `.ydd`'ye gömülür; diffuse gömülmez, `<paket>^accs_diff_000_a_uni.ytd` olarak `dds_to_ytd.ps1` ile ayrı çıkar.
-- Freemode `SKEL_Spine3` head = (0, 0.032, 0.283) ped uzayında; pelerin üst kenarı buna `(0, -0.17, +0.09)` ile oturdu.
+`rotation_euler Z=-90°` (capsule Y onto bone X) + `add_child_of_bone_constraint` · export
+`export_context_scope(ExportContext(name, ExportSettings(targets=(AssetTarget(NATIVE, GEN8),)))) → export_ydd(dwd).save()`.
+- ⛔ **Give the capsule a collision material** (`create_collision_material_from_index(0)`), otherwise it prints a warning and writes **0 capsules** to the `.yld`.
+- **The texture name comes from the base name of `image.filepath`** (not `image.name`). Copy the file as `accs_diff_000_a_uni.dds` and point `filepath` at it.
+- Normal + spec are embedded in the `.ydd` with `texture_properties.embedded = True`; diffuse is not embedded and comes out separately as `<pack>^accs_diff_000_a_uni.ytd` via `dds_to_ytd.ps1`.
+- Freemode `SKEL_Spine3` head = (0, 0.032, 0.283) in ped space; the cape's top edge sat on it with `(0, -0.17, +0.09)`.
 
-## Paketleme (freemode addon giysisi)
+## Packaging (freemode add-on garment)
 
-`stream/`: `<paket>^accs_000_u.ydd` + `.yld` + `<paket>^accs_diff_000_a_uni.ytd` + `<paket>.ymt`
-(CPedVariationInfo: `availComp` 12 yuva, accs = yuva 8; drawable'da **`clothData/ownsCloth = true`**, cloth'un
-oyunda yüklenmesi buna bağlı). `data_file 'SHOP_PED_APPAREL_META_FILE'` ile ShopPedApparel `.meta`.
-`.ymt` XML'den `meta_xml_to_bin.ps1` (2026-09'da `.ymt` eklendi) ile derlenir, `res_to_xml.ps1` ile geri okunur;
-`dlcName` geri okumada hash görünür, `joaat(dlcName)` ile karşılaştır.
+`stream/`: `<pack>^accs_000_u.ydd` + `.yld` + `<pack>^accs_diff_000_a_uni.ytd` + `<pack>.ymt`
+(CPedVariationInfo: `availComp` 12 slots, accs = slot 8; on the drawable **`clothData/ownsCloth = true`** — the cloth
+only loads in game with it). ShopPedApparel `.meta` via `data_file 'SHOP_PED_APPAREL_META_FILE'`.
+The `.ymt` is compiled from XML with `meta_xml_to_bin.ps1` (`.ymt` support added 2026-09) and read back with `res_to_xml.ps1`;
+`dlcName` shows as a hash in the read-back — compare it with `joaat(dlcName)`.
 
-## Tuzaklar
-- Freemode pelerin = `accs` ya da `jbib` bileşeni; `.yld` da aynı klasöre, `.ydd` ile aynı ad.
-- Sim mesh drawable'la aynı origin'de, armature uzayında (`parent_matrix = Identity`).
-- Ağırlık kuralı burada da geçerli: vertex başına ≤ 4 kemik, toplam 1.0.
-- `res_to_xml.ps1` `.yld` ve `.ymt` okur (2026-09'da eklendi); `extract_asset.ps1 -Pattern '*.yld'` filtresiz çalıştırılınca DLC'lere gelmeden StackOverflow ile düşüyor, `-PathFilter` ver. Tek bir `dlc.rpf` için `RpfFile(path).ScanStructure()` + `Children` özyinelemesi yeter; RBF (`mp_creaturemetadata_*.ymt`) dosyasına RSC başlığı EKLEME, bozulur.
+## Pitfalls
+- Freemode cape = the `accs` or `jbib` component; the `.yld` goes in the same folder, with the same name as the `.ydd`.
+- The sim mesh is at the same origin as the drawable, in armature space (`parent_matrix = Identity`).
+- The weight rule holds here too: ≤ 4 bones per vertex, total 1.0.
+- `res_to_xml.ps1` reads `.yld` and `.ymt` (added 2026-09); `extract_asset.ps1 -Pattern '*.yld'` run without a filter falls over with a StackOverflow before it reaches the DLCs — give `-PathFilter`. For a single `dlc.rpf`, `RpfFile(path).ScanStructure()` + recursion over `Children` is enough; do NOT ADD an RSC header to an RBF file (`mp_creaturemetadata_*.ymt`) — it breaks.

@@ -1,64 +1,63 @@
-# Katmanlı (çok emitterli) efekt — patlama, ateş+duman+enkaz üst üste
+# Layered (multi-emitter) effect — explosion, fire + smoke + debris stacked
 
-**Ne zaman okunur:** efekt "düz/tek katman" duruyor; vanilla gibi çekirdek + top + duman + enkaz + şok halkası; sayfa dilimlerini emitter gecikmesiyle bölmek.
-**When to read:** a layered multi-emitter effect — explosion with fire, smoke and debris stacked with delays.
-**Kaynak:** `ptfx-flipbook-uretimi.md` §1e-BIS 'N emitter + Unknown10' · `scripts/ptfx_compose.py` docstring (2026-09) · **Ölçüm:** vanilla 964 efektin 713'ü (%74) çok emitterli; `exp_grd_grenade` 6, `exp_grd_molotov` 7 katman
-**Önce:** `branches/particle/_branch.md` · gövde › `trunk/tool-pitfalls.md` §3 CodeWalker (`FxcFileHash`, `VFT`, `ResourcePointerArray64`)
+**When to read:** the effect looks "flat / single layer"; you want vanilla-style core + fireball + smoke + debris + shock ring stacked with delays; splitting sheet cells across emitter delays.
+**Source:** the former ptfx flipbook reference (2.5.0) §1e-BIS 'N emitters + Unknown10' · `scripts/ptfx_compose.py` docstring (2026-09) · **Measured:** 713 of 964 vanilla effects (74%) are multi-emitter; `exp_grd_grenade` 6, `exp_grd_molotov` 7 layers
+**Read first:** `branches/particle/_branch.md` · trunk › `trunk/tool-pitfalls.md` §3 CodeWalker (`FxcFileHash`, `VFT`, `ResourcePointerArray64`)
 
 ---
 
-## Neden katman
+## Why layers
 
-Ölçüldü: vanilla efektlerinin **%74'ü çok emitterli** (713/964); bizim katalog tamamen tek emitterliydi — "hepsi birbirinin türevi" görüntüsünün sebebi bu. Profesyonel VFX derinliğini katmanlardan alır (beyaz çekirdek + turuncu top + yükselen duman + enkaz + şok halkası **üst üste**). Vanilla'dan okunan katman alanları: `<EmitterRule>`/`<ParticleRule>` katmanın kaynağı, `Unknown10` katmanın **gecikmesi** (saniye). Araç: `scripts/ptfx_compose.py`.
+Measured: **74% of vanilla effects are multi-emitter** (713/964); our catalogue was entirely single-emitter — that is why everything "looked like a variant of everything else". Professional VFX gets its depth from layers (white core + orange fireball + rising smoke + debris + shock ring **stacked**). Layer fields read from vanilla: `<EmitterRule>`/`<ParticleRule>` are the layer's source, `Unknown10` is the layer's **delay** (seconds). Tool: `scripts/ptfx_compose.py`.
 
-## Sayfa dilimlerini katmanla oynatmak
+## Playing sheet cells as layers
 
-### N emitter + `Unknown10` GECİKMESİ (çalışıyor, ölçüldü)
+### N emitters + `Unknown10` DELAY (works, measured)
 
-Motor kare ilerletmediği için sıra **efektin içine** kurulur: N ayrı
-emitter, her birinin kendi **tek-kare** dokusu (`C4=0`) ve kendi
-**başlama gecikmesi**. Motor sırayı yürütür; Lua'da sıfır yük, senkron
-garantili.
+Since the engine does not advance frames, the sequence is built **inside the effect**: N separate
+emitters, each with its own **single-frame** texture (`C4=0`) and its own
+**start delay**. The engine runs the sequence; zero load in Lua, sync
+guaranteed.
 
-**`Unknown10` = emitter başlama gecikmesi (saniye).** EffectRule'un
-`<EventEmitters>` girdisindedir. Vanilla ölçümü: 2543 kaydın **%91,1'i 0**;
-sıfırdan farklı 226 tanesi **0.0010-0.7500** aralığında (medyan 0.042).
-`exp_grd_grenade` emitterleri 0 / 0.034 / 0.068 / 0 diye kademeli.
-⛔ **Tavan 0.75 sn** — aşma.
+**`Unknown10` = emitter start delay (seconds).** It is in the EffectRule's
+`<EventEmitters>` entry. Vanilla measurement: **91.1%** of 2543 entries are **0**;
+the 226 non-zero ones are in the **0.0010-0.7500** range (median 0.042).
+`exp_grd_grenade` emitters are staggered 0 / 0.034 / 0.068 / 0.
+⛔ **Ceiling 0.75 s** — do not exceed it.
 
-**Emitter'in SUSMASI şart, yoksa aşamalar BİRİKİR.** İlk denemede
-gecikmeler çalıştı ama emitter'lar saçmaya devam ettiği için dört şekil
-üst üste yığıldı. Vanilla çözümü `m_spawnRateOverTimeKFP`'ye **patlama
-eğrisi** yazmaktır (örnek: `bang_metal_dust`):
+**The emitter MUST STOP, otherwise the stages PILE UP.** In the first attempt
+the delays worked but the emitters kept spawning, so four shapes
+stacked on top of each other. The vanilla solution is to write a **burst
+curve** into `m_spawnRateOverTimeKFP` (example: `bang_metal_dust`):
 
-| keyframe | `InterpolationInterval` (normalize zaman 0-1) | hız |
+| keyframe | `InterpolationInterval` (normalised time 0-1) | rate |
 |---|---|---|
-| 1 | 0 | hız |
-| 2 | w | hız |
-| 3 | w + 0.02 | **0** ← emitter susar |
+| 1 | 0 | rate |
+| 2 | w | rate |
+| 3 | w + 0.02 | **0** ← the emitter stops |
 
-Yani `InterpolationInterval` **zaman ekseni**, `Red/Green` o andaki
-min/max doğum hızıdır.
+So `InterpolationInterval` is the **time axis**, `Red/Green` are the
+min/max spawn rate at that moment.
 
-**Ölçülen çalışan yapılandırma** (`my_e2`): 4 emitter, gecikmeler
-**0 / 0.2 / 0.4 / 0.6 sn**, her emitter `w=0.08`'de saçar `0.10`'da susar,
-parçacık ömrü **0.30 sn**, her aşamanın kendi tek-kare dokusu, `C4=0`.
+**Measured working configuration** (`my_e2`): 4 emitters, delays
+**0 / 0.2 / 0.4 / 0.6 s**, each emitter spawns at `w=0.08` and stops at `0.10`,
+particle lifetime **0.30 s**, each stage has its own single-frame texture, `C4=0`.
 
-Oyunda ölçülen (tek koşu, film şeridi):
+Measured in game (single run, film strip):
 
 | t (ms) | 80 | 200 | 320 | 440 | 560 | 680 | 800 | 950 |
 |---|---|---|---|---|---|---|---|---|
-| kırmızı kaplama % | 0.04 | **34.5** | 17.0 | 6.9 | 5.4 | 3.4 | **0.04** | 12.6 |
-| görülen | — | disk | halka | artı | — | üçgen | — | baştan |
+| red coverage % | 0.04 | **34.5** | 17.0 | 6.9 | 5.4 | 3.4 | **0.04** | 12.6 |
+| seen | — | disk | ring | plus | — | triangle | — | from start |
 
-Kaplama sıfıra düşüp yeniden yükseliyor → dizi tamamlanıp döngü başa
-sarıyor. Görsel: `flipbook_deney/serit_e2.png`.
+Coverage drops to zero and rises again → the sequence completes and the loop wraps
+to the start. Image: `flipbook_experiment/strip_e2.png`.
 
-**Üretici:** `flipbook_deney/serit_ypt.py` — tek emitterli transplant
-çıktısından N aşamalı efekt üretir (EventEmitters/EmitterRule/
-ParticleRule/TextureDictionary hepsini N'e çoğaltır, gecikmeleri yazar,
-`C4`'ü 0'a çeker, her aşamaya kendi dokusunu bağlar).
+**Generator:** `flipbook_experiment/strip_ypt.py` — builds an N-stage effect from a single-emitter
+transplant output (multiplies EventEmitters/EmitterRule/
+ParticleRule/TextureDictionary N times, writes the delays,
+sets `C4` to 0, binds each stage to its own texture).
 
-⚠ Efekt **döngüsel** çağrıldığında dizi başa sarıyor (yukarıda t=950).
-Tek atımlık patlama için `StartParticleFxNonLooped*` kullanılmalı;
-denenmedi.
+⚠ When the effect is called **looped**, the sequence wraps to the start (t=950 above).
+For a one-shot explosion `StartParticleFxNonLooped*` should be used;
+not tried.

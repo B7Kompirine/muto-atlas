@@ -1,28 +1,28 @@
-﻿# screentex.ps1 — bir modelin SHADER/DOKU eslesmesini RPF'ten okur.
+﻿# screentex.ps1 - reads a model's SHADER/TEXTURE mapping from the RPFs.
 #
-# NEDEN: DUI'yi bir prop'un ekranina basmak icin AddReplaceTexture(origTxd,
-# origTxn, ...) gerekir. origTxd = texture dictionary adi, origTxn = O
-# SOZLUKTEKI doku adi. Bu ikisi TAHMIN EDILEMEZ:
-#   - prop adi ile txd adi cogu zaman AYNI DEGILDIR
-#   - bir prop'ta 5-10 doku olur; ekran olan hangisi belli degildir
-# cr-3dnui_laptopdemo bu yuzden 10 adaylik bir liste deneyip /lapnext ile
-# tek tek cevirir. Bu tahmindir; asagidaki sorgu cevabi dogrudan verir.
+# WHY: drawing a DUI onto a prop's screen needs AddReplaceTexture(origTxd,
+# origTxn, ...). origTxd = texture dictionary name, origTxn = the texture name
+# IN THAT DICTIONARY. These two CANNOT BE GUESSED:
+#   - the prop name and the txd name are usually NOT THE SAME
+#   - a prop has 5-10 textures; which one is the screen is not obvious
+# That is why cr-3dnui_laptopdemo tries a list of 10 candidates and cycles through them
+# one by one with /lapnext. That is guessing; the query below gives the answer directly.
 #
-# Kullanim:
+# Usage:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File screentex.ps1 -Model prop_laptop_lester
 #   powershell -NoProfile -ExecutionPolicy Bypass -File screentex.ps1 -Model prop_tv_flat_01 -All
 #
-# -All   : sadece diffuse degil TUM doku parametrelerini yaz (normal/spec dahil)
-# -Deep  : harici (gomulu olmayan) dokular icin TUM .ytd'leri acip hangi
-#          sozlukte olduklarini bul. YAVAS (dakikalar). Ekran dokusu genelde
-#          modele gomulu oldugu icin cogu zaman GEREKMEZ.
-# -TxdHash <sayi> : assetdb.py show ciktisindaki textureDict degeri; hash'ten
-#          .ytd adina cevirir (bilgi amacli — ekran dokusunun sozlugu DEGIL).
+# -All   : print ALL texture parameters, not only diffuse (normal/spec included)
+# -Deep  : for external (not embedded) textures, open ALL .ytd files and find which
+#          dictionary they are in. SLOW (minutes). The screen texture is usually
+#          embedded in the model, so this is mostly NOT NEEDED.
+# -TxdHash <number> : the textureDict value from the assetdb.py show output; converts the hash
+#          to a .ytd name (for information - it is NOT the screen texture's dictionary).
 #
-# Cikti alanlari:
-#   embedded : doku modelin ICINDE (drawable'in kendi TextureDictionary'si).
-#              Bu durumda origTxd = MODEL ADI'dir, ayri bir .ytd yoktur.
-#   <ytd>    : doku harici bir sozlukte. origTxd = o .ytd'nin adi (uzantisiz).
+# Output fields:
+#   embedded : the texture is INSIDE the model (the drawable's own TextureDictionary).
+#              Then origTxd = the MODEL NAME; there is no separate .ytd.
+#   <ytd>    : the texture is in an external dictionary. origTxd = the name of that .ytd (no extension).
 
 param(
     [Parameter(Mandatory=$true)][string] $Model,
@@ -36,10 +36,10 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
-if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll bulunamadi." }
+if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll not found." }
 
 $GtaFolder = & "$PSScriptRoot\paths.ps1" gta $GtaFolder
-if (-not $GtaFolder) { throw "GTA V klasoru bulunamadi." }
+if (-not $GtaFolder) { throw "GTA V folder not found." }
 
 $cwDir = Split-Path $CodeWalker -Parent
 $script:cwDir = $cwDir
@@ -67,12 +67,12 @@ public static class ScreenTex
 
         model = model.Trim().ToLowerInvariant();
 
-        // 1) Modelin drawable dosyasini bul (.ydr / .yft / .ydd sirasiyla).
+        // 1) Find the model's drawable file (.ydr / .yft / .ydd, in that order).
         RpfFileEntry drawableEntry = null;
         string drawableExt = null;
 
-        // 2) Ayni gecmiste tum .ytd adlarini hash'le -> hash'ten ada donebilmek icin.
-        //    Bir dokunun hangi sozlukte oldugunu bulmanin tek yolu budur.
+        // 2) In the same pass hash every .ytd name -> so we can go from a hash back to the name.
+        //    This is the only way to find which dictionary a texture is in.
         var ytdByHash = new Dictionary<uint, string>();
         var ytdEntries = new List<RpfFileEntry>();
 
@@ -102,15 +102,15 @@ public static class ScreenTex
 
         if (drawableEntry == null)
         {
-            Console.WriteLine("[!] '{0}' icin .ydr/.yft/.ydd bulunamadi. Ad dogru mu?", model);
+            Console.WriteLine("[!] no .ydr/.yft/.ydd found for '{0}'. Is the name right?", model);
             return;
         }
 
         Console.WriteLine("[=] {0}.{1}   (rpf: {2})", model, drawableExt, drawableEntry.Path);
 
-        // ytyp'deki textureDict hash'i cozulebiliyorsa yaz. DIKKAT: olculdu ki bu
-        // alan ekran dokusunun bulundugu sozluk DEGILDIR (prop_monitor_01a:
-        // ytyp textureDict=3126464848, ekran dokusu ise modele GOMULU).
+        // Print the ytyp textureDict hash if it can be resolved. CAREFUL: measured that this
+        // field is NOT the dictionary the screen texture is in (prop_monitor_01a:
+        // ytyp textureDict=3126464848, while the screen texture is EMBEDDED in the model).
         if (!string.IsNullOrWhiteSpace(txdHash))
         {
             uint th;
@@ -118,7 +118,7 @@ public static class ScreenTex
             {
                 string tn;
                 Console.WriteLine("[i] ytyp textureDict {0} -> {1}", th,
-                    ytdByHash.TryGetValue(th, out tn) ? tn + ".ytd" : "(RPF'lerde bu adda .ytd yok)");
+                    ytdByHash.TryGetValue(th, out tn) ? tn + ".ytd" : "(no .ytd with this name in the RPFs)");
             }
         }
 
@@ -144,14 +144,14 @@ public static class ScreenTex
                     drawables.Add(new KeyValuePair<string, DrawableBase>(f.Drawables[i].Name ?? ("drawable" + i), f.Drawables[i]));
         }
 
-        if (drawables.Count == 0) { Console.WriteLine("[!] Drawable okunamadi."); return; }
+        if (drawables.Count == 0) { Console.WriteLine("[!] Could not read the drawable."); return; }
 
         foreach (var kv in drawables)
         {
             var d = kv.Value;
             if (d.ShaderGroup == null || d.ShaderGroup.Shaders == null) continue;
 
-            // Modelin ICINE gomulu doku sozlugu (varsa). Gomuluyse origTxd = model adi.
+            // Texture dictionary embedded INSIDE the model (if any). If embedded, origTxd = the model name.
             var embedded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var etd = d.ShaderGroup.TextureDictionary;
             if (etd != null && etd.Textures != null && etd.Textures.data_items != null)
@@ -159,7 +159,7 @@ public static class ScreenTex
                     if (t != null && t.Name != null) embedded.Add(t.Name);
 
             Console.WriteLine("");
-            Console.WriteLine("--- drawable: {0}   shader sayisi: {1}   gomulu doku: {2}",
+            Console.WriteLine("--- drawable: {0}   shader count: {1}   embedded textures: {2}",
                 kv.Key, d.ShaderGroup.Shaders.data_items.Length, embedded.Count);
 
             int si = 0;
@@ -189,12 +189,12 @@ public static class ScreenTex
                     }
                     else
                     {
-                        // Harici doku: hangi .ytd icinde? Adaylari tara.
-                        if (!deep) { where = "HARICI doku -> -Deep ile ytd taramasi yap"; }
+                        // External texture: inside which .ytd? Scan the candidates.
+                        if (!deep) { where = "EXTERNAL texture -> run the ytd scan with -Deep"; }
                         else
                         {
                             var owner = FindYtd(man, ytdEntries, tex.Name);
-                            where = owner != null ? ("ytd: " + owner) : "?? (bulunamadi)";
+                            where = owner != null ? ("ytd: " + owner) : "?? (not found)";
                         }
                     }
 
@@ -205,8 +205,8 @@ public static class ScreenTex
         }
     }
 
-    // Bir doku adini iceren .ytd'yi bul. Once ad benzerligi olan sozlukleri
-    // dene (ucuz), bulunamazsa hepsini ac (pahali ama kesin).
+    // Find the .ytd that contains a texture name. First try the dictionaries with a similar
+    // name (cheap); if not found, open all of them (expensive but certain).
     static Dictionary<string, string> _ytdCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
     static string FindYtd(RpfManager man, List<RpfFileEntry> ytds, string texName)

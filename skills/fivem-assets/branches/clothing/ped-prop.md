@@ -1,49 +1,48 @@
-# Ped prop — şapka, gözlük, kulaklık (`p_head`, `p_eyes`, `p_ears`)
+# Ped prop — hat, glasses, headset (`p_head`, `p_eyes`, `p_ears`)
 
-**Ne zaman okunur:** ped'e takılan prop ekleyeceksin; konumlandırma (`IK_Head`), doku adlandırması, `Render Flags`, `propsName`, Creature Metadata.
-**When to read:** hat, glasses or headset (`p_head`, `p_eyes`, `p_ears`); positioning a ped prop; adding one to a non-streamed ped.
-**Kaynak:** `notlar/03` §8-9 · `sources/external-tools.md` §2 §4 (2026-08) · **Ölçüm:** video
-**Önce:** `branches/clothing/_branch.md` · gövde › `trunk/tool-pitfalls.md` §1
+**When to read:** you are adding a prop worn by a ped (hat, glasses, headset — `p_head`, `p_eyes`, `p_ears`); positioning it (`IK_Head`), texture naming, `Render Flags`, `propsName`, Creature Metadata; adding one to a non-streamed ped.
+**Source:** `notes/03` §8-9 · `sources/external-tools.md` §2 §4 (2026-08) · **Measured:** video
+**Read first:** `branches/clothing/_branch.md` · trunk › `trunk/tool-pitfalls.md` §1
 
 ---
 
-## 8. `p_eyes` / `p_ears` konumlandırma (`jzFT3uryGuI`)
+## 8. Positioning `p_eyes` / `p_ears` (`jzFT3uryGuI`)
 
-Tam reçete, iki prop için de aynı:
-1. Ped'den herhangi bir bileşen import et — **sadece iskelet referansı için**.
-2. Skeleton → Edit Mode → **X-Ray** → kafanın ortasından geçen **`IK_Head`** kemiğinin
-   **arkadaki küresini** seç. (Blender bazen buna "facial root" der, önemli değil.)
+Full recipe, the same for both props:
+1. Import any component from the ped — **only as a skeleton reference**.
+2. Skeleton → Edit Mode → **X-Ray** → select the **rear sphere** of the **`IK_Head`** bone
+   that runs through the middle of the head. (Blender sometimes calls it "facial root"; that does not matter.)
 3. `Shift+S` → **Cursor to Selected**.
-4. Object Mode → prop mesh'i seç → sağ tık → Set Origin → **Origin to 3D Cursor**.
-5. Object Properties'te **Location X/Y/Z = 0, 0, 0**.
-6. **Z ekseninde 180°**, sonra **Y ekseninde 90°** döndür.
-7. `Ctrl+A` → Apply All Transforms (alışkanlık; hata ayıklamayı kolaylaştırır).
+4. Object Mode → select the prop mesh → right click → Set Origin → **Origin to 3D Cursor**.
+5. In Object Properties, **Location X/Y/Z = 0, 0, 0**.
+6. Rotate **180° on the Z axis**, then **90° on the Y axis**.
+7. `Ctrl+A` → Apply All Transforms (habit; makes debugging easier).
 
-Bu, `SCALE_Head` kemiğine referansla çalıştığı için **her ped'de** geçerli.
+Because this works relative to the `SCALE_Head` bone, it holds **on every ped**.
 
-## 9. Ped prop'ları (`p_head` / `p_eyes`) non-streamed ped'e ekleme (`Jm3Ps157z3s`)
+## 9. Adding ped props (`p_head` / `p_eyes`) to a non-streamed ped (`Jm3Ps157z3s`)
 
-- Prop doku adlandırması **bileşenlerden FARKLI**: sonek yok, sadece harf →
-  `<ped>_p.ytd` içinde `..._a`, `..._b`, `..._c`.
-- Prop'lar pratikte **sadece HIGH LOD** taşır; medium/low derdi yok.
-- Normal map'i olmayan prop'a **8×8 boş normal** koy.
-- YMT Editor → ilgili kategoriyi (`p_head`, `p_eyes`) aktive et, A/B dokularını ekle.
-- ⛔ **`Render Flags` (prop properties) Blender'daki shader ile EŞLEŞMELİ.**
-  `ped_alpha` / `ped_decal` / `ped_cutout` kullanıyorsan YMT'de karşılığını seç.
-  **MP freemode'da önemsiz, diğer TÜM ped'lerde fiilen zorunlu** — camlı vizör,
-  gözlük camı gibi şeylerde bunu atlamak sessiz hataya yol açıyor.
-- **`MH_hair_scale`** kemiği ağırlıklı olarak **freemode'a özgüdür**; çoğu Rockstar
-  ped'inde yoktur. Şapka takınca saçın küçülmesi bu kemikle olur.
-- ⚠️ **Creature Metadata yalnız ped'de bir şey ÖLÇEKLENİYORSA gerekir** —
-  topuk yüksekliği (feet) ya da saç ölçekleme (p_head). İkisi de yoksa dokunma.
-  Gerekiyorsa YMT Editor → **File → Generate Creature Metadata**.
-- FiveM `peds.meta`: **`propsName`** satırına prop `.ydd`'sinin adını yaz —
-  prop'ları aktive eden tek şey bu.
-- Son dosya seti: `.ydd` · `.yft` · `.ymt` · `.ytd` · `_p.ydd` · `_p.ytd`
+- Prop texture naming is **DIFFERENT from components**: no suffix, only the letter →
+  `..._a`, `..._b`, `..._c` inside `<ped>_p.ytd`.
+- In practice props carry **only HIGH LOD**; no medium/low to worry about.
+- Give a prop without a normal map an **8×8 blank normal**.
+- YMT Editor → activate the matching category (`p_head`, `p_eyes`), add the A/B textures.
+- ⛔ **`Render Flags` (prop properties) MUST MATCH the shader in Blender.**
+  If you use `ped_alpha` / `ped_decal` / `ped_cutout`, pick the counterpart in the YMT.
+  **Unimportant on MP freemode, effectively required on ALL other peds** — skipping it on things
+  like a glass visor or glasses lenses leads to a silent failure.
+- The **`MH_hair_scale`** bone is mostly **freemode-specific**; most Rockstar
+  peds do not have it. The hair shrinking when a hat is worn happens through this bone.
+- ⚠️ **Creature Metadata is only needed if something on the ped IS SCALED** —
+  heel height (feet) or hair scaling (p_head). If neither, do not touch it.
+  If it is needed: YMT Editor → **File → Generate Creature Metadata**.
+- FiveM `peds.meta`: write the name of the prop `.ydd` in the **`propsName`** line —
+  it is the only thing that activates the props.
+- Final file set: `.ydd` · `.yft` · `.ymt` · `.ytd` · `_p.ydd` · `_p.ytd`
 
 
-## Topluluk uyarısı (Sollumz Discord)
+## Community warning (Sollumz Discord)
 
-- ⛔ **Ped prop'unda `Render Flags` Blender shader'ıyla eşleşmeli**
-  (`ped_alpha`/`ped_decal`/`ped_cutout`). MP freemode'da önemsiz,
-  **diğer tüm ped'lerde fiilen zorunlu**.
+- ⛔ **On a ped prop, `Render Flags` must match the Blender shader**
+  (`ped_alpha`/`ped_decal`/`ped_cutout`). Unimportant on MP freemode,
+  **effectively required on all other peds**.

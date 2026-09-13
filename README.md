@@ -163,7 +163,7 @@ machine.
 It is generated locally and never committed.
 
 - **Projects come from folder names.** Each branch folder (`map`, `prop`, `look`, …), the trunk
-  (`govde`), the sources (`kaynaklar`) and `fivem-natives` is a project. Add your own notes with
+  (`trunk`), the sources (`sources`) and `fivem-natives` is a project. Add your own notes with
   `--source path/to/notes`; every subfolder of it becomes a project.
 - **Every file is split into snippets:** one per heading, with code blocks as separate snippets.
   Long sections are split at blank lines, never cut mid-line.
@@ -358,7 +358,7 @@ Usually the answer is not in your prop and not in your light — it is the room'
 ```bash
 assetdb.py timecycle --mlo my_interior.ytyp   # each room → its modifier → ambient values
 assetdb.py timecycle int_hospital_dark        # what that modifier actually changes
-assetdb.py timecycle --ara hospital           # find modifiers by name
+assetdb.py timecycle --search hospital        # find modifiers by name
 ```
 
 The room stores its modifier as an unresolved JOAAT hash (`hash_CDE50982`);

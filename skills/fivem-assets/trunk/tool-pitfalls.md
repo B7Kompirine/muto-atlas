@@ -1,556 +1,556 @@
-# Araç tuzakları — tek katalog
+# Tool pitfalls — one catalogue
 
-**Gövde dosyası.** Her dalda geçerli olan, araca (Sollumz, Blender,
-CodeWalker.Core, PowerShell, Python/Lua, FiveM çalışma zamanı) ait
-tuzaklar burada **bir kez** yazılır. Dal ve yaprak dosyaları buraya bağ
-verir, tekrar yazmaz. Göreve özgü tuzak buraya **girmez**; o yapraktadır.
+**Trunk file.** Pitfalls that belong to a tool (Sollumz, Blender,
+CodeWalker.Core, PowerShell, Python/Lua, FiveM runtime) and hold in every branch
+are written here **once**. Branch and leaf files link here and do not repeat them.
+A task-specific pitfall does **not** go here; it is in the leaf.
 
-Her madde bir satır: **belirti → sebep → çözüm**. Ölçülmüş olanlar
-"ölçüldü" taşır; ayrıntısı olan maddede `→` ile yer verilir. Ayrıntı için
-doğal bir yaprak yoksa bu dosyanın sonundaki **Ayrıntı** bölümündedir.
+Each item is one line: **symptom → cause → fix**. Measured items carry
+"measured"; an item with details points to them with `→`. When there is no natural leaf
+for the details, they are in the **Details** section at the end of this file.
 
-İki gövde kuralı bu kataloğun tamamını özetler:
-- **Aracın göstermemesi, o şeyin yok olduğu anlamına gelmez.** (CodeWalker
+Two trunk rules sum up this whole catalogue:
+- **A tool not showing something does not mean that thing is absent.** (CodeWalker
   `ExprMap.Count == 0`, PowerShell `$null.Length == 0`, Sollumz "Imported in
-  0.0 seconds" — üçü de bir gün yaktı.)
-- **Aracın hata vermemesi, işin doğru olduğu anlamına gelmez.** Bu
-  katalogdaki maddelerin neredeyse hepsi *sessizdir*: dosya oluşur, "success"
-  yazar, oyunda hiçbir şey olmaz.
+  0.0 seconds" — each of the three burned us one day.)
+- **A tool raising no error does not mean the work is right.** Nearly all the items in
+  this catalogue are *silent*: the file is created, it says "success",
+  nothing happens in the game.
 
 ---
 
 ## 1. Sollumz — export / import
 
-### Ayarlar ve format
-- ⛔ **`use_custom_settings=False` verilen argümanları yok sayar.** Operatör
-  senin geçtiğin ayarları değil kullanıcı tercihlerini okur; anahtarlar geçerli
-  olduğu için `TypeError` çıkmaz. Ölçüldü: `limit_to_selected=True` verildi,
-  170 drawable / 19 sn bütün sahne çıktı. → Ayrıntı A
-- ⛔ **`.ycd` Sollumz'un format sisteminin DIŞINDADIR.** `target_formats` ne
-  olursa olsun XML çıkar, "Successfully exported" der → binary'ye ayrıca derlenmeli. Diğer
-  8 uzantıda (`.ybn .ydr .ydd .yft .yld .ytyp .ymap .ytd`) `NATIVE` gerçekten
-  binary yazar. → Ayrıntı B
-- **`NATIVE` yalnız `pymateria` kuruluysa çalışır**; yoksa ayar **sessizce
-  `CWXML`'e düşer**. → Ayrıntı B
-- **Gen8 + Gen9 birlikte seçiliyse çıktı `gen8/` ve `gen9/` alt klasörlerine
-  gider**; tek sürümde doğrudan hedefe. Sabit yol okuyan betik 36 dosya varken
-  0 sayar — yolu ara, sabitleme. → Ayrıntı B
-- **Export klasörü yoksa** `ios_base::failbit` + Blender kapanışta asılı kalır
-  → önce `os.makedirs`.
-- **`Fill Animation Data` düğmesi bozuk** — kare sayısını elle yaz.
+### Settings and format
+- ⛔ **`use_custom_settings=False` ignores the arguments you pass.** The operator reads the
+  user preferences, not the settings you passed; the keys are valid, so no `TypeError`
+  comes up. Measured: `limit_to_selected=True` was given,
+  the whole scene came out, 170 drawables / 19 s. → Detail A
+- ⛔ **`.ycd` is OUTSIDE Sollumz's format system.** Whatever `target_formats`
+  is, it writes XML and says "Successfully exported" → it must be compiled to binary separately. For the other
+  8 extensions (`.ybn .ydr .ydd .yft .yld .ytyp .ymap .ytd`) `NATIVE` really does
+  write binary. → Detail B
+- **`NATIVE` works only if `pymateria` is installed**; otherwise the setting **silently
+  falls back to `CWXML`**. → Detail B
+- **If Gen8 + Gen9 are both selected, the output goes to `gen8/` and `gen9/`
+  subfolders**; with a single version, straight to the target. A script that reads a fixed path
+  counts 0 while there are 36 files — search for the path, do not hard-code it. → Detail B
+- **If the export folder does not exist**: `ios_base::failbit` + Blender hangs on exit
+  → `os.makedirs` first.
+- **The `Fill Animation Data` button is broken** — type the frame count by hand.
 
-### Klip (`.ycd`) yazımı
-- ⚠️ **`<Hash>` — 2026-09-06'da YENİDEN ÖLÇÜLDÜ; eski kural ("Sollumz yazmaz")
-  YANLIŞTI.** Sollumz **yazar**: `ycd/ycdexport.py:510` `xml_clip.hash =
+### Clip (`.ycd`) writing
+- ⚠️ **`<Hash>` — MEASURED AGAIN on 2026-09-06; the old rule ("Sollumz does not write it")
+  WAS WRONG.** Sollumz **does write** it: `ycd/ycdexport.py:510` `xml_clip.hash =
   clip_properties.hash`, `:352` `animation.hash = animation_properties.hash`.
-  Ama alan **elle doldurulur** — `ClipProperties.hash` varsayılanı `""`
-  (`ycd/properties.py:127`, `:161`) ve yeni klip açınca doldurulmaz
-  (`create_anim_obj` hash set etmez), addan da türetilmez. Doldurulmayan klip
-  **boş** `<Hash></Hash>` ile çıkar; boşlar aynı anahtara düşüp birbirini ezer.
-  Eski "5 klip → 1" ölçümünün sebebi buydu: araç değil, **Clip panelindeki Hash
-  alanı boş bırakılmıştı**. Belirti gerçekti, teşhis yanlıştı.
-  → ⛔ **Klip üretirken Clip panelinde `Hash` alanını doldur** (yerleşik olan:
-  klip adının kendisi). Boş bırakırsan hata çıkmaz, klip oyunda **bulunmaz**.
-  → ⛔ Hâlâ hesaplanmayan tek şey **Sequence** hash'i:
+  But the field is **filled by hand** — the `ClipProperties.hash` default is `""`
+  (`ycd/properties.py:127`, `:161`) and it is not filled when a new clip is created
+  (`create_anim_obj` does not set the hash), nor derived from the name. A clip left unfilled
+  comes out with an **empty** `<Hash></Hash>`; the empty ones fall on the same key and overwrite each other.
+  That was the reason for the old "5 clips → 1" measurement: not the tool, **the Hash field in the
+  Clip panel had been left empty**. The symptom was real, the diagnosis was wrong.
+  → ⛔ **When producing a clip, fill the `Hash` field in the Clip panel** (the established value:
+  the clip's own name). Leave it empty and no error comes up, the clip is **not found** in the game.
+  → ⛔ The only thing still not computed is the **Sequence** hash:
   `sequence.hash = "hash_00000000"  # TODO: calculate signature` (`:367`) —
-  `<Sequences>` içindeki sıfır **normaldir**, düzeltilmez.
-  → **Kapı değişmedi:** `res_to_xml.ps1` ile geri oku, `<Hash>` dolu mu bak.
-  Bu kuralın yanlış olduğunu ortaya çıkaran da o kapıydı.
-  **Ölçüm (2026-09-06):** Sollumz **2.8.3** kaynağı + 3 klipli bir ham export —
-  üçünün de `<Hash>` alanı dolu ve benzersiz çıktı.
-- ⛔ **`Animation.target_id` ARMATURE DATA-BLOCK olmalı** (`arm.data`). Object
-  verilirse **0 kemik kanalı** yazar: dosya oluşur, süre doğrudur, veri yoktur
-  (724 bayt vs 59 KB).
-- ⛔ **UV animasyonunda `Target ID` MATERYALDİR**, armature değil. Ped
-  alışkanlığıyla armature seçmek en sık hata.
-- ⛔ **Kemik bayraklarını (`Flags`) yazmaz, sıfır bırakır.** Sıfır bayraklı kemik
-  hiçbir dönüşüm kabul etmez: `PlayEntityAnim` 1 döner, `animTime` ilerler,
-  hata yok, mesh rest pozunda. Kök **4215**, diğerleri **119**; scale süren
-  klipte bu yetmez → `branches/map/destruction.md`.
-- **Klipleri ve animasyonları obje adına göre ALFABETİK dizer**, oluşturma
-  sırasına göre değil → bağı `<AnimationHash>` ile açıkça yaz.
-- **RayFire `.ycd`'sinde altı sapma** (çift `pack:/`, `Unknown30`, `Tags`/
-  `Properties` yok, Track 2 yok, bbox rest) → `branches/map/destruction.md`
-- **`.ycd` fcurve değerleri MUTLAK kemik-yerel yönelimdir**, rest'e göre delta
-  değil → gerçek açı `2·acos(|dot(q_klip, q_rest)|)`.
+  the zero inside `<Sequences>` is **normal**, do not fix it.
+  → **The gate has not changed:** read back with `res_to_xml.ps1` and check whether `<Hash>` is filled.
+  That gate is also what exposed this rule as wrong.
+  **Measured (2026-09-06):** Sollumz **2.8.3** source + a raw export with 3 clips —
+  all three came out with a filled, unique `<Hash>` field.
+- ⛔ **`Animation.target_id` must be the ARMATURE DATA-BLOCK** (`arm.data`). Given the Object
+  it writes **0 bone channels**: the file is created, the duration is right, there is no data
+  (724 bytes vs 59 KB).
+- ⛔ **In a UV animation the `Target ID` is the MATERIAL**, not the armature. Picking the
+  armature out of ped habit is the most common mistake.
+- ⛔ **It does not write the bone flags (`Flags`), it leaves them at zero.** A bone with zero flags
+  accepts no transform: `PlayEntityAnim` returns 1, `animTime` advances,
+  no error, the mesh stays in rest pose. Root **4215**, the others **119**; for a clip that
+  drives scale this is not enough → `branches/map/destruction.md`.
+- **It sorts clips and animations ALPHABETICALLY by object name**, not in creation
+  order → write the binding explicitly with `<AnimationHash>`.
+- **Six deviations in a RayFire `.ycd`** (double `pack:/`, `Unknown30`, no `Tags`/
+  `Properties`, no Track 2, rest bbox) → `branches/map/destruction.md`
+- **`.ycd` fcurve values are the ABSOLUTE bone-local orientation**, not a delta from rest
+  → the real angle is `2·acos(|dot(q_clip, q_rest)|)`.
 
-### Mesh / materyal / doku
-- ⛔ **Fragment bound → kemik bağı `COPY_TRANSFORMS` constraint'tir** (`BEFORE_FULL`/`POSE`/`LOCAL`), `parent_bone` ya da ad eşleşmesi
-  değil; constraint yoksa `does_bone_have_collision` false, kemik sessizce atlanır, `PhysicsLODGroup` boş çıkar. Animasyonlu prop'ta
-  `Child Of` + Set Inverse, kırılabilir fragment'te `Copy Transforms` — iki constraint farklıdır. → `branches/prop/fragment.md`
-- ⛔ **`sz_lods.high.mesh` atanmamışsa export "has no Sollumz materials!" der
-  ve drawable'ı KOMPLE atlar.** Materyal oradadır; betikle yaratılan mesh
-  objelerinde alan `None` kalır → `ob.sz_lods.high.mesh = ob.data`.
-- ⛔ **`bpy.data.objects.new` ile kurulan obje `sollum_type` taşımaz** → export
-  onu Sollumz objesi saymaz, **dosya hiç yazılmaz, hata da vermez**. Çalışan bir
-  `.ydr`'nin mesh OBJESİNİ kopyala, `.data`'yı değiştir.
-- ⛔ **`hide_select` `select_set()`'i SESSİZCE düşürür.** Obje görünürdür,
-  `hide_viewport`/`hide_get()` temizdir, `selected_objects` boş kalır, export
-  "No Sollumz objects selected!" der. Hem objede hem koleksiyonda olabilir —
-  üçünü de kontrol et, seçimden sonra `selected_objects`'i **say**.
-- ⛔ **Gizli objede `select_set()` sessizce çalışmaz** → export "successfully"
-  der, dosya **0 bayt** çıkar (7 objeden 5'i böyle yazıldı) → `hide_set(False)`
-  + dosya boyutunu kontrol et.
-- ⛔ **Sollumz'un ymap'i sessizce boş çıkabilir:** "Successfully exported" der, `<entities />` boş, extent sentinel (3.4e38).
-  İki ymap sistemi var (eski `sollumz_ymap`, yeni `sz_maps_container`); karışınca "context is incorrect". ytyp/ymap XML'ini elle yaz.
-- ⛔ **Sollumz operatörleri viewport bağlamı ister** — betik/MCP'de `context.selected_objects`/`active_object` yok → `temp_override`.
-- **`converttodrawable` obje adına `.model` ekler**; düz adla arama sessizce boş döner. **`.001` soneki ad eşlemesini bozar** →
-  `re.sub(r"\.\d+$", "", ad)`. Aynı sahnede iki kez drawable kurmak `.001` çiftleri üretir.
-  Export ise drawable adındaki `.001`'i **atar**: çıktı adı doğru çıkar, Blender tarafında ada göre arama yine bozulur.
-  Ölçüm: 2026-09-11, Sollumz 2.9, 1 `.ydd` — nesne `head_000_r.001` → geri okumada `<Name>head_000_r</Name>`.
-- **Doku `embedded=False` ise `.ydr`'ye hiç yazılmaz**, uyarı yok; açınca ikinci
-  kapı: **PNG gömülemez** → `texconv -f DXT1 -m 0` (mip zinciri şart), doku adı
-  dosya adından türer.
-- ⛔ **Şablon materyalde diffuse'u değiştirip normal'i bırakma** → miras
-  `plants_normal` prop'ta siyah çizgi çizer. İki image düğümü de değişir.
-- **Her drawable'da `Color 1` olmalı** (OBJ'den gelen mesh'te hiç yok) →
-  `(1,1,1,1)` yaz, **`.color_srgb`** ile (bkz. Blender §2).
-- ⛔ **Sollumz `Create Shader Material` eksik `Color 2`'yi DOLDURMADAN açar; Blender yeni `BYTE_COLOR` katmanını BEYAZ (1,1,1,1)
-  başlatır.** Aynı adım mevcut köşe rengini sırayla `Color 1`e yeniden adlandırır (Unreal ripinde `PSKVTXCOL_0` → `Color 1`). Ped'de
-  `Color 2` = rüzgâr (RGB) + ter/ıslaklık (alfa): beyaz kalınca oyunda **titreme**, export uyarı vermez. Vanilla ped'de `Color 2` hep 0 →
-  shader ekledikten sonra `Color 2`'yi 0'a çek (her köşede aynı değerse boyanmamıştır, boyanmışsa dokunma).
-  **Ölçüm:** Sollumz 2.9.0 + Blender 5.2.1, 2026-09-13; iskeletli ped'e ped.sps ve ped_default.sps → `Color 2` köşelerin %100'ü beyaz,
-  export edilen head/uppr/lowr'da da beyaz; `color_attributes.new` ve `attributes.new` ikisi de 1,1,1,1 başlatır. 0'a çekince `.ydd` geri
-  okumada 3 çizimde Colour1 RGBA min = max = 0.
-- **Export → Drawable → `Mesh Domain` = `Face Corner`**; `Vertex` yalnız MP
-  freemode kafaları içindir. Yanlış seçim sessizce bozuk ped üretir.
-- **Geometri başına 65.535 vertex sınırını (16 bit indeks) Sollumz kendisi böler** — elle bölme gerekmez. Ama **UV'siz mesh'te köşe
-  paylaşımı olmaz**: vertex = 3 × üçgen, dosya ~4× şişer, uyarı yok (muhtemel sebep: UV yokken teğet köşe başına farklı; ölçülmedi) → önce UV aç.
-  Ölçüm: 2026-09-11, Sollumz 2.9, deri bağlı ped — 232.849 vertex'lik UV'siz mesh → 22 geometri, hepsinde max indeks < vertex, toplam
-  1.396.224 vertex (= 3 × üçgen), `.ydd` 31 MB; UV'li 12.520 üçgenlik export'ta üçgen başına 0.68 vertex.
-- **Sollumz shader'ı olmayan materyal oyunda çalışmaz** — Principled BSDF
-  bırakma; `Select` → turuncu testiyle doğrula.
-- ⛔ **Sollumz gömülü dokuyu DİSKTEKİ DDS'ten paketler.** Blender içinde PNG yükleyip `img.scale()` + piksel düzenleme +
-  `save()` + `pack()` yetmedi: `.ydr`'ye **16×16 taslak** gömüldü, hata yok, kusur geri okumada göründü → piksel işi Pillow'da
-  (`im.save(..., pixel_format='DXT5')`). Gömülü doku adı **dosya adından** gelir, `img.name` yok sayılır.
-- **Silah `.ydr`'si içe alınırken bir de "Bound Box" MESH'i yaratılır** — ilk MESH'i almak onu seçer, "UV taşımıyor" der;
-  ölçüt `sollum_type == 'sollumz_drawable_model'`.
-- **`.yed`/`.ymap`/`.ytyp` binary yazamaz** → meta için `meta_xml_to_bin.ps1`
-  (CodeWalker.Core, `MetaFormat.RSC`); `.yed` için public bir yol yok.
-- **`.ytd` YAZAR (2.9)** — eski "`.ytd` üretemez" notu geçersiz. Sahne TXD'si:
-  `scene.sz_txds.new_texture_dictionary(ad)` + `txd.new_texture(image)`, sonra
-  `export_assets(..., export_ytds=True, export_ytds_include="ALL")`. ⛔ `export_ytds` varsayılan
-  kapalı → "CANCELLED", dosya yok; `sz_export_types` sınıf niteliğidir, parametre değil.
-  Doku adı image **dosya adından** gelir.
-  Ölçüm: 2026-09-11, Sollumz 2.9 + Blender 5.2, 1 örnek — 64² A8R8G8B8 DDS → 411 B `.ytd`;
-  geri okumada ad, 64×64, 7 mip, format ve çıkarılan DDS (21.972 B) girdiyle aynı.
+### Mesh / material / texture
+- ⛔ **The fragment bound → bone binding is a `COPY_TRANSFORMS` constraint** (`BEFORE_FULL`/`POSE`/`LOCAL`), not `parent_bone` or a name match;
+  without the constraint `does_bone_have_collision` is false, the bone is silently skipped, `PhysicsLODGroup` comes out empty. On an animated prop
+  it is `Child Of` + Set Inverse, on a breakable fragment `Copy Transforms` — the two constraints are different. → `branches/prop/fragment.md`
+- ⛔ **If `sz_lods.high.mesh` is not assigned, export says "has no Sollumz materials!"
+  and skips the drawable ENTIRELY.** The material is there; on mesh objects created by script
+  the field stays `None` → `ob.sz_lods.high.mesh = ob.data`.
+- ⛔ **An object built with `bpy.data.objects.new` carries no `sollum_type`** → export
+  does not count it as a Sollumz object, **the file is never written, and no error either**. Copy the mesh
+  OBJECT of a working `.ydr` and swap its `.data`.
+- ⛔ **`hide_select` SILENTLY drops `select_set()`.** The object is visible,
+  `hide_viewport`/`hide_get()` are clean, `selected_objects` stays empty, export
+  says "No Sollumz objects selected!". It can be on the object and on the collection —
+  check all three, **count** `selected_objects` after selecting.
+- ⛔ **On a hidden object `select_set()` silently does nothing** → export says
+  "successfully", the file comes out **0 bytes** (5 of 7 objects were written like this) → `hide_set(False)`
+  + check the file size.
+- ⛔ **A Sollumz ymap can come out silently empty:** it says "Successfully exported", `<entities />` is empty, extent sentinel (3.4e38).
+  There are two ymap systems (old `sollumz_ymap`, new `sz_maps_container`); mixed up they give "context is incorrect". Write ytyp/ymap XML by hand.
+- ⛔ **Sollumz operators want a viewport context** — in a script/MCP there is no `context.selected_objects`/`active_object` → `temp_override`.
+- **`converttodrawable` appends `.model` to the object name**; a search by the plain name silently returns empty. **A `.001` suffix breaks name matching** →
+  `re.sub(r"\.\d+$", "", name)`. Building a drawable twice in the same scene produces `.001` pairs.
+  Export, on the other hand, **drops** the `.001` from the drawable name: the output name comes out right, a search by name on the Blender side still breaks.
+  Measured: 2026-09-11, Sollumz 2.9, 1 `.ydd` — object `head_000_r.001` → on read-back `<Name>head_000_r</Name>`.
+- **If a texture is `embedded=False` it is never written into the `.ydr`**, no warning; once you turn it on, the second
+  gate: **PNG cannot be embedded** → `texconv -f DXT1 -m 0` (mip chain required), the texture name
+  derives from the file name.
+- ⛔ **Do not change the diffuse on a template material and leave the normal** → the inherited
+  `plants_normal` draws black lines on the prop. Both image nodes change.
+- **Every drawable must have `Color 1`** (a mesh coming from OBJ has none) →
+  write `(1,1,1,1)`, with **`.color_srgb`** (see Blender §2).
+- ⛔ **Sollumz `Create Shader Material` adds a missing `Color 2` WITHOUT FILLING IT; Blender initialises a new `BYTE_COLOR` layer as WHITE (1,1,1,1).**
+  The same step renames the existing vertex colour to `Color 1` in order (in an Unreal rip `PSKVTXCOL_0` → `Color 1`). On a ped
+  `Color 2` = wind (RGB) + sweat/wetness (alpha): left white it gives **flickering** in the game, export gives no warning. On a vanilla ped `Color 2` is always 0 →
+  after adding the shader pull `Color 2` to 0 (if it is the same value on every vertex it was never painted; if it was painted, do not touch it).
+  **Measured:** Sollumz 2.9.0 + Blender 5.2.1, 2026-09-13; ped.sps and ped_default.sps on a rigged ped → `Color 2` white on 100% of vertices,
+  white also in the exported head/uppr/lowr; `color_attributes.new` and `attributes.new` both initialise to 1,1,1,1. After pulling it to 0, the `.ydd` read-back
+  shows Colour1 RGBA min = max = 0 in 3 drawables.
+- **Export → Drawable → `Mesh Domain` = `Face Corner`**; `Vertex` is only for MP
+  freemode heads. The wrong choice silently produces a broken ped.
+- **Sollumz splits at the 65,535-vertex-per-geometry limit (16-bit index) by itself** — no manual split needed. But **a mesh without UVs shares no
+  vertices**: vertices = 3 × triangles, the file bloats ~4×, no warning (probable cause: without UVs the tangent differs per corner; not measured) → unwrap UVs first.
+  Measured: 2026-09-11, Sollumz 2.9, skinned ped — a UV-less mesh of 232,849 vertices → 22 geometries, max index < vertex count in all, total
+  1,396,224 vertices (= 3 × triangles), `.ydd` 31 MB; an export with UVs of 12,520 triangles had 0.68 vertices per triangle.
+- **A material without a Sollumz shader does not work in the game** — do not leave
+  a Principled BSDF; verify with `Select` → the orange test.
+- ⛔ **Sollumz packs the embedded texture FROM THE DDS ON DISK.** Loading a PNG in Blender and doing `img.scale()` + pixel edits +
+  `save()` + `pack()` was not enough: a **16×16 placeholder** was embedded in the `.ydr`, no error, the defect showed on read-back → do the pixel work in Pillow
+  (`im.save(..., pixel_format='DXT5')`). The embedded texture name comes **from the file name**, `img.name` is ignored.
+- **Importing a weapon `.ydr` also creates a "Bound Box" MESH** — taking the first MESH picks it and says "carries no UVs";
+  the criterion is `sollum_type == 'sollumz_drawable_model'`.
+- **It cannot write binary `.yed`/`.ymap`/`.ytyp`** → for meta use `meta_xml_to_bin.ps1`
+  (CodeWalker.Core, `MetaFormat.RSC`); for `.yed` there is no public path.
+- **It WRITES `.ytd` (2.9)** — the old "cannot produce `.ytd`" note is void. Scene TXD:
+  `scene.sz_txds.new_texture_dictionary(name)` + `txd.new_texture(image)`, then
+  `export_assets(..., export_ytds=True, export_ytds_include="ALL")`. ⛔ `export_ytds` is off by
+  default → "CANCELLED", no file; `sz_export_types` is a class attribute, not a parameter.
+  The texture name comes from the image **file name**.
+  Measured: 2026-09-11, Sollumz 2.9 + Blender 5.2, 1 sample — 64² A8R8G8B8 DDS → 411 B `.ytd`;
+  on read-back the name, 64×64, 7 mips, format and the extracted DDS (21,972 B) matched the input.
 
-### Import / iskelet
-- ⛔ **Binary `.ycd`/`.yed` OKUYAMAZ**: uyarı verip "Imported in 0.0 seconds"
-  der, hata fırlatmaz, sahne boş kalır → önce `res_to_xml.ps1`.
-- ⛔ **Otomatik kemik tag formülü vanilla tag'leri üretmez** (`SKEL_Head` →
-  21030, gerçek **31086**) → `.ycd` import'unda kanallar `pose.bones["#31086"]`
-  diye kalır. `Bone Properties → Sollumz → Tag` alanı **elle yazılır**.
-- ⛔ **Kemiklerde local Y = head→tail yönüdür**, dünya eksenleri değil. Poz
-  formülü `basis = L.inverted() @ M @ L` (`M` dünya rijit dönüşümü, `L =
-  bone.matrix_local`); `L⁻¹ @ M` yazmak kare 0'da bile geometriyi bozar.
-- **Armature'da kemik yönleri anatomik DEĞİL**: hepsi 0.05 m, `use_connect=
-  False`, `bone.vector` ~±Y, kolda gerçek yönle **56°** fark → yön için
-  `head → çocuğun head'i`; `bone.vector`/`bone.length` kullanan IK yanlış çalışır.
-- **Kemik `tail`'i efektör olarak kullanılmaz** — tail'ler 0.05 m sentetik →
-  hedef/yön için çocuk kemiğin `head`'i.
-- **Import'tan sonra sahne 24 fps'te kalır**, GTA 30 → sessiz %25 zamanlama
-  hatası. `scene.render.fps = 30`.
-- **`.yft` import'u `SKEL_ROOT` adlı bir MESH de yaratır** ve render'da her şeyi
-  kapatır. Ped origin'i kalçadadır, ayaklar z≈−0.94.
-- **Koni açıları RADYANDIR** (`subtype=ANGLE`, 0–π/2); dereceyle yazmak koniyi
-  tamamen açar. Property'nin `subtype`'ına bak.
-- ⛔ **Sollumz'un yazdığı ped fiziği OYUNU ÇÖKERTİR** (`ArticulatedBody`
-  yazmıyor) → ped `.yft` fiziksiz gönderilir.
-- **`bpy.ops.object.select_all(action='DESELECT')` MCP bağlamında seçimi
-  sessizce bozar** → `bpy.context.temp_override(...)`.
-- **Işık export'u üç bağ:** gizli ışık düşmez, konumu bozulur ·
-  `light_properties.intensity` saklanan alan değil, `energy` proxy'si · kemiğe
-  bağlı ışığın konumu KEMİK uzayında · `Tangent` projeksiyonun **yukarı**
-  ekseni, `Direction` değil. → `branches/look/lights.md`
+### Import / skeleton
+- ⛔ **It CANNOT READ binary `.ycd`/`.yed`**: it warns and says "Imported in 0.0 seconds",
+  throws no error, the scene stays empty → `res_to_xml.ps1` first.
+- ⛔ **The automatic bone tag formula does not produce vanilla tags** (`SKEL_Head` →
+  21030, real **31086**) → on `.ycd` import the channels stay as `pose.bones["#31086"]`.
+  The `Bone Properties → Sollumz → Tag` field is **typed by hand**.
+- ⛔ **In bones local Y is the head→tail direction**, not the world axes. Pose
+  formula `basis = L.inverted() @ M @ L` (`M` world rigid transform, `L =
+  bone.matrix_local`); writing `L⁻¹ @ M` breaks the geometry even at frame 0.
+- **Bone directions in the armature are NOT anatomical**: all 0.05 m, `use_connect=
+  False`, `bone.vector` ~±Y, on the arm **56°** off the real direction → for direction use
+  `head → child's head`; IK that uses `bone.vector`/`bone.length` works wrong.
+- **A bone `tail` is not used as an effector** — tails are a synthetic 0.05 m →
+  for target/direction use the child bone's `head`.
+- **After import the scene stays at 24 fps**, GTA is 30 → a silent 25% timing
+  error. `scene.render.fps = 30`.
+- **A `.yft` import also creates a MESH named `SKEL_ROOT`** and it covers everything in the
+  render. The ped origin is at the hips, the feet at z≈−0.94.
+- **Cone angles are RADIANS** (`subtype=ANGLE`, 0–π/2); writing degrees opens the cone
+  completely. Look at the property's `subtype`.
+- ⛔ **Ped physics written by Sollumz CRASHES THE GAME** (it does not write
+  `ArticulatedBody`) → a ped `.yft` ships without physics.
+- **`bpy.ops.object.select_all(action='DESELECT')` silently breaks the selection in an MCP
+  context** → `bpy.context.temp_override(...)`.
+- **Light export, three links:** a hidden light is not dropped, its position breaks ·
+  `light_properties.intensity` is not a stored field but an `energy` proxy · the position of a light
+  attached to a bone is in BONE space · `Tangent` is the projection's **up**
+  axis, not `Direction`. → `branches/look/lights.md`
 
 ---
 
-## 2. Blender — API ve veri
+## 2. Blender — API and data
 
 ### Transform
-- ⛔ **OBJE TRANSFORMU EXPORT'A PİŞER.** `matrix_basis` identity değilse
-  geometriye yazılır (ölçüldü: drawable **394 m** ötede çizildi). `matrix_basis`
-  **ve** `matrix_parent_inverse` sıfırla, **aynı çağrıda doğrula**.
-  Armature'a bağlı ped modelinde de, `apply_transforms=False` iken bile pişer → FBX'in uygulanmamış ölçek/dönüşü ped'i bozmaz.
-  Ölçüm: 2026-09-11, Sollumz 2.9, 1 `.ydd` (3 çizim) — ölçek 0.01 + X 90°, mesh verisi telafili: normal export'la metin farkı 0,
-  sınır kutuları 1e-7 m, en büyük sayısal fark 0.005 (teğet bileşeni).
-- ⚠️ **AMA KÖRLEMESİNE SIFIRLAMA.** Yerleştirilmiş objede (konum taşıyan)
-  sıfırlamak onu orijine ışınlar (ceset 40 m öteye gitti). Doğrusu **pişir,
-  sonra sıfırla**: `o.data.transform(o.matrix_world)` → identity.
-- ⛔ **`bpy.ops.object.transform_apply` sessizce hiçbir şey yapmayabilir**
-  (mesh 124 m kaydı, hata yok) → `ob.data.transform(ob.matrix_world)`.
-- **`bound_box` BAYAT olabilir** — `mesh.transform()` sonrası eski değeri döndürür.
-  Kutuyu **vertex'lerden** hesapla.
-- ⛔ **`object.dimensions` DÖNÜŞÜ İÇERMEZ** (yerel bbox × ölçek) → "en uzun
-  ekseni yatır" sessizce hiçbir şey yapmaz; dünya bbox'ı kullan.
-- ⛔ **`matrix_world` okumadan önce `view_layer.update()`** — en çok **yeni
-  append/link edilen** objede ısırır: depsgraph güncellenene kadar identity
-  döner, `data.transform(matrix_world)` hiçbir şey yapmaz, ardından basis
-  sıfırlanınca rotasyon/ölçek **pişmeden silinir**. Hata yok. **Ölçüm:**
-  Blender 5.2.1 headless, `ExamplePed` (rot 90°, ölçek 0.01) yatık çıktı, yalnız
-  önizleme render'ında görüldü; `update()` eklenince pişirme öncesi/sonrası
-  dünya kutusu farkı 0.0, 2026-09-11.
-- **`Ctrl+A` All Transforms atlanırsa** ölçek/dönme export'a sızar.
+- ⛔ **THE OBJECT TRANSFORM BAKES INTO THE EXPORT.** If `matrix_basis` is not identity it is
+  written into the geometry (measured: the drawable was drawn **394 m** away). Reset `matrix_basis`
+  **and** `matrix_parent_inverse`, **verify in the same call**.
+  It also bakes on a ped model bound to an armature, even with `apply_transforms=False` → an FBX's unapplied scale/rotation does not break the ped.
+  Measured: 2026-09-11, Sollumz 2.9, 1 `.ydd` (3 drawables) — scale 0.01 + X 90°, mesh data compensated: text difference from a normal export 0,
+  bounding boxes 1e-7 m, largest numeric difference 0.005 (a tangent component).
+- ⚠️ **BUT DO NOT RESET BLINDLY.** On a placed object (one that carries a position)
+  resetting teleports it to the origin (a corpse went 40 m away). The right way is **bake,
+  then reset**: `o.data.transform(o.matrix_world)` → identity.
+- ⛔ **`bpy.ops.object.transform_apply` may silently do nothing**
+  (the mesh shifted 124 m, no error) → `ob.data.transform(ob.matrix_world)`.
+- **`bound_box` can be STALE** — after `mesh.transform()` it returns the old value.
+  Compute the box **from the vertices**.
+- ⛔ **`object.dimensions` DOES NOT INCLUDE ROTATION** (local bbox × scale) → "lay the longest
+  axis down" silently does nothing; use the world bbox.
+- ⛔ **`view_layer.update()` before reading `matrix_world`** — it bites most on **newly
+  appended/linked** objects: until the depsgraph updates it returns identity,
+  `data.transform(matrix_world)` does nothing, then when the basis is
+  reset the rotation/scale is **deleted without being baked**. No error. **Measured:**
+  Blender 5.2.1 headless, `ExamplePed` (rot 90°, scale 0.01) came out lying down, seen only in the
+  preview render; with `update()` added, the world box difference before/after baking
+  was 0.0, 2026-09-11.
+- **If `Ctrl+A` All Transforms is skipped**, scale/rotation leak into the export.
 
-### Geometri
-- ⛔ **`bmesh.ops.bisect_plane` açık geometride kırpmaz, YÜZ SİLER** (altı
-  çağrıda yüz 637 sabit, alan 3.553 → 0.941 m²). Boolean INTERSECT de
-  güvenilmez → **Sutherland–Hodgman**. → `branches/look/decal.md`
-- **Elle bmesh birleştirme UV ve renk katmanlarını düşürür** (`bm.faces.new()`
-  loop verisi taşımaz) → `mesh.transform()` + `bpy.ops.object.join()`.
-- ⛔ **`holes_fill` UV (0,0) örnekler** — doku köşesi yama olur → açık kenar
-  oranı >%5 ise `solidify`; ölçek en **büyük** eksene göre.
-- ⛔ **Decimate 4-etki kuralını bozar** → LOD'dan sonra rijit parçalarda
-  ağırlığı tek gruba %100 geri çek.
-- ⛔ **Vertex grubunu SİLMEK ağırlığı da siler**; ağırlıklar grup **indeksiyle**
-  durur, listeyi yeniden yaratmak adları indekslere yanlış oturtur.
-- **Armature modifier'ı bozuk olabilir** (500+ m saçılma) — `pose @
-  matrix_local⁻¹` elle doğruysa dosya sağlamdır, viewport'a değil hesaba güven.
-- **`scene.ray_cast` VIEWPORT'U kullanır** — render'da görünüp viewport'ta gizli
-  obje ışın testinde atlanır.
-- **Edit Mode'a girince ÖNCEKİ SEÇİM geri gelir** → önce `f.select_set(False)`
-  (bir aracın 4089 decal üretmesinin sebebi).
+### Geometry
+- ⛔ **`bmesh.ops.bisect_plane` does not clip open geometry, it DELETES FACES** (over six
+  calls the face count stayed 637, area 3.553 → 0.941 m²). Boolean INTERSECT is also
+  unreliable → **Sutherland–Hodgman**. → `branches/look/decal.md`
+- **Merging bmesh by hand drops the UV and colour layers** (`bm.faces.new()`
+  carries no loop data) → `mesh.transform()` + `bpy.ops.object.join()`.
+- ⛔ **`holes_fill` samples UV (0,0)** — the texture corner becomes a patch → if the open edge
+  ratio is >5%, use `solidify`; scale by the **largest** axis.
+- ⛔ **Decimate breaks the 4-influence rule** → after LOD, on rigid parts pull the
+  weight back 100% to one group.
+- ⛔ **DELETING a vertex group also deletes the weights**; weights are stored by group **index**,
+  recreating the list lands the names on the wrong indices.
+- **The Armature modifier can be broken** (500+ m scatter) — if `pose @
+  matrix_local⁻¹` is right by hand, the file is sound; trust the maths, not the viewport.
+- **`scene.ray_cast` uses the VIEWPORT** — an object visible in the render but hidden in the viewport
+  is skipped by the ray test.
+- **Entering Edit Mode brings the PREVIOUS SELECTION back** → `f.select_set(False)` first
+  (the reason a tool produced 4089 decals).
 
-### Renk / katman
-- ⛔ **`BYTE_COLOR` katmanında `.color` GAMMA ÇÖZER**, `.color_srgb` ham
-  bayt/255 verir. GTA vertex color'ı maske/çarpan olarak kullanır → `.color`
-  her maskeyi sessizce koyultur. Sollumz bunu `"Color 1"`, CORNER domain'de tutar.
-- **UV katmanının adı `UVMap 0`** — başka ad sessizce düşer; kopyalanan
-  geometri hedefin eski UV'sini ve `Color 1` alfasını miras alır.
+### Colour / layers
+- ⛔ **On a `BYTE_COLOR` layer `.color` DECODES GAMMA**, `.color_srgb` gives the raw
+  byte/255. GTA uses vertex colour as a mask/multiplier → `.color`
+  silently darkens every mask. Sollumz keeps it as `"Color 1"`, in the CORNER domain.
+- **The UV layer's name is `UVMap 0`** — any other name is silently dropped; copied
+  geometry inherits the target's old UV and `Color 1` alpha.
 
-### Animasyon / poz
-- **Blender 4.4+ Action API katmanlı**: `action.fcurves` yok →
-  `layers → strips → channelbags → fcurves`; ve **action atamak yetmez, SLOT
-  da bağlanmalı** (`animation_data.action_slot = act.slots[0]`).
-- **Keyframe'lenmeyen kemik son pozunda kalır** → ölçüm öncesi pozu sıfırla;
-  elle poz vermeden `animation_data.action = None` (atanmış action her
-  `view_layer.update()`'te pozu ezer).
-- **Blender 5.0'da seçim `Bone`'dan `PoseBone`'a taşındı.**
-- **Bezier interpolasyon** UV/klip animasyonunu hızlandırıp yavaşlatır → Linear.
+### Animation / pose
+- **The Blender 4.4+ Action API is layered**: there is no `action.fcurves` →
+  `layers → strips → channelbags → fcurves`; and **assigning the action is not enough, the SLOT
+  must be bound too** (`animation_data.action_slot = act.slots[0]`).
+- **A bone that is not keyframed stays in its last pose** → reset the pose before measuring;
+  before posing by hand set `animation_data.action = None` (an assigned action overwrites the pose on
+  every `view_layer.update()`).
+- **In Blender 5.0 selection moved from `Bone` to `PoseBone`.**
+- **Bezier interpolation** speeds up and slows down UV/clip animation → Linear.
 
-### Sahne / collection
-- **Obje sahnede görünüyor ama Edit Mode'a girmiyor, Sollumz tipi
-  `sollumz_none`** → obje aslında **EMPTY + `instance_type='COLLECTION'`**
-  (asset library'den gelen collection sahneye örnek olarak girmiş; asıl
-  objeler sahneye bağlı olmayan collection'da). Çözüm: seç → **Object ▸ Apply
-  (`Ctrl+A`) ▸ Make Instances Real**, alt-sol panelde **Keep Hierarchy**
-  işaretle (varsayılan **kapalı**; armature→mesh parent'ı buna bağlı). Sonra
-  geri oku: mesh'lerin Armature modifier hedefi **yeni** armature mı, isimlerde
-  `.00N` eki var mı (orijinaller silinmediği için kopyalar ek alır).
-  **Ölçüm:** Blender 5.2.1, StalkerAssetLibrary kaynaklı 3 empty
-  (`red_forest_bridge_01_dynamic`: 1 armature + 11 mesh, hepsi Armature
-  modifier'lı), 2026-09-11; menü yolu `VIEW3D_MT_object_apply` kaynağından,
-  varsayılanlar operatör RNA'sından okundu.
+### Scene / collection
+- **The object shows in the scene but will not enter Edit Mode, Sollumz type
+  `sollumz_none`** → the object is really an **EMPTY + `instance_type='COLLECTION'`**
+  (a collection from an asset library entered the scene as an instance; the real
+  objects are in a collection not linked to the scene). Fix: select → **Object ▸ Apply
+  (`Ctrl+A`) ▸ Make Instances Real**, tick **Keep Hierarchy** in the bottom-left panel
+  (off by **default**; the armature→mesh parent depends on it). Then
+  read back: is the meshes' Armature modifier target the **new** armature, do the names carry
+  a `.00N` suffix (the originals were not deleted, so the copies get a suffix).
+  **Measured:** Blender 5.2.1, 3 empties from StalkerAssetLibrary
+  (`red_forest_bridge_01_dynamic`: 1 armature + 11 meshes, all with an Armature
+  modifier), 2026-09-11; menu path read from the `VIEW3D_MT_object_apply` source,
+  defaults from the operator RNA.
 
-### Sürüm / ortam
-- ⛔ **Blender 5.x: `GPUShader(vertexcode, fragcode)` KALDIRILDI** →
-  `gpu.shader.create_from_info`; **`GPUStorageBuf` yok** → dizi veri UBO'dan.
-- **Kendi geçişini çizen draw handler solid geçişle aynı derinlikte** çizerse
-  sahne z-fight eder → önce `gpu.state.active_framebuffer_get().clear(depth=1.0)`.
-- **Blender 5.x compositor**: `scene.node_tree`/`use_nodes` kaldırıldı →
-  `scene.compositing_node_group`; `CompositorNodeComposite` silindi → grubun
-  `NodeGroupOutput`'u; düğüm ayarları giriş soketlerine taşındı.
-- ⛔ **Blender 5.x: GN modifier'ında `mod["Input_3"]` KALDIRILDI**
-  (`TypeError: this type doesn't support IDProperties`) → yol
-  `mod.properties.inputs`, okuma/yazma **soketin kendisinden**:
-  `getattr(mod.properties.inputs, ident).value`. `inputs[ident] = 12.0` float
-  sokette `Cannot assign a 'float' value to the existing Group IDProperty`
-  verir; **bool'da hata VERMEZ ama değeri bozar** — sessiz. `ident` node
-  grubunun `interface.items_tree`'sinden gelir (`Input_3`, `Socket_11`);
-  `inputs["Resolution"]` **KeyError** — ada göre erişim yok, ad→ident
-  eşlemesini kendin kur. Yazdıktan sonra `obj.update_tag()` +
-  `view_layer.update()`, sonra **geri oku** — bu tuzak yalnız geri okumayla
-  görülür. **Ölçüm:** Blender 5.2.1, ORGANIC addon GN ağacı, 2026-09-09;
-  dört erişim yolu ayrı ayrı denendi.
-- **Koleksiyonu silmek objeleri silmez** (bake ışıkları öksüz kalıp sonraki render'ları aydınlattı). **Modül düzeyinde Image/Material
-  önbelleği** dosya değişiminden sağ kalır → `StructRNA … removed`; her çağrıda `bpy.data`'dan bak. Blender alt modülleri önbellekler.
-- **Yarıda kalan mutasyondan sonra "baştan çalıştır" güvenli değil** — mesh'ler taşınmış, ışıkta çökmüş; tekrar aynı ötelemeyi
-  uyguladı. İşlem idempotent olmalı ya da durum önce okunmalı; tip filtresi baştan.
-- **Render sonrası `Image.pixels` okumak güvenilir değil** (istisna → sessiz fallback) → ölçüm PIL ile dışarıda. **`dither_intensity`**
-  8-bit yazımda gürültü ekler, üs alınınca benek olur → 0. **`read_homefile(use_empty=True)` sahne özelliklerini de siler** → ayarlar
-  `AddonPreferences`'ta.
-- **`execute_blender_code` her çağrıda YENİ namespace** — yardımcı fonksiyonu
-  aynı çağrıda tanımla.
-- **`read_factory_settings` eklentiyi kaldırır** (headless'ta Sollumz kaybolur).
-  Aynısını **`--factory-startup`** yapar: hiçbir eklenti yüklenmez.
-- ⛔ **Headless testte eklentiyi `sys.path` ile İKİNCİ kez register etmek ÇIKIŞTA sahte traceback basar.** Kullanıcı tercihleriyle
-  açılan `-b`'de eklenti extension olarak (`bl_ext.user_default.<id>`) zaten kayıtlıdır; test aynı sınıfları yeniden kaydedince Blender
-  "registered before, unregistering previous" der, kapanışta extension kopyasının `unregister`'ı
-  `unregister_class(...): missing bl_rna … (may not be registered)` atar — eklenti hatası DEĞİL. Ayırt etmek için aynı testi
-  `--factory-startup` ile koş (tek kopya: register → unregister → register temiz). Aşağıdaki "kapanırken unregister hatası"nın bir
-  kaynağı olabilir; kilitlenmeyle ilişkisi ölçülmedi. Açık oturumda yeni kodu yüklemek: `addon_utils.disable(ad)` → `sys.modules`'tan
-  `ad` ve alt modüllerini sil → `addon_utils.enable(ad, default_set=True)`; Scene `PointerProperty` değerleri korunur.
-  **Ölçüm:** Blender 5.2.1, bir rig eklentisi, 2026-09-12; headless iki koşu (tercihli: traceback, factory: temiz) + canlı oturumda
-  yeniden yükleme (14 modül silindi, etiketler yeni, 5 sahne ayarı aynı).
-- ⛔ **Kaydedilmemiş sahnede `render.filepath` GÖRELİ yolu sürücü köküne çözülür, cwd'ye DEĞİL.** Aynı betikte Python `open()` göreli
-  yolu kabuğun cwd'sinden (proje) okur; `render.filepath = "out/video/frames_ws/0000.png"` ise `C:\out\video\frames_ws\0000.png`'ye
-  yazar ve klasörü kendisi açar. Log `Saved: …` der, çıkış kodu 0, proje klasörü BOŞ — sessiz. Yola `os.path.abspath` uygula ve
-  yazdıktan sonra kareleri HEDEF klasörde say. **Ölçüm:** Blender 5.2.1 `-b --factory-startup --python`, kabuk cwd = proje,
-  2026-09-13; 2 × 585 kare `C:\out` altına yazıldı.
-- ⛔ **`.blend` yayımlamak kişisel yolları da yayımlar.** Dosya, kaydedildiği makinelerin dosya tarayıcısı / asset kütüphanesi /
-  preset yollarını düz metin taşır (dosyayı daha önce açıp kaydeden BAŞKA bilgisayarın kullanıcı adı dahil). `rg` ikili dosyayı ATLAR;
-  Blender 5 `.blend`'i ZSTD sıkıştırılmış olabilir → ham bayt taraması da görmez: Blender'ın Python'undaki `zstandard` ile aç
-  (`ZstdDecompressor().stream_reader(..., read_across_frames=True)`), sonra ara. `save_as_mainfile(copy=True)` kopyası izleri TAŞIDI.
-  Temizlik: gereken datablock'ları `bpy.data.libraries.write(yol, {obj}, compress=True)` ile kişisel ad içermeyen bir klasöre yaz ve
-  eşitliği doğrula. Blender 5'te eklenti özellikleri (ör. Sollumz `bone_properties`) `bone.get()` ile görünmez → karşılaştırmayı
-  eklenti YÜKLÜ oturumda yap. **Ölçüm:** Blender 5.2.1, 2026-09-12; 1 şablon `.blend`: kaynak 14 iz (`C:\Users\<ad>\Desktop…`,
-  `…\AppData\Roaming…\presets`, ikinci kullanıcı `…\OneDrive\…`), `save_as_mainfile` kopyası iz taşıdı, `libraries.write` kopyası 0 iz;
-  128 kemik matris + Sollumz tag/bayrak eşit.
-- **Eklenti kurulumunu kullanıcının Blender'ına DOKUNMADAN test et:** `BLENDER_USER_RESOURCES=<geçici klasör>` → önce
-  `bpy.utils.resource_path('USER')` o klasörü mü veriyor bak, vermiyorsa DUR. Sonra `--online-mode --command extension repo-add <id>
-  --url <index.json>` → `sync` → `list` → `install <paket> --enable`; ayrı `-b` açılışta `addon_utils.check('bl_ext.<id>.<paket>')`.
-  Statik uzak depo: `extension server-generate --repo-dir <klasör> --html` (`index.json` + sürükle-bırak bağlantılı `index.html`,
-  `archive_url` göreli) → GitHub Pages'e `gh-pages` dalı + `.nojekyll`; Pages'i açma `gh api -X PUT repos/<o>/<r>/pages` gövdesi
-  stdin'den JSON (`/` içeren argüman Git Bash'te yola çevrilir). **Ölçüm:** Blender 5.2.1 + gh 2.100.0, 2026-09-12; Pages ~70 s'de
-  canlı, zip `application/x-zip-compressed` ile 200; izole kurulum etkin, gerçek `extensions` klasörü ve `userpref.blend` hash'i değişmedi
-  (1 eklenti).
-- ⛔ **Sollumz'un modül ADI kurulum yoluna göre değişir; sabit adla import başka makinede boşa düşer.** Eski addon kurulumunda
-  ad klasör adıdır (`Sollumz`, GitHub kaynak zip'inde `Sollumz-main`), eklenti kurulumunda `bl_ext.<depo>.sollumz`
-  (`user_default`, `blender_org` ya da kullanıcının depo adı). Sabit adları `try/except ImportError` ile denemek iki kötülük yapar:
-  ad tutmazsa `create_shader` hiç bulunmaz (sessiz yolda materyaller doku düğümsüz, bake **simsiyah**, render **bomboş gri**) ve
-  Sollumz'un İÇİNDEKİ bir ImportError (ör. `No module named 'szio'`) da "bulunamadı" diye yutulur. **Yol:**
-  `bpy.context.preferences.addons.keys()` içinde son ad parçası `sollumz` / `sollumz-…` / `sollumz_…` olanı bul, sürümü
-  `addon_utils.module_bl_info(sys.modules[ad])["version"]`, sonra `importlib.import_module(ad + ".ydr.shader_materials")`;
-  yakalanan istisnayı mesaja yaz. Sürüm gerçekleri (GitHub etiketleri): `create_shader` v2.3.0–v2.9.0 hep `ydr/shader_materials.py`'de;
-  `Scene.sz_txds` ve `export_ytds_include` YALNIZ 2.9.0'da; `blender_manifest.toml` v2.5.0'dan beri. Sollumz 2.9 bağımlılığı `szio`
-  eklenti klasöründe değil `<USER>/config/sollumz/data/lib/python3.x/site-packages`'tadır — izole testte o klasörü de kopyala.
-  **Ölçüt:** `create_shader` sonrası malzemede `ShaderNodeTexImage` düğümü VAR olmalı. **Ölçüm:** 2026-09-12; uzak kullanıcı Blender
-  5.1 + Sollumz 2.9.0: "Sollumz not found (create_shader)"; yerelde `Sollumz-main` adıyla kurulu 2.9.0 (izole `BLENDER_USER_RESOURCES`):
-  eski iki ad ImportError → aynı mesaj, ad-bağımsız arama → bulundu, `ped.sps` 5 doku düğümü; normal `Sollumz` kurulumu da çalıştı.
-- **Blender 5.2 bu makinede kapanırken kilitleniyor** — işi bitirip `.blend`'i
-  kaydeder, unregister'da eklenti hata atar, süreç kapanmaz. Headless hatlar
-  zaman aşımıyla sonlandırılır.
-- ⛔ **`.blend`'i her export'tan sonra KAYDET** ve doğrulanmış çıktıyı tarihli
-  klasöre kopyala. Hafızadaki ara veri (`bpy._X`) kalıcı değil; bir günlük iş
-  yalnız export'larda kaldı, hareket tabloları gitti.
-- **Ölçüt operatörün `{'FINISHED'}` demesi değil, KEYFRAME SAYISIDIR** — modal
-  operatör `-b` modunda hiç çalışmadan başarılı görünür.
-- ⛔ **`blender -b --python <yol>` 260 karakteri aşan yolda betiği HİÇ
-  çalıştırmaz, çıkış kodu yine 0.** Log'da tek satır `OSError: Python file "…"
-  could not be opened: No such file or directory`, gerisi normal açılış ve
-  "Blender quit". Sebep yol **uzunluğu**; 8.3 kısa ad (ör. `KULLAN~1`) değil.
-  Claude'un scratchpad yolu tek başına bu sınırı aşar → betiği kısa yola koy
-  (`%TEMP%\claude\<iş>\`). Ölçüt exit kodu değil, **betiğin yazdığı çıktı
-  dosyasının varlığı**. **Ölçüm:** Blender 5.2.1, 272 karakterlik yol FAIL,
-  aynı betik kısa yolda OK, 8.3 adlı kısa yol OK, 2026-09-11.
-- ⛔ **`bpy.ops.object.mode_set` çağıranın BAĞLAM objesine uygulanır.** İçinde `view_layer.objects.active = arm` yapıp EDIT → OBJECT
-  geçen fonksiyon dışarıdan `temp_override(object=mesh, active_object=mesh)` altında çağrılınca iskelet **EDIT'te kalır** — hata yok,
-  ama EDIT'teki iskeletin pozu mesh'i **hiç deforme etmez**. Yalnız override'ı iskelete çevirmek de yetmedi (aktif obje başkayken EDIT'ten
-  çıkmadı); `objects.active = arm` **ve** `temp_override(object=arm, active_object=arm, selected_objects=[arm])` birlikte çıkarır.
-  Çıkışta `arm.mode` geri oku. Ölçüt: `evaluated_get` mesh'i ile orijinal vertex farkı > 0. **Ölçüm:** Blender 5.2.1, 2026-09-12;
-  headless tekrar üretildi (eski EDIT, sabitlenmiş OBJECT, rest hatası 0,0 mm); canlı oturumda poz farkı 0 → 805 mm.
-- ⛔ **Shape key'li mesh'te `mesh.vertices.co` yazmak görüntüye ve export'a YANSIMAZ** — değerlendirilmiş mesh basis key'den gelir;
-  hata yok, mesh "değişmemiş" kalır (yeniden pozlama, rest'e çevirme gibi vertex taşıyan her işlem sessizce etkisiz). Yol: işlemden önce
-  shape key'leri kaldır (`obj.shape_key_clear()`; yüz mimikleri gider) ya da işlemi durdur. `key_blocks[i].data`'ya yazmak ölçülmedi.
-  Ölçüt: `evaluated_get(depsgraph)` mesh'inde konum farkı. Hazır karakterler shape key'le gelir (Ready Player Me glTF: 10 mesh'te 15 key).
-  **Ölçüm:** Blender 5.2.1, 2026-09-12; shape key'li küpte `vertices.co` +1,0 yazıldı, değerlendirilmiş fark 0,0 (1 küp, test betiği).
+### Version / environment
+- ⛔ **Blender 5.x: `GPUShader(vertexcode, fragcode)` WAS REMOVED** →
+  `gpu.shader.create_from_info`; **there is no `GPUStorageBuf`** → array data from a UBO.
+- **A draw handler that draws its own pass at the same depth as the solid pass**
+  makes the scene z-fight → first `gpu.state.active_framebuffer_get().clear(depth=1.0)`.
+- **Blender 5.x compositor**: `scene.node_tree`/`use_nodes` were removed →
+  `scene.compositing_node_group`; `CompositorNodeComposite` was deleted → the group's
+  `NodeGroupOutput`; node settings moved to input sockets.
+- ⛔ **Blender 5.x: `mod["Input_3"]` on a GN modifier WAS REMOVED**
+  (`TypeError: this type doesn't support IDProperties`) → the path is
+  `mod.properties.inputs`, read/write **from the socket itself**:
+  `getattr(mod.properties.inputs, ident).value`. `inputs[ident] = 12.0` on a float
+  socket gives `Cannot assign a 'float' value to the existing Group IDProperty`;
+  **on a bool it gives NO error but corrupts the value** — silent. `ident` comes from the node
+  group's `interface.items_tree` (`Input_3`, `Socket_11`);
+  `inputs["Resolution"]` is a **KeyError** — there is no access by name, build the name→ident
+  map yourself. After writing, `obj.update_tag()` +
+  `view_layer.update()`, then **read back** — this pitfall only shows up on
+  read-back. **Measured:** Blender 5.2.1, ORGANIC addon GN tree, 2026-09-09;
+  four access paths tried one by one.
+- **Deleting a collection does not delete its objects** (orphaned bake lights lit the following renders). **A module-level Image/Material
+  cache** survives a file change → `StructRNA … removed`; look it up from `bpy.data` on every call. Blender caches submodules.
+- **"Run it from the start" is not safe after a mutation that stopped halfway** — the meshes had moved, it crashed on the light; it applied the same
+  offset again. The operation must be idempotent or the state must be read first; the type filter up front.
+- **Reading `Image.pixels` after a render is not reliable** (exception → silent fallback) → measure outside with PIL. **`dither_intensity`**
+  adds noise to 8-bit writes, which turns into speckles when exponentiated → 0. **`read_homefile(use_empty=True)` also deletes scene properties** → settings
+  go in `AddonPreferences`.
+- **`execute_blender_code` uses a NEW namespace on every call** — define helper functions
+  in the same call.
+- **`read_factory_settings` removes the add-on** (Sollumz disappears headless).
+  **`--factory-startup`** does the same: no add-on is loaded.
+- ⛔ **In a headless test, registering the add-on a SECOND time via `sys.path` PRINTS A FAKE TRACEBACK ON EXIT.** In a `-b` run opened with user
+  preferences the add-on is already registered as an extension (`bl_ext.user_default.<id>`); when the test registers the same classes again Blender
+  says "registered before, unregistering previous", and on shutdown the extension copy's `unregister` throws
+  `unregister_class(...): missing bl_rna … (may not be registered)` — NOT an add-on bug. To tell them apart, run the same test
+  with `--factory-startup` (single copy: register → unregister → register is clean). It may be one source of the "unregister error on
+  exit" below; its link to the hang was not measured. To load new code in a live session: `addon_utils.disable(name)` → delete
+  `name` and its submodules from `sys.modules` → `addon_utils.enable(name, default_set=True)`; Scene `PointerProperty` values are kept.
+  **Measured:** Blender 5.2.1, a rig add-on, 2026-09-12; two headless runs (with preferences: traceback, factory: clean) + a reload in a live
+  session (14 modules deleted, labels new, 5 scene settings unchanged).
+- ⛔ **In an unsaved scene a RELATIVE `render.filepath` resolves against the drive root, NOT the cwd.** In the same script Python `open()` reads a relative
+  path from the shell's cwd (the project); `render.filepath = "out/video/frames_ws/0000.png"`, however, writes to `C:\out\video\frames_ws\0000.png`
+  and creates the folder itself. The log says `Saved: …`, exit code 0, the project folder is EMPTY — silent. Apply `os.path.abspath` to the path and
+  after writing, count the frames in the TARGET folder. **Measured:** Blender 5.2.1 `-b --factory-startup --python`, shell cwd = project,
+  2026-09-13; 2 × 585 frames were written under `C:\out`.
+- ⛔ **Publishing a `.blend` also publishes personal paths.** The file carries, as plain text, the file browser / asset library /
+  preset paths of the machines it was saved on (including the user name of ANOTHER computer that opened and saved it before). `rg` SKIPS binary files;
+  a Blender 5 `.blend` can be ZSTD-compressed → a raw byte scan does not see it either: open it with `zstandard` in Blender's Python
+  (`ZstdDecompressor().stream_reader(..., read_across_frames=True)`), then search. A `save_as_mainfile(copy=True)` copy CARRIED the traces.
+  Cleanup: write the needed datablocks with `bpy.data.libraries.write(path, {obj}, compress=True)` into a folder with no personal name and
+  verify equality. In Blender 5 add-on properties (e.g. Sollumz `bone_properties`) are not visible with `bone.get()` → do the comparison in a session with the add-on
+  LOADED. **Measured:** Blender 5.2.1, 2026-09-12; 1 template `.blend`: source 14 traces (`C:\Users\<name>\Desktop…`,
+  `…\AppData\Roaming…\presets`, a second user `…\OneDrive\…`), the `save_as_mainfile` copy carried traces, the `libraries.write` copy 0 traces;
+  128 bone matrices + Sollumz tags/flags equal.
+- **Test an add-on install WITHOUT TOUCHING the user's Blender:** `BLENDER_USER_RESOURCES=<temp folder>` → first check that
+  `bpy.utils.resource_path('USER')` returns that folder; if it does not, STOP. Then `--online-mode --command extension repo-add <id>
+  --url <index.json>` → `sync` → `list` → `install <package> --enable`; in a separate `-b` launch `addon_utils.check('bl_ext.<id>.<package>')`.
+  Static remote repository: `extension server-generate --repo-dir <folder> --html` (`index.json` + `index.html` with drag-and-drop links,
+  `archive_url` relative) → GitHub Pages via a `gh-pages` branch + `.nojekyll`; to enable Pages, the `gh api -X PUT repos/<o>/<r>/pages` body
+  as JSON from stdin (an argument containing `/` is turned into a path in Git Bash). **Measured:** Blender 5.2.1 + gh 2.100.0, 2026-09-12; Pages live in
+  ~70 s, the zip served 200 with `application/x-zip-compressed`; isolated install enabled, the real `extensions` folder and the `userpref.blend` hash unchanged
+  (1 add-on).
+- ⛔ **Sollumz's module NAME changes with the install path; an import by a fixed name fails on another machine.** In the old add-on install
+  the name is the folder name (`Sollumz`, `Sollumz-main` from the GitHub source zip); in an extension install it is `bl_ext.<repo>.sollumz`
+  (`user_default`, `blender_org` or the user's repo name). Trying fixed names with `try/except ImportError` does two kinds of harm:
+  if the name does not match, `create_shader` is never found (on the silent path materials have no texture nodes, the bake is **pitch black**, the render **blank grey**) and
+  an ImportError INSIDE Sollumz (e.g. `No module named 'szio'`) is also swallowed as "not found". **Path:**
+  in `bpy.context.preferences.addons.keys()` find the one whose last name part is `sollumz` / `sollumz-…` / `sollumz_…`, the version from
+  `addon_utils.module_bl_info(sys.modules[name])["version"]`, then `importlib.import_module(name + ".ydr.shader_materials")`;
+  write the caught exception into the message. Version facts (GitHub tags): `create_shader` was always in `ydr/shader_materials.py` from v2.3.0 to v2.9.0;
+  `Scene.sz_txds` and `export_ytds_include` ONLY in 2.9.0; `blender_manifest.toml` since v2.5.0. The Sollumz 2.9 dependency `szio`
+  is not in the add-on folder but in `<USER>/config/sollumz/data/lib/python3.x/site-packages` — copy that folder too in an isolated test.
+  **Criterion:** after `create_shader` the material must HAVE a `ShaderNodeTexImage` node. **Measured:** 2026-09-12; a remote user's Blender
+  5.1 + Sollumz 2.9.0: "Sollumz not found (create_shader)"; locally 2.9.0 installed under the name `Sollumz-main` (isolated `BLENDER_USER_RESOURCES`):
+  the two old names ImportError → the same message, name-independent search → found, `ped.sps` 5 texture nodes; a normal `Sollumz` install worked too.
+- **Blender 5.2 hangs on exit on this machine** — it finishes the job and saves the
+  `.blend`, the add-on throws on unregister, the process does not exit. Headless pipelines
+  are ended with a timeout.
+- ⛔ **SAVE the `.blend` after every export** and copy the verified output to a dated
+  folder. In-memory intermediate data (`bpy._X`) is not persistent; a day's work
+  survived only in the exports, the motion tables were lost.
+- **The criterion is not the operator saying `{'FINISHED'}` but the KEYFRAME COUNT** — a modal
+  operator looks successful in `-b` mode without ever running.
+- ⛔ **`blender -b --python <path>` NEVER RUNS the script on a path over 260
+  characters, and the exit code is still 0.** The log has a single line `OSError: Python file "…"
+  could not be opened: No such file or directory`, the rest is a normal start and
+  "Blender quit". The cause is the path **length**, not the 8.3 short name (e.g. `KULLAN~1`).
+  Claude's scratchpad path alone exceeds this limit → put the script on a short path
+  (`%TEMP%\claude\<job>\`). The criterion is not the exit code but **the existence of the output
+  file the script writes**. **Measured:** Blender 5.2.1, a 272-character path FAIL,
+  the same script on a short path OK, an 8.3 short path OK, 2026-09-11.
+- ⛔ **`bpy.ops.object.mode_set` applies to the caller's CONTEXT object.** A function that does `view_layer.objects.active = arm` and switches EDIT → OBJECT,
+  when called from outside under `temp_override(object=mesh, active_object=mesh)`, leaves the skeleton **in EDIT** — no error,
+  but the pose of a skeleton in EDIT **never deforms** the mesh. Switching only the override to the skeleton was not enough either (with another active object it did not
+  leave EDIT); `objects.active = arm` **and** `temp_override(object=arm, active_object=arm, selected_objects=[arm])` together get it out.
+  Read back `arm.mode` on exit. Criterion: vertex difference between the `evaluated_get` mesh and the original > 0. **Measured:** Blender 5.2.1, 2026-09-12;
+  reproduced headless (old EDIT, fixed OBJECT, rest error 0.0 mm); in a live session pose difference 0 → 805 mm.
+- ⛔ **On a mesh with shape keys, writing `mesh.vertices.co` is NOT REFLECTED in the view or the export** — the evaluated mesh comes from the basis key;
+  no error, the mesh stays "unchanged" (every vertex-moving operation such as re-posing or converting to rest is silently ineffective). Path: before the operation
+  remove the shape keys (`obj.shape_key_clear()`; facial expressions are lost) or stop the operation. Writing to `key_blocks[i].data` was not measured.
+  Criterion: position difference in the `evaluated_get(depsgraph)` mesh. Ready-made characters come with shape keys (Ready Player Me glTF: 15 keys on 10 meshes).
+  **Measured:** Blender 5.2.1, 2026-09-12; on a cube with shape keys `vertices.co` +1.0 was written, evaluated difference 0.0 (1 cube, test script).
 
 ---
 
 ## 3. CodeWalker.Core
 
-- ⛔ **`.yed` bytecode'unu (`Streams`) okur ama YAZAMAZ.** `ExprMap.Count == 0`
-  görmek "dosya boş" demek değildir; **kaydetmek `Streams`'i boşaltır**, yüz ve
-  tüm prosedürel hareket ölür.
-- ⛔ **XML okuyucu `.ypt`'de `FxcFileHash`'i ve `VFT`'yi YAZMAZ** → XML'den
-  üretilen her `.ypt` shader'sız çıkar, hiçbir şey çizilmez (vanilla ikili
-  `246470498`, XML turu `0`) → `scripts/ypt_xml_to_bin.ps1` hash'i yazar, geri
-  okur, sıfırsa exit 1. **Genel ders:** yeni kaynak tipinde ilk iş vanilla
-  dosyayı XML'e çıkarıp geri okumak ve alan alan karşılaştırmak.
+- ⛔ **It reads `.yed` bytecode (`Streams`) but CANNOT WRITE it.** Seeing `ExprMap.Count == 0`
+  does not mean "the file is empty"; **saving empties `Streams`**, the face and
+  all procedural motion die.
+- ⛔ **The XML reader does NOT WRITE `FxcFileHash` and `VFT` in a `.ypt`** → every `.ypt`
+  produced from XML comes out without a shader, nothing is drawn (vanilla binary
+  `246470498`, XML round trip `0`) → `scripts/ypt_xml_to_bin.ps1` writes the hash, reads it
+  back, exit 1 if zero. **General lesson:** with a new resource type, the first job is to dump a vanilla
+  file to XML, read it back and compare field by field.
   → `branches/particle/ypt-from-scratch.md`
-- ⛔ **`YtypFile.Save()` `compositeEntityTypes` bloğunu SESSİZCE DÜŞÜRÜR**
-  (925 → 836 bayt). XML yolu düşürmez. → `branches/map/destruction.md`
-- **`.ytyp`/`.ymap` ikisi de `MetaFormat.RSC`** üzerinden yazılır — enum'da
-  `ytyp`/`ymap` üyesi ARAMA (bulamayınca "yazamıyor" denip yanlış yola geçildi).
-- **`YptFile.Load()` `RpfFileEntry` ister**; `null` geçilirse patlar → 
+- ⛔ **`YtypFile.Save()` SILENTLY DROPS the `compositeEntityTypes` block**
+  (925 → 836 bytes). The XML path does not drop it. → `branches/map/destruction.md`
+- **`.ytyp`/`.ymap` are both written through `MetaFormat.RSC`** — do NOT LOOK for a
+  `ytyp`/`ymap` member in the enum (when it was not found, "it cannot write" was said and the wrong path was taken).
+- **`YptFile.Load()` wants an `RpfFileEntry`**; passing `null` blows up → 
   `RpfFile::CreateResourceFileEntry([ref]$d,0)` + `ResourceBuilder::Decompress`.
-- ⛔ **`ResourcePointerArray64<T>` üzerinde `foreach` → `NotImplementedException`**,
-  yürüyüş sessizce yanlış sonuç verir → blok ağacında gezme, **bölerek daralt**.
-- **`ClipBase.Name` OKUMA** → StackOverflow, exit 253, mesaj yok.
-- **`Add-Type`'a `netstandard` referansı şart**; `Animation.BoneIds` dizi değil
+- ⛔ **`foreach` over `ResourcePointerArray64<T>` → `NotImplementedException`**,
+  the walk silently gives a wrong result → do not walk the block tree, **narrow it down by halving**.
+- **Do NOT READ `ClipBase.Name`** → StackOverflow, exit 253, no message.
+- **`Add-Type` needs a `netstandard` reference**; `Animation.BoneIds` is not an array
   → `.data_items`.
-- **GUI'de `LoadClipDict(string)` sözlüğü ada göre OYUN verisinden çözer** —
-  resource klasöründeki serbest `.ycd` listede çıkmaz.
-- ⛔ **`.ytd` XML şeması: `<TextureDictionary>` altında DOĞRUDAN `<Item>`**, `<Textures>` sarmalayıcısı yok; yanlış sarmalayıcı hata
-  vermez, **57 baytlık boş sözlük** üretir. `XmlMeta.GetXMLFormat` **dosya adını** ister (`x.ytyp.xml`), kök etiketi verilince
-  genel `XML` döner, `GetData` boş döner. ytyp/ymap için `XmlYtyp`/`XmlYmap` sınıfı yoktur.
-- ⛔ **`RpfFile.ScanStructure()` anahtarsız çöker** (`GTA5Keys.LoadFromPath` önce); `try/catch` yutarsa tarama sessizce boş biter
-  ve "doku GTA'da yok" sanılır (19/19 vardı). `RpfManager.Init` örnek metodu. **Kaç dosya okuduğunu daima yazdır**; sıfırsa arıza.
-- ⛔ **`MetaHash` ≠ `UInt32`.** `archetypeName` bir `MetaHash`; `UInt32` anahtarlı
-  hashtable'da `ContainsKey` hiç eşleşmez ve "kalıntı 0" okunur →
+- **In the GUI `LoadClipDict(string)` resolves the dictionary by name from GAME data** —
+  a loose `.ycd` in a resource folder does not appear in the list.
+- ⛔ **`.ytd` XML schema: `<Item>` DIRECTLY under `<TextureDictionary>`**, no `<Textures>` wrapper; the wrong wrapper raises no
+  error, it produces **a 57-byte empty dictionary**. `XmlMeta.GetXMLFormat` wants **the file name** (`x.ytyp.xml`); given the root tag it
+  returns generic `XML`, and `GetData` returns empty. There is no `XmlYtyp`/`XmlYmap` class for ytyp/ymap.
+- ⛔ **`RpfFile.ScanStructure()` crashes without keys** (`GTA5Keys.LoadFromPath` first); if a `try/catch` swallows it the scan silently ends empty
+  and "the texture is not in GTA" is assumed (19/19 were there). `RpfManager.Init` is an instance method. **Always print how many files it read**; zero means a fault.
+- ⛔ **`MetaHash` ≠ `UInt32`.** `archetypeName` is a `MetaHash`; in a `UInt32`-keyed
+  hashtable `ContainsKey` never matches and "0 leftovers" is read →
   `[uint32]$en._CEntityDef.archetypeName`.
-- ⛔ **Kaynak dosya boyutu geçerlilik ölçütü DEĞİLDİR** (RSC7 zlib): 32.768 bayt
-  açılmış `.ypt` → `Save()` 3.077 bayt aynı içeriktir. Tek ölçüt **geri okuma**.
-- **Geri okumada çıkarılan DDS girdiyle BAYT BAYT aynı değildir** — başlığı CodeWalker kendisi yazar (flags'e `DDSD_PITCH`,
-  pitch = satır baytı `4·w`, depth 1); piksel yükü aynıdır. Hash "farklı" der → **128. bayttan sonrasını** karşılaştır.
-  Ölçüm: 2026-09-11, Sollumz 2.9 `.ytd` → `res_to_xml.ps1`, 9 doku A8R8G8B8 (8² ve 256²): yük 9/9 aynı, başlıkta 4 bayt farklı.
-- ⛔ **`Unknown*` alanına "bilmiyorum, 0" yazma** — `UnknownA4..B0` mesafe
-  bandıdır, 0 vanilla'da hiç geçmez; `Unknown10C` 1638/1736'da `0x10100`.
-  **Dağılımına bak**, en sık değeri al.
-- **CodeWalker XML'i bilmediği adı `hash_XXXXXXXX` yazar** (ytyp adı, doku, shader) → stream dosya adlarının / bilinen adların
-  joaat'ini (büyük hex) tabloya koy, eşle; yeni adı **düz metin** yaz, derleyici hash'ler. Şablonla aynı hash kusur değildir
+- ⛔ **Resource file size is NOT a validity criterion** (RSC7 zlib): an unpacked 32,768-byte
+  `.ypt` → `Save()` 3,077 bytes is the same content. The only criterion is **reading back**.
+- **The DDS extracted on read-back is NOT BYTE-FOR-BYTE the same as the input** — CodeWalker writes the header itself (`DDSD_PITCH` in the flags,
+  pitch = row bytes `4·w`, depth 1); the pixel payload is the same. The hash says "different" → compare **everything after byte 128**.
+  Measured: 2026-09-11, Sollumz 2.9 `.ytd` → `res_to_xml.ps1`, 9 textures A8R8G8B8 (8² and 256²): payload 9/9 the same, 4 bytes different in the header.
+- ⛔ **Do not write "I don't know, 0" into an `Unknown*` field** — `UnknownA4..B0` is a distance
+  band, 0 never appears in vanilla; `Unknown10C` is `0x10100` in 1638/1736.
+  **Look at its distribution**, take the most common value.
+- **CodeWalker XML writes a name it does not know as `hash_XXXXXXXX`** (ytyp name, texture, shader) → put the joaat (upper-case hex) of stream file names /
+  known names in a table and match them; write a new name as **plain text**, the compiler hashes it. The same hash as the template is not a defect
   (`hash_38DD00DF` = `normal_spec.sps`).
-- **`.ycd` kanalında `StaticVector3`/`StaticFloat` = o kemik/eksen hiç kıpırdamıyor** — kanal var diye hareket var sanma;
-  bir kemikte kanal tipleri **karışık** olabilir (X/Z `QuantizeFloat`, Y `StaticFloat`); hepsini liste beklersen hareketi kaçırırsın.
-- **XML'e çevirirken nicemlemeyi ZATEN çözer** (`<Values>` düz float) — kendi
-  çözücünü yazma; `CachedQuaternion` kanal değil işaretçi; `.//Animations`
-  yanlış düğüm; iki klip tipi (`Animation`/`AnimationList`).
-- **ymap yazarken `CalcFlags()` çağırma** (contentFlags 65→1), `CalcExtents()`
-  kullanma (sıfır kutu), `CEntityDefs`'i doğrudan yazma (0 entity).
-- **ymap adı tekil değil** — `rpfPath` olmadan LOD ölçümü yanlış çıkar.
+- **`StaticVector3`/`StaticFloat` in a `.ycd` channel = that bone/axis never moves** — do not assume motion just because a channel exists;
+  the channel types on one bone can be **mixed** (X/Z `QuantizeFloat`, Y `StaticFloat`); if you expect them all to be lists you miss the motion.
+- **It ALREADY decodes the quantisation when converting to XML** (`<Values>` plain float) — do not write
+  your own decoder; `CachedQuaternion` is a pointer, not a channel; `.//Animations` is the
+  wrong node; two clip types (`Animation`/`AnimationList`).
+- **When writing a ymap do not call `CalcFlags()`** (contentFlags 65→1), do not use `CalcExtents()`
+  (zero box), do not write `CEntityDefs` directly (0 entities).
+- **A ymap name is not unique** — without `rpfPath` the LOD measurement comes out wrong.
   → `branches/map/lod.md`
-- **Property adları — yanlış ad `$null` döner, hata vermez** (bkz. §4): Bound `BoxMin`/`BoxMax`
-  (`BoundingBoxMin/Max` değil), Drawable `DrawableModels`/`AllModels` (`DrawableModelsHigh` değil);
-  `ShaderGroup.Shaders` foreach'te `NotImplementedException` → `.data_items`. Ölçüldü: bir yol yıkımı çalışması, 2026-09-01.
-- **CodeWalker taşınabilir `.exe` ise computer-use onu bulamaz** → GUI
-  basamağını ajan süremez, kullanıcıya tarif verir.
+- **Property names — a wrong name returns `$null`, no error** (see §4): Bound `BoxMin`/`BoxMax`
+  (not `BoundingBoxMin/Max`), Drawable `DrawableModels`/`AllModels` (not `DrawableModelsHigh`);
+  `ShaderGroup.Shaders` in foreach gives `NotImplementedException` → `.data_items`. Measured: a road destruction project, 2026-09-01.
+- **If CodeWalker is a portable `.exe`, computer-use cannot find it** → the agent cannot drive
+  the GUI step, it gives the user directions.
 
 ---
 
 ## 4. PowerShell 5.1
 
-- ⛔ **Betikler `powershell` (5.1) ile çağrılır, `pwsh` ile değil.** Ternary
-  (`? :`) ve `??` yok; `[single](if (...) {...} else {...})` ayrışmaz ve hata
-  *"'if' is not recognized"* diye gelir — ara değişken kullan.
-- ⛔ **`[script]` gibi köşe parantezli yolda `Test-Path`/`Copy-Item`/`Remove-Item`
-  jokerle çalışır** → **`-LiteralPath`**. `Copy-Item`'da SESSİZDİR: kopya hiç
-  olmaz, hata çıkmaz; `stream/` eski sürümde kaldı, turlarca eski asset test
-  edildi. Kopyadan sonra boyut/hash karşılaştır.
-- **`-LiteralPath` joker GENİŞLETMEZ** — `"$dir\*"` hiçbir şey kopyalamaz. Joker
-  gerekiyorsa `-Path`, köşe parantez varsa `-LiteralPath`.
-- **`Split-Path -LiteralPath $p -Parent` 5.1'de `AmbiguousParameterSet` verir** → sonuç `$null`, ardından `Test-Path -LiteralPath $null`
-  de hata basar; hedef klasör zaten varsa kopya yine olur, hata zararsız sanılır → `[IO.Path]::GetDirectoryName($p)`.
-  Ölçüm: 2026-09-11, Windows PowerShell 5.1, `[script]` altına 13 dosyalık kopya döngüsü: dosya başına iki hata, kopyalar hash eşit.
-- ⛔ **`-replace` büyük/küçük harf DUYARSIZDIR** — `'ABC'→'x'` kuralı `abc_modul`'ü
-  de bozar → kod/ad değiştiriyorsan **`-creplace`**, sonra kalıntı taraması.
-- ⛔ **`-File` ile virgüllü liste TEK STRING olur** ve sessizce bozulur (10 dosya
-  istendi, "0 dosya çıkarıldı") → `-Command "& script.ps1 -Names @('a','b')"`.
-- ⛔ **OLMAYAN property hata vermez, `$null` döner — ve `$null.Length` `0`'dır.**
-  Yanlış yazılmış ad "ölçtüm, veri yok" dedirtir (`EffectRules` yerine `Effects`
-  okundu, belgeye "CodeWalker `.ypt` yazamaz" yazıldı — araç çalışıyordu).
-  Yabancı DLL'de önce `$o.GetType().GetProperties() | % Name`, ya da guard:
-  `if(-not $o.PSObject.Properties[$ad]){ throw "PROPERTY YOK: $ad" }`.
-- **`Add-Type` C# 5 derler**: `?.` çalışmaz.
-- **Değişkenler büyük/küçük harf DUYARSIZ** — döngüdeki `$y` yedek yolu `$Y`'yi
-  ezdi. Kısa ad + döngü = bu hata.
-- **`"$S\$n.ymap"` yanlış yol üretir** (`$n.ymap` property sanılır) →
-  `"$($n).ymap"` ya da `Join-Path`.
-- **`@(@(x,y))` tek elemanlıysa DÜZLEŞİR** → `$k[0]`/`$k[1]` saçmalar, eşleşme
-  sessizce kaçar ("0 silindi", çöp kutusu 1.1 m ötedeydi).
-- **ASCII dışı karakter içeren `.ps1` BOM'suzsa 5.1 bozuk okur** →
-  `audit_plugin.py` bunu denetler.
-- **`while read` döngüsünde `powershell` STDIN'i yutar** → `< /dev/null`.
-- **İki CodeWalker betiği aynı PowerShell oturumunda `&` ile ard arda** (ölçülen çift: `.ycd` derleyicisi + `res_to_xml.ps1`) → AssemblyResolve işleyicileri
-  birbirini çağırır, **StackOverflowException**, süreç sessizce ölür → her aracı ayrı `powershell -File` ile.
-- **`res_to_xml.ps1 -Path` `[script]` yolunda çöker** ve klasörü `-Path` ile
-  almaz → parantezsiz klasöre kopyala, `-Dir` + `-Filter`.
+- ⛔ **Scripts are called with `powershell` (5.1), not `pwsh`.** No ternary
+  (`? :`) and no `??`; `[single](if (...) {...} else {...})` does not parse and the error
+  comes as *"'if' is not recognized"* — use an intermediate variable.
+- ⛔ **On a path with square brackets such as `[script]`, `Test-Path`/`Copy-Item`/`Remove-Item`
+  treat it as a wildcard** → **`-LiteralPath`**. In `Copy-Item` it is SILENT: the copy never
+  happens, no error; `stream/` stayed on the old version, the old asset was tested for
+  several rounds. After a copy, compare size/hash.
+- **`-LiteralPath` does NOT EXPAND wildcards** — `"$dir\*"` copies nothing. If you need a
+  wildcard use `-Path`; if there are square brackets use `-LiteralPath`.
+- **`Split-Path -LiteralPath $p -Parent` gives `AmbiguousParameterSet` in 5.1** → the result is `$null`, then `Test-Path -LiteralPath $null`
+  also prints an error; if the target folder already exists the copy still happens and the error is taken as harmless → `[IO.Path]::GetDirectoryName($p)`.
+  Measured: 2026-09-11, Windows PowerShell 5.1, a 13-file copy loop under `[script]`: two errors per file, copies hash-equal.
+- ⛔ **`-replace` is case-INSENSITIVE** — an `'ABC'→'x'` rule also breaks `abc_module`
+  → if you are changing code/names use **`-creplace`**, then scan for leftovers.
+- ⛔ **With `-File` a comma-separated list becomes ONE STRING** and silently breaks (10 files
+  requested, "0 files extracted") → `-Command "& script.ps1 -Names @('a','b')"`.
+- ⛔ **A NON-EXISTENT property raises no error, it returns `$null` — and `$null.Length` is `0`.**
+  A misspelled name makes you say "I measured, no data" (`Effects` was read instead of `EffectRules`,
+  and "CodeWalker cannot write `.ypt`" went into the document — the tool was working).
+  In a foreign DLL, first `$o.GetType().GetProperties() | % Name`, or a guard:
+  `if(-not $o.PSObject.Properties[$name]){ throw "NO PROPERTY: $name" }`.
+- **`Add-Type` compiles C# 5**: `?.` does not work.
+- **Variables are case-INSENSITIVE** — a backup path `$y` in a loop overwrote `$Y`.
+  Short name + loop = this bug.
+- **`"$S\$n.ymap"` produces the wrong path** (`$n.ymap` is taken as a property) →
+  `"$($n).ymap"` or `Join-Path`.
+- **`@(@(x,y))` FLATTENS when it has a single element** → `$k[0]`/`$k[1]` go wrong, the match
+  is silently missed ("0 deleted", the rubbish bin was 1.1 m away).
+- **A `.ps1` with non-ASCII characters and no BOM is misread by 5.1** →
+  `audit_plugin.py` checks for this.
+- **In a `while read` loop `powershell` swallows STDIN** → `< /dev/null`.
+- **Two CodeWalker scripts called one after the other with `&` in the same PowerShell session** (the measured pair: the `.ycd` compiler + `res_to_xml.ps1`) → the AssemblyResolve handlers
+  call each other, **StackOverflowException**, the process dies silently → run each tool with a separate `powershell -File`.
+- **`res_to_xml.ps1 -Path` crashes on a `[script]` path** and does not take a folder with `-Path`
+  → copy to a folder without brackets, `-Dir` + `-Filter`.
 
 ---
 
-## 5. Python · Lua · kabuk
+## 5. Python · Lua · shell
 
-- ⛔ **Python `glob` içinde `[script]` karakter sınıfıdır** → hiç eşleşmez, hata
-  vermez → `os.listdir`.
-- **`argparse` help metnindeki `%` kaçışlanmalı (`%%`)**, yoksa `--help` `TypeError`.
-- **Konsol Türkçe karakterde patlarsa `PYTHONIOENCODING=utf-8`.**
-- ⛔ **Lua dosyasını Python ile yazarken kaçışlar bozulur** — `\n` gerçek satır
-  sonuna dönüşüp string'i böldü, **hiçbir komut kayıtlı olmadı**; `lua_check`
-  sözdizimi temiz gösterir. Bu satırları doğrudan `Edit` ile yaz.
-- ⛔ **Türkçe kesme işareti (`'`) Lua string'ini KAPATIR — `lua_check` kaçırır.**
-  Görünen metni locale dosyasına al.
-- **`Wait()` command callback'inde çağrılamaz.**
-- **Git Bash'ten çağrılan Windows `ffmpeg` `/c/...` yolunu açamaz** → `C:/...`.
-- ⛔ **Git Bash `/` ile başlayan argümanı Windows yoluna ÇEVİRİR:** `gh api /licenses/gpl-3.0` → `C:/Program Files/Git/licenses/gpl-3.0`
-  ("invalid API endpoint"). `> dosya` yönlendirmesi komuttan önce **boş dosyayı yine oluşturur**. Yol: baştaki `/`'ı at
-  (`gh api licenses/gpl-3.0`). **Ölçüm:** gh 2.100.0, Git Bash, 2026-09-12; aynı uç nokta `/`'sız çalıştı (1 deneme).
-- ⛔ **`np.argsort` varsayılanı (quicksort) EŞİT değerlerin sırasını numpy sürümüne göre değiştirir.** Eşitliğe duyarlı seçim (tam sayı
-  mesafe/sayaçla sıralayıp "ilk gelen kazanır") Blender'ın numpy'si ile sistem Python'unun numpy'sinde FARKLI sonuç verir → Blender dışında
-  koşan testler eklentinin Blender'daki davranışını ölçmez; hata vermez. Yol: seçimde `kind="stable"` (ya da açık ikincil anahtar,
-  `np.lexsort`); `argpartition`'ın kararlı seçeneği yok. Ölçüt: aynı girdiyi iki ortamda koşup çıktı imzasını karşılaştır.
-  **Ölçüm:** Blender 5.2.1 numpy 2.3.4 ↔ sistem Python numpy 2.5.1, 2026-09-12; 3 mesh girdisi: varsayılan sırayla 3,37 ↔ 3,26 cm ve
-  bir vakada başarı ↔ hata; `kind="stable"` ile iki ortam 6 haneye kadar aynı.
-- **`"stream$f.ydr"` tek parça gider**, dosya bulunamaz → yolu değişkenle ayrı kur.
-- **`rm my_t*` denek silerken üretimi de siler** — joker aralığını önce `ls`.
-- **İndirilen ses tepe −25…−29 dB olabilir** → `volumedetect` ölç, normalize et.
+- ⛔ **In Python `glob`, `[script]` is a character class** → it never matches, raises no
+  error → `os.listdir`.
+- **`%` in `argparse` help text must be escaped (`%%`)**, otherwise `--help` gives `TypeError`.
+- **If the console breaks on Turkish characters, `PYTHONIOENCODING=utf-8`.**
+- ⛔ **Escapes break when a Lua file is written from Python** — `\n` turned into a real line
+  break and split the string, **no command was registered**; `lua_check`
+  shows the syntax as clean. Write those lines directly with `Edit`.
+- ⛔ **A Turkish apostrophe (`'`) CLOSES a Lua string — `lua_check` misses it.**
+  Move visible text into the locale file.
+- **`Wait()` cannot be called in a command callback.**
+- **A Windows `ffmpeg` called from Git Bash cannot open a `/c/...` path** → `C:/...`.
+- ⛔ **Git Bash CONVERTS an argument starting with `/` into a Windows path:** `gh api /licenses/gpl-3.0` → `C:/Program Files/Git/licenses/gpl-3.0`
+  ("invalid API endpoint"). A `> file` redirection **still creates the empty file** before the command runs. Path: drop the leading `/`
+  (`gh api licenses/gpl-3.0`). **Measured:** gh 2.100.0, Git Bash, 2026-09-12; the same endpoint worked without the `/` (1 attempt).
+- ⛔ **The `np.argsort` default (quicksort) changes the order of EQUAL values depending on the numpy version.** A tie-sensitive selection (sorting by an integer
+  distance/counter and "first one wins") gives DIFFERENT results with Blender's numpy and the system Python's numpy → tests that run outside Blender
+  do not measure the add-on's behaviour in Blender; no error. Path: `kind="stable"` in the selection (or an explicit secondary key,
+  `np.lexsort`); `argpartition` has no stable option. Criterion: run the same input in both environments and compare the output signature.
+  **Measured:** Blender 5.2.1 numpy 2.3.4 ↔ system Python numpy 2.5.1, 2026-09-12; 3 mesh inputs: with the default order 3.37 ↔ 3.26 cm and
+  in one case success ↔ error; with `kind="stable"` both environments identical to 6 digits.
+- **`"stream$f.ydr"` goes as one piece**, the file is not found → build the path separately with a variable.
+- **`rm my_t*` deletes production files along with the test subjects** — `ls` the wildcard range first.
+- **Downloaded audio can peak at −25…−29 dB** → measure with `volumedetect`, normalise.
 
 ---
 
-## 6. FiveM çalışma zamanı
+## 6. FiveM runtime
 
-- ⛔ **Asset değiştikten sonra sunucudan ÇIKIP YENİDEN BAĞLANILIR.** Stream
-  cache'lenir; **restart yetmez**. Bu atlanırsa bayat asset test edilir.
-  Silahta ek: `str_requestFlush` (canary) ve **silahı önce elden bırak**.
-- ⛔ **BOZUK STREAM VARLIĞI KAYNAĞIN TAMAMINI SESSİZCE DÜŞÜRÜR.** Sunucu
-  "Started resource" yazar, istemcide hiçbir komut kaydolmaz, print yok, F8'de
-  hata yok. Teşhis: `stream/` klasörü **olmayan** ikinci kaynak kur; onun komutu
-  çalışıyorsa kusur stream'dedir. Lua'yı kurcalama.
-- ⛔ **Kaynak iki klasördeyse FiveM birini sessizce yok sayar** → "görünmüyor"
-  denince ilk bakılacak yer **sunucu logu**.
-- **Varlık adında büyük harf olmaz.** Stream'e yeni dosya eklemek üç adımdır
-  (dosya + manifest/`data_file` + çık/bağlan).
-- ⛔ **Escrow (`.fxap`) kaynağın stream dosyası şifrelidir** — kopyalarsan
-  istemci çöker ("Couldn't find asset key"). Çökme teşhisi: CitizenFX log `Error:`.
-- **İstemciyi öldürmek hayalet oturum bırakır.**
-- **`PtFxAssetStore Pool Full, Size == 400`** — havuz DOSYA sayar; **tek büyük
-  `.ypt` oyunu dondurur** (ölçülmüş eşik). → `branches/particle/deployment-measurements.md`
-- **`LoadResourceFile` ile istemcide JSON okuma çalışmadı** → Lua tablosu.
-- **Harita objesinde `SetEntityCollision(false)` güvenilir değil** — görünmez
-  olur, çarpışma kalır → `CreateModelHide`; **kontrol alınmadan
-  `FreezeEntityPosition`/`SetEntityCoords` yok sayılır**; **donmuş objede
-  kök-kemik klibi oynamaz**. → `branches/prop/doors-and-motion.md`
-- **Handle önbellekleme** (`doorRegistered[hash]`, "handle değişti mi") —
-  FiveM handle'ı yeniden kullanır → `IsEntityPlayingAnim` gibi **gerçeğe** sor.
-- **`GetPedBoneIndex` / `GetPedBoneCoords` TAG alır, indeks değil.**
+- ⛔ **After an asset changes, LEAVE the server and RECONNECT.** The stream is
+  cached; **a restart is not enough**. Skip this and a stale asset is tested.
+  Extra for weapons: `str_requestFlush` (canary) and **put the weapon away first**.
+- ⛔ **A BROKEN STREAM ASSET SILENTLY DROPS THE WHOLE RESOURCE.** The server prints
+  "Started resource", no command registers on the client, no print, no error
+  in F8. Diagnosis: set up a second resource **without** a `stream/` folder; if its command
+  works, the defect is in the stream. Do not tinker with the Lua.
+- ⛔ **If a resource is in two folders, FiveM silently ignores one** → when "it does not
+  show", the first place to look is **the server log**.
+- **Asset names have no uppercase letters.** Adding a new file to the stream takes three steps
+  (file + manifest/`data_file` + leave/reconnect).
+- ⛔ **The stream files of an escrowed (`.fxap`) resource are encrypted** — copy them and
+  the client crashes ("Couldn't find asset key"). Crash diagnosis: CitizenFX log `Error:`.
+- **Killing the client leaves a ghost session.**
+- **`PtFxAssetStore Pool Full, Size == 400`** — the pool counts FILES; **a single large
+  `.ypt` freezes the game** (measured threshold). → `branches/particle/deployment-measurements.md`
+- **Reading JSON on the client with `LoadResourceFile` did not work** → Lua table.
+- **`SetEntityCollision(false)` on a map object is not reliable** — it becomes invisible,
+  the collision stays → `CreateModelHide`; **without taking control,
+  `FreezeEntityPosition`/`SetEntityCoords` are ignored**; **a root-bone clip does not play
+  on a frozen object**. → `branches/prop/doors-and-motion.md`
+- **Handle caching** (`doorRegistered[hash]`, "did the handle change") —
+  FiveM reuses handles → ask **the real state**, e.g. `IsEntityPlayingAnim`.
+- **`GetPedBoneIndex` / `GetPedBoneCoords` take a TAG, not an index.**
   → `trunk/bone-tags.md`
-- ⛔ **`set` FiveM'in yerleşik convar komutudur** — `RegisterCommand('set')` sessizce ezilmez ama yerleşik olan çalışır ve
-  *"Argument count mismatch"* verir. Test komutlarına önek ver. **`os._exit(0)` stdout tamponunu boşaltmaz** → önce `flush()`.
-- **`.rel` / ses XML'lerinde isim uyuşmazlığı sessizce her şeyi bozar** (topluluk).
-- **`DrawSpritePoly` kanonik ad değil** — `DrawTexturedPoly`; `/native-lint`
-  uydurma sayar.
+- ⛔ **`set` is FiveM's built-in convar command** — `RegisterCommand('set')` does not silently override it; the built-in one runs and
+  gives *"Argument count mismatch"*. Prefix your test commands. **`os._exit(0)` does not flush the stdout buffer** → `flush()` first.
+- **A name mismatch in `.rel` / audio XMLs silently breaks everything** (community).
+- **`DrawSpritePoly` is not the canonical name** — `DrawTexturedPoly`; `/native-lint`
+  counts it as invented.
 
 ---
 
-## 7. Dış araçlar (topluluk)
+## 7. External tools (community)
 
-- **Rokoko `Auto Scale` açıkken root motion TAMAMEN silinir.**
-- **Void Tools Vertex Color Bake mesh'e yazan tek araçtır** → öncesinde
-  `.blend`'i tarihli kopyala. → `branches/look/decal.md`
-- **Five Toolkit silah kemik tag tablosu yanlış** → `sources/external-tools.md` §1a
-- **Sketchfab glb indirmeleri: "rigged" etiketine, ölçeğe ve yöne güvenme.**
-  - **Kemik adları:** düğüm adlarına `_<sayı>` soneki eklenir (`hand_l_026`, `Thumb1.L_91`) → eşleme tam adla yapılır.
-  - **Etiket:** "rigged" etiketli model iskeletsiz çıkabilir (skin 0); iskelet glb JSON'undaki `skins` alanından doğrulanır.
-  - **Boy ve yön:** boy 51 m (düğüm ölçeği 0,807) ya da −90° X ile yatık gelebilir.
-  - **Aksesuar:** ayrı iskelete bağlı aksesuar (balta) mesh'e karışır.
-  - **İndirme zinciri:** `sketchfab.com/i/models/<uid>/download` (giriş gerekir) format ve boyut JSON'u verir →
-    `/i/archives/latest?archiveType=glb&model=<uid>&textureMaxResolution=1024` imzalı S3 bağlantısı JSON'u verir → bağlantı tarayıcıda açılınca dosya iner.
-  - Ölçüm: 6 model, 2026-09-12 (1 iskeletsiz, 1 51 m, 1 yatık + balta).
+- **With Rokoko `Auto Scale` on, root motion is deleted COMPLETELY.**
+- **Void Tools Vertex Color Bake is the only tool that writes to the mesh** → make a dated copy of the
+  `.blend` before using it. → `branches/look/decal.md`
+- **The Five Toolkit weapon bone tag table is wrong** → `sources/external-tools.md` §1a
+- **Sketchfab glb downloads: do not trust the "rigged" label, the scale or the orientation.**
+  - **Bone names:** node names get a `_<number>` suffix (`hand_l_026`, `Thumb1.L_91`) → match by the full name.
+  - **Label:** a model labelled "rigged" can come without a skeleton (skin 0); verify the skeleton from the `skins` field in the glb JSON.
+  - **Height and orientation:** it can arrive 51 m tall (node scale 0.807) or lying down at −90° X.
+  - **Accessory:** an accessory bound to a separate skeleton (an axe) gets mixed into the mesh.
+  - **Download chain:** `sketchfab.com/i/models/<uid>/download` (login required) returns the format and size JSON →
+    `/i/archives/latest?archiveType=glb&model=<uid>&textureMaxResolution=1024` returns the signed S3 link JSON → opening the link in a browser downloads the file.
+  - Measured: 6 models, 2026-09-12 (1 without a skeleton, 1 at 51 m, 1 lying down + axe).
 
 ---
 
-## Ayrıntı
+## Details
 
-### A. Sollumz `use_custom_settings` — kaynak
+### A. Sollumz `use_custom_settings` — source
 
-`sollumz_operators.py:415` ve `:132`:
+`sollumz_operators.py:415` and `:132`:
 
 ```python
 prefs_export_settings = self if self.use_custom_settings else get_export_settings()
 ```
 
-Bayrak kapalıyken operatör kendi özelliklerini bırakıp **kullanıcı
-tercihlerini** okur. `directory` ve `direct_export` ayar grubunun dışındadır,
-bayraktan bağımsız çalışırlar — dosyalar doğru klasöre gittiği için kusur
-gizlenir. Sessizce miras alınanlar: `apply_transforms` (True ise transform
-**geometriye pişer**), `limit_to_selected` (False ise **tüm sahne**),
-`target_formats` (CWXML ise XML), `target_versions`, `export_ytyps/ymaps/ytds`.
+With the flag off, the operator leaves its own properties and reads the **user
+preferences**. `directory` and `direct_export` are outside the settings group and
+work independently of the flag — the files go to the right folder, so the defect
+stays hidden. Silently inherited: `apply_transforms` (if True the transform
+**bakes into the geometry**), `limit_to_selected` (if False **the whole scene**),
+`target_formats` (if CWXML then XML), `target_versions`, `export_ytyps/ymaps/ytds`.
 
-Doğrulama: tercihleri **kasten boz**, aktar, çıktının etkilenmediğini gör,
-tercihleri geri yükle.
+Verification: **deliberately break** the preferences, export, see that the output is unaffected,
+restore the preferences.
 
-### B. Sollumz export formatı — `NATIVE` gerçekten binary yazar mı?
+### B. Sollumz export format — does `NATIVE` really write binary?
 
-**Evet, ama koşullu — ve `.ycd` bu sistemin tamamen dışındadır.**
+**Yes, but conditionally — and `.ycd` is entirely outside this system.**
 
 ```python
 # szio/gta5/native/__init__.py:7
@@ -561,22 +561,22 @@ IS_BACKEND_AVAILABLE = importlib.util.find_spec("pymateria") is not None
 # sollumz_preferences.py:377-378
 if not self.target_formats or (not is_provider_available(AssetFormat.NATIVE)
                                and "CWXML" not in self.target_formats):
-    self.target_formats = {"CWXML"}       # ← SESSİZ geri düşüş
+    self.target_formats = {"CWXML"}       # ← SILENT fallback
 ```
 
-Canlı testle doğrulandı (Blender 5.2 + Sollumz 2.8), çıkan dosyaların ilk 4
-baytı okundu:
+Verified with a live test (Blender 5.2 + Sollumz 2.8), reading the first 4
+bytes of the output files:
 
-| Ayar | Çıktı | Boyut | İlk 4 bayt |
+| Setting | Output | Size | First 4 bytes |
 |---|---|---:|---|
 | `NATIVE` + `GEN8` | `x.ydr` | 451 | `52534337` = **`RSC7`** (binary) |
-| `CWXML` + `GEN8` | `x.ydr.xml` | 2.699 | `3c3f786d` = `<?xm` |
-| `NATIVE` + `GEN8`+`GEN9` | `gen8/x.ydr` **ve** `gen9/x.ydr` | 451 / **558** | ikisi de `RSC7` |
-| `NATIVE`+`CWXML`, tek sürüm | `x.ydr` **ve** `x.ydr.xml` | — | aynı klasöre ikisi |
+| `CWXML` + `GEN8` | `x.ydr.xml` | 2,699 | `3c3f786d` = `<?xm` |
+| `NATIVE` + `GEN8`+`GEN9` | `gen8/x.ydr` **and** `gen9/x.ydr` | 451 / **558** | both `RSC7` |
+| `NATIVE`+`CWXML`, single version | `x.ydr` **and** `x.ydr.xml` | — | both in the same folder |
 
-Gen8 ile Gen9 çıktısı farklı boyutta — Gen9 kozmetik bir etiket değil, gerçekten başka bir dosya.
+The Gen8 and Gen9 outputs differ in size — Gen9 is not a cosmetic label, it really is a different file.
 
-#### Gen8 / Gen9 — ölçülmüş ayrıntı
+#### Gen8 / Gen9 — measured detail
 
 ```python
 # iecontext.py:99-100
@@ -585,22 +585,22 @@ gen9_directory = directory / "gen9"
 ```
 
 - `("GEN9", "Gen9", "GTAV Enhanced", 2)` — Gen9 = **GTA V Enhanced**.
-- İki sürüm birden seçilirse çıktı **`gen8/` ve `gen9/` alt klasörlerine**
-  ayrılır. Tek sürüm seçiliyse dosyalar doğrudan hedef klasöre yazılır.
-- ⚠ Hattımız tek çıktı yolu varsayıyor: `extract_asset.ps1` / `xml_to_res.ps1`
-  çağıran her betik, iki sürüm açıkken dosyayı **beklediği yerde bulamaz**.
-- Gen9'un ayrı shader varsayılanları var (`ShadersG9ParamsDefaults.json`,
-  `ShadersG9TextureNameMapping.json`) ve ayrı adaptörleri
+- If both versions are selected the output is split into **`gen8/` and `gen9/` subfolders**.
+  With a single version the files are written straight to the target folder.
+- ⚠ Our pipeline assumes a single output path: every script that calls `extract_asset.ps1` /
+  `xml_to_res.ps1` will **not find the file where it expects it** while both versions are on.
+- Gen9 has its own shader defaults (`ShadersG9ParamsDefaults.json`,
+  `ShadersG9TextureNameMapping.json`) and its own adapters
   (`drawable_gen9.py`, `fragment_gen9.py`, `texture_gen9.py`).
 
-Her iki sağlayıcının desteklediği uzantılar aynı 8 tanedir:
-`.ybn .ydr .ydd .yft .yld .ytyp .ymap .ytd`. `.ycd` bu listede yok:
+The extensions supported by both providers are the same 8:
+`.ybn .ydr .ydd .yft .yld .ytyp .ymap .ytd`. `.ycd` is not in this list:
 
 ```python
 # ycd/ycdexport.py:574
-clip_dict.write_xml(filepath)          # sabit kodlanmış XML
+clip_dict.write_xml(filepath)          # hard-coded XML
 ```
 
-→ `.ycd` için ayrı derleme hâlâ **zorunlu**; `xml_to_res.ps1`'i `.ydr/.yft/.ybn` için
-`NATIVE` çalışıyorsa atlayabilirsin. Ölçüm: `trunk/flags.md` §7'den
-taşındı (2026-08).
+→ a separate compile for `.ycd` is still **mandatory**; for `.ydr/.yft/.ybn` you can skip
+`xml_to_res.ps1` if `NATIVE` works. Measured: moved from `trunk/flags.md` §7
+(2026-08).

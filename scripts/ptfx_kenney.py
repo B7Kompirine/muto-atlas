@@ -1,26 +1,26 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""ptfx_kenney.py — Kenney CC0 partikul dokularindan sprite cikarir.
+"""ptfx_kenney.py — extracts sprites from the Kenney CC0 particle textures.
 
-⛔ NEDEN: prosedurel uretim ve elle 3B sahne kurmak profesyonel sonuc
-   vermedi. Sektorun kendi tavsiyesi (realtimevfx.com forumu) sirasiyla
-   sudur: **once hazir doku paketi**, sonra photo-bashing, en son
-   prosedurel. Kenney paketleri tam bu ise uygun:
+⛔ WHY: procedural generation and hand-built 3D scenes did not give a
+   professional result. The industry's own advice (realtimevfx.com forum)
+   is, in order: **ready-made texture pack first**, then photo-bashing,
+   procedural last. The Kenney packs fit this job exactly:
 
-     · CC0 (kamu mali) -- kisisel VE ticari kullanim serbest, atif
-       zorunlu degil. Tebex'te satilan bir kaynakta sorun cikarmaz.
-     · GRI TONLAMALI -- motorun `ptxu_Colour` tint'i rengi tamamen
-       belirler. (Bizim olculmus kural: turuncu sprite maviyle
-       carpilinca camur verir; notr sprite tam tonu verir.)
-     · Saydam PNG, 512x512, sprite basina TEK nesne.
+     · CC0 (public domain) -- personal AND commercial use allowed,
+       attribution not required. No problem in a resource sold on Tebex.
+     · GREYSCALE -- the engine's `ptxu_Colour` tint fully decides the
+       colour. (Our measured rule: an orange sprite multiplied by blue
+       gives mud; a neutral sprite gives the exact tone.)
+     · Transparent PNG, 512x512, ONE object per sprite.
 
-Paketler:
-  kenney_particle-pack.zip   80 doku (smoke/spark/star/flame/circle/dirt...)
-  kenney_smoke-particles.zip 68 doku (blackSmoke/whitePuff/explosion/flash)
+Packs:
+  kenney_particle-pack.zip   80 textures (smoke/spark/star/flame/circle/dirt...)
+  kenney_smoke-particles.zip 68 textures (blackSmoke/whitePuff/explosion/flash)
 
-Kullanim:
-  python ptfx_kenney.py --ad smoke_07 --cikti out.png
-  python ptfx_kenney.py --liste
+Usage:
+  python ptfx_kenney.py --name smoke_07 --out out.png
+  python ptfx_kenney.py --list
 """
 from __future__ import annotations
 
@@ -30,72 +30,72 @@ import os
 import tempfile
 import zipfile
 
-KOK = os.path.join(tempfile.gettempdir(), "kenney")
-PAKET = [
-    (os.path.join(KOK, "particle-pack.zip"), "PNG (Transparent)/"),
-    (os.path.join(KOK, "smoke-particles.zip"), "PNG/"),
+ROOT = os.path.join(tempfile.gettempdir(), "kenney")
+PACKS = [
+    (os.path.join(ROOT, "particle-pack.zip"), "PNG (Transparent)/"),
+    (os.path.join(ROOT, "smoke-particles.zip"), "PNG/"),
 ]
 
 
-def katalog():
-    """ad -> (zip yolu, zip ici yol)"""
+def catalog():
+    """name -> (zip path, path inside the zip)"""
     d = {}
-    for zp, on in PAKET:
+    for zp, prefix in PACKS:
         if not os.path.exists(zp):
             continue
         with zipfile.ZipFile(zp) as z:
             for n in z.namelist():
-                if not n.startswith(on) or not n.lower().endswith(".png"):
+                if not n.startswith(prefix) or not n.lower().endswith(".png"):
                     continue
-                ad = os.path.splitext(os.path.basename(n))[0]
-                d.setdefault(ad, (zp, n))
+                name = os.path.splitext(os.path.basename(n))[0]
+                d.setdefault(name, (zp, n))
     return d
 
 
-def cikar(ad, cikti, coz=512):
-    """⛔ Kenney dokulari SIKI KIRPILMIS degil; bazilarinda genis bos kenar
-    var. Alfa bbox'ina kirp, kareye ortala, hedef coznurluge olcekle --
-    "alpha coverage" kurali (VFXDoc) bunu gerektiriyor.
+def extract(name, out, resolution=512):
+    """⛔ Kenney textures are NOT tightly cropped; some have a wide empty
+    margin. Crop to the alpha bbox, centre on a square, scale to the target
+    resolution -- the "alpha coverage" rule (VFXDoc) requires this.
     """
     from PIL import Image
-    k = katalog()
-    if ad not in k:
-        return "doku yok: %s" % ad
-    zp, n = k[ad]
+    k = catalog()
+    if name not in k:
+        return "no such texture: %s" % name
+    zp, n = k[name]
     with zipfile.ZipFile(zp) as z:
         im = Image.open(io.BytesIO(z.read(n))).convert("RGBA")
-    kutu = im.getchannel("A").getbbox()
-    if kutu:
-        im = im.crop(kutu)
+    box = im.getchannel("A").getbbox()
+    if box:
+        im = im.crop(box)
     w, h = im.size
     s = max(w, h)
-    pay = int(s * 0.05)
-    tuval = Image.new("RGBA", (s + 2 * pay, s + 2 * pay), (0, 0, 0, 0))
-    tuval.paste(im, (pay + (s - w) // 2, pay + (s - h) // 2))
-    tuval = tuval.resize((coz, coz), Image.LANCZOS)
-    tuval.save(cikti)
+    margin = int(s * 0.05)
+    canvas = Image.new("RGBA", (s + 2 * margin, s + 2 * margin), (0, 0, 0, 0))
+    canvas.paste(im, (margin + (s - w) // 2, margin + (s - h) // 2))
+    canvas = canvas.resize((resolution, resolution), Image.LANCZOS)
+    canvas.save(out)
     return None
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--ad")
-    ap.add_argument("--cikti")
-    ap.add_argument("--coz", type=int, default=512)
-    ap.add_argument("--liste", action="store_true")
+    ap.add_argument("--name", "--ad", dest="name")
+    ap.add_argument("--out", "--cikti", dest="out")
+    ap.add_argument("--resolution", "--coz", dest="resolution", type=int, default=512)
+    ap.add_argument("--list", "--liste", dest="list", action="store_true")
     a = ap.parse_args()
 
-    k = katalog()
-    if a.liste or not a.ad:
-        print("%d doku:" % len(k))
+    k = catalog()
+    if a.list or not a.name:
+        print("%d textures:" % len(k))
         for x in sorted(k):
             print("  ", x)
         return 0
-    h = cikar(a.ad, a.cikti, a.coz)
-    if h:
-        print(h)
+    err = extract(a.name, a.out, a.resolution)
+    if err:
+        print(err)
         return 1
-    print("cikarildi: %s" % a.cikti)
+    print("extracted: %s" % a.out)
     return 0
 
 

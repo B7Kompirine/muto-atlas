@@ -1,30 +1,30 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""mcp_server.py — muto-atlas'i MCP sunucusu olarak sunar (stdio ya da HTTP).
+"""mcp_server.py — serves muto-atlas as an MCP server (stdio or HTTP).
 
-NEDEN: skill'ler "once veriye bak" kuralini anlatir, ama sorguyu calistiran
-sey Claude Code'un kabuguydu. MCP ile ayni sorgular Cursor, VS Code (Copilot),
-Codex, Gemini CLI, Claude Desktop ve -- HTTPS tuneliyle -- ChatGPT'den
-cagrilir. Araclar mevcut betikleri calistirir; hicbir kural burada TEKRAR
-yazilmaz, hicbir cikti yeniden yorumlanmaz.
+WHY: the skills state the "look at the data first" rule, but the thing that
+ran the query was Claude Code's shell. With MCP the same queries are called
+from Cursor, VS Code (Copilot), Codex, Gemini CLI, Claude Desktop and --
+through an HTTPS tunnel -- ChatGPT. The tools run the existing scripts; no
+rule is written AGAIN here and no output is reinterpreted.
 
-Kullanim:
-  python scripts/mcp_server.py                          # stdio: yerel istemciler
+Usage:
+  python scripts/mcp_server.py                          # stdio: local clients
   python scripts/mcp_server.py --http --port 8765       # streamable HTTP, 127.0.0.1
-  python scripts/mcp_server.py --http --allow-host <tunel-alan-adi>
-  python scripts/mcp_server.py --list-tools [--http]    # kayitli araclari yaz, cik
+  python scripts/mcp_server.py --http --allow-host <tunnel-domain>
+  python scripts/mcp_server.py --list-tools [--http]    # print the registered tools and exit
 
-GUVENLIK (--http):
-  Kullanicinin KENDI dosyalarini okuyan araclar (doctor, structural_diff,
-  light_read, lua_lint) ve KENDI sunucusunun haritasi (framework_api,
-  lodaudit) HTTP modunda KAYDEDILMEZ. Tunel bu sunucuyu internete acar ve
-  kimlik dogrulamasi yoktur. Katmanlar sunucu klasoruyle kurulduysa ozel
-  arketip adlari da sorgulanabilir -- tuneli yalniz kullandigin surece ac.
-  Yazan hicbir alt komut (light --apply/--set/--add/--remove, path) hicbir
-  modda sunulmaz.
+SECURITY (--http):
+  Tools that read the user's OWN files (doctor, structural_diff, light_read,
+  lua_lint) and the map of their OWN server (framework_api, lodaudit) are NOT
+  registered in HTTP mode. The tunnel opens this server to the internet and
+  there is no authentication. If the layers were built with a server folder,
+  private archetype names can be queried too -- open the tunnel only while
+  you use it. No subcommand that writes (light --apply/--set/--add/--remove,
+  path) is offered in any mode.
 
-Her sonucun ilk satiri cikis kodunun anlamidir. exit 2 = katman kurulu degil:
-sonuc hakkinda HICBIR SEY iddia edilemez.
+The first line of every result is the meaning of the exit code. exit 2 = the
+layer is not installed: NOTHING can be claimed about the result.
 """
 import argparse
 import io
@@ -42,7 +42,7 @@ try:
     from mcp.server.fastmcp import FastMCP
     from mcp.types import ToolAnnotations
 except ImportError:
-    sys.stderr.write('mcp paketi yok / mcp package missing: python -m pip install "mcp>=1.28"\n')
+    sys.stderr.write('mcp package missing: python -m pip install "mcp>=1.28"\n')
     sys.exit(3)
 
 INSTRUCTIONS = (
@@ -82,10 +82,10 @@ READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldH
 def _run(script, args, meaning=None, timeout=TIMEOUT):
     cmd = [sys.executable, os.path.join(HERE, script)] + [str(a) for a in args]
     env = dict(os.environ, PYTHONIOENCODING="utf-8")
-    # stdin=DEVNULL ZORUNLU: stdio modunda sunucunun stdin'i istemcinin borusudur ve bir is
-    # parcacigi onu okurken bekler. Windows'ta bu boruyu miras alan alt surec acilista ayni
-    # tutamakta bloke olur -> her cagri zaman asimina kadar asili kalir (olculdu, 2026-09-13:
-    # data_status ve flags_decode 300 sn'de dustu).
+    # stdin=DEVNULL is REQUIRED: in stdio mode the server's stdin is the client's pipe and a
+    # thread waits reading it. On Windows a child process that inherits this pipe blocks on the
+    # same handle at startup -> every call hangs until the timeout (measured 2026-09-13:
+    # data_status and flags_decode failed after 300 s).
     try:
         r = subprocess.run(cmd, cwd=ROOT, stdin=subprocess.DEVNULL, capture_output=True, text=True,
                            encoding="utf-8", errors="replace", env=env, timeout=timeout)
@@ -275,7 +275,7 @@ def _db_trouble(adb, code, detail):
 
 
 def snippet_search(query: str, project: str | None = None, tag: str | None = None, limit: int = 20) -> str:
-    """Full-text search over the knowledge snippets in data/atlas.db. project is a folder name such as look, map, prop, particle or govde; tag is a name from snippet_tags. Use snippet_read for the full text of a hit."""
+    """Full-text search over the knowledge snippets in data/atlas.db. project is a folder name such as look, map, prop, particle or trunk; tag is a name from snippet_tags. Use snippet_read for the full text of a hit."""
     adb = _adb()
     code, rows = adb.search_rows(adb.DEFAULT_DB, query, project, tag, max(1, min(int(limit), 100)))
     trouble = _db_trouble(adb, code, rows)
@@ -332,7 +332,7 @@ def structural_diff(mine: str, vanilla: str, limit: int = 50) -> str:
 
 def light_read(path: str, vanilla_table: bool = False, raw: bool = False) -> str:
     """Decode the lights embedded in a .ydr/.yft: hours (TimeFlags), cone, falloff, flags and the bone they hang from. vanilla_table=True adds the measured vanilla band. Read-only: editing is not exposed."""
-    return _run("assetdb.py", ["light", *_opt("--tablo", vanilla_table), *_opt("--ham", raw), *_pos([path])], FILE_EXIT)
+    return _run("assetdb.py", ["light", *_opt("--table", vanilla_table), *_opt("--raw", raw), *_pos([path])], FILE_EXIT)
 
 
 def lua_lint(paths: list[str], side: str = "auto") -> str:

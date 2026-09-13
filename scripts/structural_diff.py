@@ -1,28 +1,30 @@
 #!/usr/bin/env python3
-"""structural_diff.py — iki kaynagi DUGUM VARLIGI uzerinden karsilastirir.
+"""structural_diff.py — compares two resources by WHICH NODES EXIST.
 
-NEDEN DEGER DEGIL YAPI
-======================
-Bir export'un "0 uyari" vermesi dosyanin dogru oldugunu GOSTERMEZ. Olculmus
-vaka: Sollumz'un yazdigi ped .yft'i oyunu ~4 saniyede cokertiyordu; export
-tek bir uyari vermemisti. Sebep bir alanin YANLIS DEGERI degil, bir dugumun
-HIC OLMAMASIYDI. Alan alan deger karsilastiran hicbir denetim bunu yakalamaz;
-"hangi dugumler var, hangileri yok" karsilastirmasi yakalar.
+WHY STRUCTURE, NOT VALUES
+=========================
+An export reporting "0 warnings" does NOT SHOW that the file is correct.
+Measured case: a ped .yft written by Sollumz crashed the game in ~4 seconds;
+the export had not given a single warning. The cause was not a WRONG VALUE in
+a field but a node that DID NOT EXIST AT ALL. No check that compares values
+field by field catches that; a "which nodes exist, which do not" comparison
+does.
 
-Olcum (bu arac yazilirken yapildi): vanilla mp_m_freemode_01.yft'te
-`<Physics>` dugumu HIC YOKTUR. Yani "ped .yft'ini fiziksiz gonder" tavsiyesi
-vanilla'nin zaten yaptigi seydir -- ve fazladan bir `Physics` dugumu bu diff'te
-"SENDE VAR, VANILLA'DA YOK" olarak gorunur.
+Measurement (made while this tool was written): vanilla mp_m_freemode_01.yft
+has NO `<Physics>` node at all. So the advice "ship the ped .yft without
+physics" is what vanilla already does -- and an extra `Physics` node shows up
+in this diff as "IN YOURS, NOT IN VANILLA".
 
-SINIR CIZGISI RAPORLANIR
+THE BOUNDARY IS REPORTED
 ========================
-Bir alt agacin tamami eksikse her torunu ayri ayri yazmak gurultudur
-(`Physics` yoksa altindaki 200 yol da yoktur). Bu yuzden yalnizca EBEVEYNI
-IKI TARAFTA DA BULUNAN yollar bildirilir: farkin basladigi sinir.
+When a whole subtree is missing, printing each descendant separately is noise
+(if `Physics` is missing, the 200 paths under it are missing too). So only
+paths whose PARENT EXISTS ON BOTH SIDES are reported: the boundary where the
+difference starts.
 
-KULLANIM
-========
-    python assetdb.py diff <seninki> <vanilla>
+USAGE
+=====
+    python assetdb.py diff <yours> <vanilla>
     python assetdb.py diff mine.yft vanilla.yft --limit 40
 """
 from __future__ import annotations
@@ -32,125 +34,128 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from res_xml import kok_oku  # noqa: E402
+from res_xml import read_root  # noqa: E402
 
-# Ayni yolun iki tarafta da bulundugu ama adedin cok farkli oldugu durum.
-# Esik olculmus bir sabit degil, gurultu filtresidir: 2 kat ve uzeri fark
-# "ayni yapinin farkli doluluğu" degil, "farkli yapi" isaretidir.
-ADET_ORANI = 2.0
+# The same path exists on both sides but the counts are very different.
+# The threshold is not a measured constant, it is a noise filter: a difference
+# of 2x or more signals "a different structure", not "the same structure
+# filled differently".
+COUNT_RATIO = 2.0
 
 
-def yol_sayaci(kok):
-    """{indekssiz dugum yolu: adet}. Indeks atilir ki Item[3] ile Item[7]
-    ayni yol sayilsin -- karsilastirilan sey yapi, icerik degil."""
-    sayac = collections.Counter({kok.tag: 1})
-    yigin = [(kok, kok.tag)]
-    while yigin:
-        el, yol = yigin.pop()
+def path_counter(root):
+    """{node path without indices: count}. Indices are dropped so that Item[3]
+    and Item[7] count as the same path -- what is compared is structure, not
+    content."""
+    counter = collections.Counter({root.tag: 1})
+    stack = [(root, root.tag)]
+    while stack:
+        el, path = stack.pop()
         for c in el:
-            y = f"{yol}/{c.tag}"
-            sayac[y] += 1
-            yigin.append((c, y))
-    return sayac
+            p = f"{path}/{c.tag}"
+            counter[p] += 1
+            stack.append((c, p))
+    return counter
 
 
-def _ebeveyn(yol):
-    return yol.rsplit("/", 1)[0] if "/" in yol else None
+def _parent(path):
+    return path.rsplit("/", 1)[0] if "/" in path else None
 
 
-def sinir_yollari(eksikler, ortak):
-    """Farkin BASLADIGI yollar: ebeveyni iki tarafta da bulunanlar."""
-    return [y for y in eksikler if _ebeveyn(y) is None or _ebeveyn(y) in ortak]
+def boundary_paths(missing, common):
+    """The paths where the difference STARTS: those whose parent exists on both sides."""
+    return [p for p in missing if _parent(p) is None or _parent(p) in common]
 
 
-def karsilastir(a_sayac, b_sayac):
-    """a=seninki, b=vanilla. (sende_yok, sende_fazla, adet_farki) dondurur."""
-    a, b = set(a_sayac), set(b_sayac)
-    ortak = a & b
-    sende_yok = sorted(sinir_yollari(b - a, ortak))
-    sende_fazla = sorted(sinir_yollari(a - b, ortak))
+def compare(a_counter, b_counter):
+    """a=yours, b=vanilla. Returns (missing_in_yours, extra_in_yours, count_diff)."""
+    a, b = set(a_counter), set(b_counter)
+    common = a & b
+    missing_in_yours = sorted(boundary_paths(b - a, common))
+    extra_in_yours = sorted(boundary_paths(a - b, common))
 
-    # Adet farkinda da SINIR raporlanir. Bir dugum 3'e 1 farkliysa butun
-    # cocuklari da 3'e 1 farklidir; 12 satirin tamami tek sebepten cikar.
-    # Yalnizca EBEVEYNININ adetleri esit olan yollar bildirilir: farkin
-    # basladigi yer. (Olculdu: custom prop vs vanilla supurge -> 12 satir 2'ye
-    # dustu, bilgi kaybi olmadan.)
-    adet = []
-    for y in sorted(ortak):
-        na, nb = a_sayac[y], b_sayac[y]
+    # The BOUNDARY is reported for count differences too. If a node differs
+    # 3 to 1, all its children differ 3 to 1 as well; all 12 lines come from a
+    # single cause. Only paths whose PARENT's counts are equal are reported:
+    # where the difference starts. (Measured: custom prop vs vanilla broom ->
+    # 12 lines dropped to 2, with no loss of information.)
+    count_diff = []
+    for p in sorted(common):
+        na, nb = a_counter[p], b_counter[p]
         if na == nb:
             continue
-        buyuk, kucuk = max(na, nb), min(na, nb)
-        if kucuk != 0 and buyuk / kucuk < ADET_ORANI:
+        larger, smaller = max(na, nb), min(na, nb)
+        if smaller != 0 and larger / smaller < COUNT_RATIO:
             continue
-        ust = _ebeveyn(y)
-        if ust and ust in ortak and a_sayac[ust] != b_sayac[ust]:
-            continue  # fark yukarida basliyor, burada tekrar etme
-        adet.append((y, na, nb))
-    return sende_yok, sende_fazla, adet
+        parent = _parent(p)
+        if parent and parent in common and a_counter[parent] != b_counter[parent]:
+            continue  # the difference starts higher up, do not repeat it here
+        count_diff.append((p, na, nb))
+    return missing_in_yours, extra_in_yours, count_diff
 
 
-def _yaz(baslik, satirlar, limit, aciklama=""):
-    if not satirlar:
+def _print_section(title, lines, limit, explanation=""):
+    if not lines:
         return
-    print(f"\n=== {baslik} ({len(satirlar)}) ===")
-    if aciklama:
-        print(f"  {aciklama}")
-    for s in satirlar[:limit]:
+    print(f"\n=== {title} ({len(lines)}) ===")
+    if explanation:
+        print(f"  {explanation}")
+    for s in lines[:limit]:
         print(f"  {s}")
-    if len(satirlar) > limit:
-        print(f"  ... ve {len(satirlar) - limit} tane daha (--limit ile artir)")
+    if len(lines) > limit:
+        print(f"  ... and {len(lines) - limit} more (raise with --limit)")
 
 
-def calistir(args):
-    from doctor_common import _tr
+def run(args):
+    """Runs the diff and returns the exit code (assetdb.py calls it)."""
+    from doctor_common import _localize
 
-    kok_a, hata_a = kok_oku(args.mine)
-    if hata_a:
-        print(f"ERROR: {args.mine}: {hata_a}", file=sys.stderr)
-        print("  " + _tr({
+    root_a, error_a = read_root(args.mine)
+    if error_a:
+        print(f"ERROR: {args.mine}: {error_a}", file=sys.stderr)
+        print("  " + _localize({
             "tr": "Karsilastirma YAPILMADI - sonuc hakkinda hicbir sey iddia edilemez.",
             "en": "Comparison NOT performed - nothing can be claimed about the result."}),
             file=sys.stderr)
         return 2
-    kok_b, hata_b = kok_oku(args.vanilla)
-    if hata_b:
-        print(f"ERROR: {args.vanilla}: {hata_b}", file=sys.stderr)
-        print("  " + _tr({
+    root_b, error_b = read_root(args.vanilla)
+    if error_b:
+        print(f"ERROR: {args.vanilla}: {error_b}", file=sys.stderr)
+        print("  " + _localize({
             "tr": "Karsilastirma YAPILMADI - sonuc hakkinda hicbir sey iddia edilemez.",
             "en": "Comparison NOT performed - nothing can be claimed about the result."}),
             file=sys.stderr)
         return 2
 
-    if kok_a.tag != kok_b.tag:
-        print(f"UYARI: kok dugumler farkli ({kok_a.tag} vs {kok_b.tag}) - "
-              f"muhtemelen farkli kaynak tipleri karsilastiriliyor.")
+    if root_a.tag != root_b.tag:
+        print(f"WARNING: the root nodes differ ({root_a.tag} vs {root_b.tag}) - "
+              f"probably different resource types are being compared.")
 
-    sa, sb = yol_sayaci(kok_a), yol_sayaci(kok_b)
-    sende_yok, sende_fazla, adet = karsilastir(sa, sb)
+    ca, cb = path_counter(root_a), path_counter(root_b)
+    missing_in_yours, extra_in_yours, count_diff = compare(ca, cb)
 
-    print(f"SENINKI : {os.path.basename(args.mine)}   ({kok_a.tag}, "
-          f"{len(sa)} farkli yol)")
-    print(f"VANILLA : {os.path.basename(args.vanilla)}   ({kok_b.tag}, "
-          f"{len(sb)} farkli yol)")
+    print(f"YOURS   : {os.path.basename(args.mine)}   ({root_a.tag}, "
+          f"{len(ca)} distinct paths)")
+    print(f"VANILLA : {os.path.basename(args.vanilla)}   ({root_b.tag}, "
+          f"{len(cb)} distinct paths)")
 
-    _yaz("VANILLA'DA VAR, SENDE YOK", sende_yok, args.limit,
-         "En tehlikeli yon: motorun bekledigi bir yapi eksik olabilir.")
-    _yaz("SENDE VAR, VANILLA'DA YOK", sende_fazla, args.limit,
-         "Fazladan yapi. Ped .yft'inde 'Physics' burada gorunuyorsa cikar.")
-    if adet:
-        print(f"\n=== ADET FARKI ({len(adet)}) ===")
-        print(f"  Ayni yol iki tarafta da var ama sayi {ADET_ORANI:g}x+ farkli.")
-        for y, na, nb in adet[:args.limit]:
-            print(f"  {y}   seninki={na}  vanilla={nb}")
-        if len(adet) > args.limit:
-            print(f"  ... ve {len(adet) - args.limit} tane daha")
+    _print_section("IN VANILLA, NOT IN YOURS", missing_in_yours, args.limit,
+                   "The most dangerous direction: a structure the engine expects may be missing.")
+    _print_section("IN YOURS, NOT IN VANILLA", extra_in_yours, args.limit,
+                   "Extra structure. If 'Physics' shows up here for a ped .yft, remove it.")
+    if count_diff:
+        print(f"\n=== COUNT DIFFERENCE ({len(count_diff)}) ===")
+        print(f"  The same path exists on both sides but the count differs {COUNT_RATIO:g}x+.")
+        for p, na, nb in count_diff[:args.limit]:
+            print(f"  {p}   yours={na}  vanilla={nb}")
+        if len(count_diff) > args.limit:
+            print(f"  ... and {len(count_diff) - args.limit} more")
 
-    toplam = len(sende_yok) + len(sende_fazla) + len(adet)
+    total = len(missing_in_yours) + len(extra_in_yours) + len(count_diff)
     print()
-    if toplam == 0:
-        print("YAPISAL FARK YOK - iki dosya ayni dugum kumesine sahip.")
+    if total == 0:
+        print("NO STRUCTURAL DIFFERENCE - both files have the same node set.")
         return 0
-    print(f"{len(sende_yok)} eksik | {len(sende_fazla)} fazla | "
-          f"{len(adet)} adet farki")
+    print(f"{len(missing_in_yours)} missing | {len(extra_in_yours)} extra | "
+          f"{len(count_diff)} count differences")
     return 1

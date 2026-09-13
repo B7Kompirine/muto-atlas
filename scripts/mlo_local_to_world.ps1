@@ -1,17 +1,17 @@
-﻿# mlo_local_to_world.ps1 — bir MLO ic mekanindaki YEREL koordinatlari
-# tum dunya yerlesimlerine cevirir.
+﻿# mlo_local_to_world.ps1 - converts LOCAL coordinates inside an MLO interior
+# into all of its world placements.
 #
-# NEDEN: bir MLO'nun icindeki bir noktayi (or. kasa duvarindaki kutu hucresi)
-# Blender'da modelin yerel uzayinda buluyoruz. Oyunda kullanmak icin o nokta
-# once ic mekandaki PARCA'nin (drawable entity) yerlesiminden, sonra MLO'nun
-# dunya yerlesiminden gecmeli. Ayni MLO haritada birden fazla yerde olabilir
-# (Fleeca 6 subede) — hepsi icin ayri ayri hesaplanir.
+# WHY: we find a point inside an MLO (e.g. a box cell on the vault wall)
+# in Blender, in the model's local space. To use it in the game that point must go
+# first through the placement of the PART (drawable entity) inside the interior, then through
+# the MLO's world placement. The same MLO can be in several places on the map
+# (Fleeca: 6 locations) - it is computed for each one separately.
 #
-# ZINCIR:  panelLocal -> (parca pos/rot) -> mloLocal -> (mlo pos/rot) -> world
-# Ham quaternion dogru konvansiyon; build_entities.ps1 ile ayni matematik
-# (v_ilev_gb_teldr @ Legion ile dogrulandi).
+# CHAIN:  panelLocal -> (part pos/rot) -> mloLocal -> (mlo pos/rot) -> world
+# The raw quaternion is the right convention; same math as build_entities.ps1
+# (verified with v_ilev_gb_teldr @ Legion).
 #
-# Kullanim:
+# Usage:
 #   powershell -File mlo_local_to_world.ps1 `
 #       -Mlo v_genbank -Part v_10_gen_country_bank `
 #       -CellsJson <...\depobox_cells_local.json> -OutJson <...\cells_world.json>
@@ -28,9 +28,9 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
-if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll bulunamadi." }
+if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll not found." }
 $GtaFolder = & "$PSScriptRoot\paths.ps1" gta $GtaFolder
-if (-not $GtaFolder) { throw "GTA V klasoru bulunamadi." }
+if (-not $GtaFolder) { throw "GTA V folder not found." }
 
 $cwDir = Split-Path $CodeWalker -Parent
 $script:cwDir = $cwDir
@@ -62,7 +62,7 @@ public static class MloToWorld
 
     class Cell { public float X, Y, Z, NX, NY; }
 
-    // Cok kucuk bir JSON okuyucu: bu dosyanin sekli sabit (duz sayi alanlari).
+    // A very small JSON reader: the shape of this file is fixed (flat number fields).
     static List<Cell> ReadCells(string path)
     {
         var list = new List<Cell>();
@@ -86,9 +86,9 @@ public static class MloToWorld
         int i = s.IndexOf(key);
         if (i < 0) return 0f;
         i = s.IndexOf(':', i) + 1;
-        // Iki noktadan sonraki BOSLUGU atla. Atlamayinca tarayici hemen
-        // durup bos string donuyordu -> her alan 0 okunuyor -> tum hucreler
-        // tek noktaya cokuyordu. (Ilk calistirmadaki hata tam buydu.)
+        // Skip the WHITESPACE after the colon. Without skipping, the scanner stopped at once
+        // and returned an empty string -> every field read as 0 -> all cells
+        // collapsed onto one point. (That was exactly the bug in the first run.)
         while (i < s.Length && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r')) i++;
         int j = i;
         while (j < s.Length && (char.IsDigit(s[j]) || s[j] == '-' || s[j] == '.' || s[j] == '+' || s[j] == 'e' || s[j] == 'E')) j++;
@@ -100,8 +100,8 @@ public static class MloToWorld
     public static void Run(string gtaFolder, string mloName, string partName, string cellsJson, string outJson)
     {
         var cells = ReadCells(cellsJson);
-        Console.WriteLine("[*] yerel hucre: {0}", cells.Count);
-        if (cells.Count == 0) { Console.WriteLine("[!] hucre okunamadi"); return; }
+        Console.WriteLine("[*] local cells: {0}", cells.Count);
+        if (cells.Count == 0) { Console.WriteLine("[!] could not read cells"); return; }
 
         uint mloHash  = Joaat(mloName);
         uint partHash = Joaat(partName);
@@ -110,7 +110,7 @@ public static class MloToWorld
         var man = new RpfManager();
         man.Init(gtaFolder, s => { }, s => { }, false, true);
 
-        // 1) MLO archetype icinde PARCA'nin yerel yerlesimi
+        // 1) Local placement of the PART inside the MLO archetype
         Vector3 partPos = Vector3.Zero;
         Quaternion partRot = Quaternion.Identity;
         bool partFound = false;
@@ -147,19 +147,19 @@ public static class MloToWorld
             if (partFound) break;
         }
 
-        if (!partFound) { Console.WriteLine("[!] {0} MLO'sunda {1} bulunamadi", mloName, partName); return; }
-        Console.WriteLine("[*] parca yerel konum: ({0:0.000}, {1:0.000}, {2:0.000})", partPos.X, partPos.Y, partPos.Z);
-        Console.WriteLine("[*] parca rotasyon (ham): ({0:0.####}, {1:0.####}, {2:0.####}, {3:0.####}) uzunluk={4:0.####}",
+        if (!partFound) { Console.WriteLine("[!] {1} not found in MLO {0}", mloName, partName); return; }
+        Console.WriteLine("[*] part local position: ({0:0.000}, {1:0.000}, {2:0.000})", partPos.X, partPos.Y, partPos.Z);
+        Console.WriteLine("[*] part rotation (raw): ({0:0.####}, {1:0.####}, {2:0.####}, {3:0.####}) length={4:0.####}",
             partRot.X, partRot.Y, partRot.Z, partRot.W, partRot.Length());
 
-        // DEJENERE QUATERNION KORUMASI.
-        // Bazi entity'lerde rotasyon (0,0,0,0) olarak duruyor. Bununla
-        // Vector3.Transform SIFIR vektor dondurur ve tum noktalar tek yere
-        // coker (ilk denemede 233 hucrenin hepsi ayni koordinata dustu).
-        // Uzunlugu ~0 olan quaternion'u birim kabul ediyoruz.
-        partRot = SafeQuat(partRot, "parca");
+        // DEGENERATE QUATERNION GUARD.
+        // Some entities store the rotation as (0,0,0,0). With that,
+        // Vector3.Transform returns a ZERO vector and all points collapse onto one spot
+        // (in the first attempt all 233 cells landed on the same coordinate).
+        // A quaternion with length ~0 is treated as identity.
+        partRot = SafeQuat(partRot, "part");
 
-        // 2) MLO'nun dunya yerlesimleri (ayni MLO birden fazla yerde olabilir)
+        // 2) World placements of the MLO (the same MLO can be in several places)
         var seen = new HashSet<string>();
         var sb = new StringBuilder();
         sb.Append("{\n \"mlo\": \"").Append(mloName).Append("\",\n \"part\": \"").Append(partName).Append("\",\n \"sites\": [\n");
@@ -203,7 +203,7 @@ public static class MloToWorld
                         var mlocal = partPos + Vector3.Transform(pl, partRot);
                         // mloLocal -> world
                         var w = mloPos + Vector3.Transform(mlocal, mloRot);
-                        // dis normal de ayni donusumlerden gecer (yon, konum degil)
+                        // the outward normal goes through the same transforms (direction, not position)
                         var nl = new Vector3(c.NX, c.NY, 0f);
                         var nw = Vector3.Transform(Vector3.Transform(nl, partRot), mloRot);
                         double head = Math.Atan2(nw.Y, nw.X) * 180.0 / Math.PI;
@@ -220,7 +220,7 @@ public static class MloToWorld
 
         sb.Append("\n ]\n}\n");
         File.WriteAllText(outJson, sb.ToString(), new UTF8Encoding(false));
-        Console.WriteLine("[+] {0} sube x {1} hucre -> {2}", siteCount, cells.Count, outJson);
+        Console.WriteLine("[+] {0} sites x {1} cells -> {2}", siteCount, cells.Count, outJson);
     }
 
     static string F(float v) { return v.ToString("0.####", CultureInfo.InvariantCulture); }
@@ -230,7 +230,7 @@ public static class MloToWorld
     {
         if (q.Length() < 0.001f)
         {
-            if (!warned) { Console.WriteLine("[!] {0} rotasyonu dejenere (0,0,0,0) -> birim kabul edildi", what); warned = true; }
+            if (!warned) { Console.WriteLine("[!] {0} rotation is degenerate (0,0,0,0) -> treated as identity", what); warned = true; }
             return Quaternion.Identity;
         }
         q.Normalize();
@@ -239,10 +239,10 @@ public static class MloToWorld
 }
 '@
 
-# 'System.Collections'/'System.Runtime'/'System.Console' SART: PowerShell 7 (.NET 8+)
-# altinda bu tipler netstandard'dan FORWARD edilmis durumda; referans verilmezse
-# Add-Type "CS1069: type has been forwarded" / "CS0103: Console does not exist"
-# ile coker. Windows PowerShell 5.1'de sorun cikmaz, PS7'de her seferinde cikar.
+# 'System.Collections'/'System.Runtime'/'System.Console' are REQUIRED: under PowerShell 7 (.NET 8+)
+# these types are FORWARDED from netstandard; without a reference
+# Add-Type crashes with "CS1069: type has been forwarded" / "CS0103: Console does not exist".
+# Windows PowerShell 5.1 has no problem with it; PS7 fails every time.
 $refs = @($CodeWalker, (Join-Path $cwDir 'SharpDX.dll'), (Join-Path $cwDir 'SharpDX.Mathematics.dll'), 'netstandard',
           'System.Collections', 'System.Runtime', 'System.Linq', 'System.Console', 'System.IO.Compression', 'System.Text.RegularExpressions')
 Add-Type -TypeDefinition $src -ReferencedAssemblies $refs -Language CSharp

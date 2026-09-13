@@ -1,24 +1,24 @@
-﻿# build_timecycle.ps1 — GTA V TIMECYCLE MODIFIER KATALOGU.
+﻿# build_timecycle.ps1 - GTA V TIMECYCLE MODIFIER CATALOG.
 #
-# NEDEN: bir prop'un ic mekanda neden koyu gorundugu genellikle prop'ta degil,
-# odanin TIMECYCLE MODIFIER'indadir. Oda `timecycleName` ile bir modifier'a
-# baglanir; o modifier ortam isigini, sis yogunlugunu, pozlamayi ezer. Isigi
-# dogru kurup hala "karanlik" goruyorsan sebebi burasidir -- ve bu dosyaya
-# bakmadan tahmin edilemez.
+# WHY: when a prop looks dark inside an interior, the cause is usually not the prop but
+# the room's TIMECYCLE MODIFIER. A room is bound to a modifier by `timecycleName`;
+# that modifier overrides ambient light, fog density and exposure. If you set the light up
+# correctly and still see "dark", this is the reason -- and it cannot be guessed
+# without looking at this file.
 #
-# ONEMLI: ayni dosya adi (timecycle_mods_1.xml) BIRDEN COK DLC rpf'sinde
-# bulunur. extract_asset.ps1 ile ada gore cikarmak SESSIZCE ust uste yazar
-# (12 dosyadan 4'u kalir). Bu yuzden burada RPF'ler kendimiz gezilir ve her
-# satir HANGI RPF'ten geldigiyle birlikte yazilir. Ayni modifier'i birden cok
-# DLC tanimliyorsa ikisi de kayda gecer; hangisinin kazandigi DLC yukleme
-# sirasina baglidir ve bu dosyadan OKUNAMAZ -- o yuzden gizlenmez, gosterilir.
+# IMPORTANT: the same file name (timecycle_mods_1.xml) exists in SEVERAL DLC rpfs.
+# Extracting by name with extract_asset.ps1 SILENTLY overwrites them
+# (4 of 12 files remain). So here we walk the RPFs ourselves and every
+# row is written together with WHICH RPF it came from. If several DLCs define the
+# same modifier, all of them are recorded; which one wins depends on the DLC load
+# order and CANNOT BE READ from this file -- so it is shown, not hidden.
 #
-# XML YAPISI:
+# XML STRUCTURE:
 #   <timecycle_modifier_data>
 #     <modifier name="li" numMods="32" userFlags="0">
 #       <light_dir_col_r>0.886 0.000</light_dir_col_r>   <- value1 value2
 #
-# Kullanim:
+# Usage:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File build_timecycle.ps1
 
 param(
@@ -33,9 +33,9 @@ if (-not $Out) { $Out = Join-Path (Split-Path $PSScriptRoot -Parent) 'data' }
 if (-not (Test-Path -LiteralPath $Out)) { New-Item -ItemType Directory -Path $Out | Out-Null }
 
 $CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
-if (-not $CodeWalker -or -not (Test-Path -LiteralPath $CodeWalker)) { throw "CodeWalker.Core.dll bulunamadi." }
+if (-not $CodeWalker -or -not (Test-Path -LiteralPath $CodeWalker)) { throw "CodeWalker.Core.dll not found." }
 $GtaFolder = & "$PSScriptRoot\paths.ps1" gta $GtaFolder
-if (-not $GtaFolder) { throw "GTA V klasoru bulunamadi." }
+if (-not $GtaFolder) { throw "GTA V folder not found." }
 
 $cwDir = Split-Path $CodeWalker -Parent
 Write-Output "CodeWalker : $CodeWalker"
@@ -74,79 +74,79 @@ public static class TimecycleIndexer
         var man = new RpfManager();
         man.Init(gtaFolder, s => { }, s => { }, false, true);
 
-        var dosyalar = new List<RpfFileEntry>();
+        var files = new List<RpfFileEntry>();
         foreach (var rpf in man.AllRpfs)
             foreach (var e in rpf.AllEntries)
             {
                 var fe = e as RpfFileEntry;
                 if (fe == null) continue;
                 var n = fe.NameLower;
-                if (n.StartsWith("timecycle_mods") && n.EndsWith(".xml")) dosyalar.Add(fe);
+                if (n.StartsWith("timecycle_mods") && n.EndsWith(".xml")) files.Add(fe);
             }
-        Console.WriteLine("[*] timecycle_mods dosyasi: {0}", dosyalar.Count);
+        Console.WriteLine("[*] timecycle_mods files: {0}", files.Count);
 
         var t0 = DateTime.Now;
         var sb = new StringBuilder(1 << 22);
         sb.Append("modifier\tparam\tvalue1\tvalue2\tnumMods\tsource\n");
 
-        var modAd = new Dictionary<string, int>();      // ad -> kac kaynakta tanimli
-        int nSatir = 0, hata = 0;
-        string ilkHata = null;
+        var modSources = new Dictionary<string, int>();      // name -> how many sources define it
+        int nRows = 0, errors = 0;
+        string firstError = null;
 
-        foreach (var fe in dosyalar)
+        foreach (var fe in files)
         {
             try
             {
                 var data = fe.File.ExtractFile(fe);
-                if (data == null || data.Length == 0) { hata++; continue; }
-                var metin = Encoding.UTF8.GetString(data);
+                if (data == null || data.Length == 0) { errors++; continue; }
+                var text = Encoding.UTF8.GetString(data);
                 var doc = new XmlDocument();
-                doc.LoadXml(metin);
+                doc.LoadXml(text);
 
-                // Kaynak = iceren rpf'in yolu; ayni dosya adi birden cok DLC'de var.
-                string kaynak = fe.File.Path + "/" + fe.Name;
+                // Source = path of the containing rpf; the same file name exists in several DLCs.
+                string source = fe.File.Path + "/" + fe.Name;
 
                 var mods = doc.SelectNodes("//modifier");
                 foreach (XmlNode m in mods)
                 {
-                    var adAttr = m.Attributes["name"];
-                    if (adAttr == null) continue;
-                    string ad = Clean(adAttr.Value);
-                    if (ad.Length == 0) continue;
+                    var nameAttr = m.Attributes["name"];
+                    if (nameAttr == null) continue;
+                    string name = Clean(nameAttr.Value);
+                    if (name.Length == 0) continue;
                     string numMods = "";
                     var nmAttr = m.Attributes["numMods"];
                     if (nmAttr != null) numMods = nmAttr.Value;
 
-                    if (modAd.ContainsKey(ad)) modAd[ad] = modAd[ad] + 1; else modAd[ad] = 1;
+                    if (modSources.ContainsKey(name)) modSources[name] = modSources[name] + 1; else modSources[name] = 1;
 
                     foreach (XmlNode p in m.ChildNodes)
                     {
                         if (p.NodeType != XmlNodeType.Element) continue;
-                        var parca = Clean(p.InnerText).Split(new char[] { ' ', '\t' },
+                        var parts = Clean(p.InnerText).Split(new char[] { ' ', '\t' },
                                                              StringSplitOptions.RemoveEmptyEntries);
-                        string v1 = (parca.Length > 0) ? parca[0] : "";
-                        string v2 = (parca.Length > 1) ? parca[1] : "";
-                        sb.Append(ad).Append('\t')
+                        string v1 = (parts.Length > 0) ? parts[0] : "";
+                        string v2 = (parts.Length > 1) ? parts[1] : "";
+                        sb.Append(name).Append('\t')
                           .Append(Clean(p.Name)).Append('\t')
                           .Append(v1).Append('\t').Append(v2).Append('\t')
                           .Append(numMods).Append('\t')
-                          .Append(Clean(kaynak)).Append('\n');
-                        nSatir++;
+                          .Append(Clean(source)).Append('\n');
+                        nRows++;
                     }
                 }
             }
             catch (Exception ex)
             {
-                hata++;
-                if (ilkHata == null) ilkHata = fe.Name + ": " + ex.Message;
+                errors++;
+                if (firstError == null) firstError = fe.Name + ": " + ex.Message;
             }
         }
 
-        Console.WriteLine("[*] okunan dosya: {0}, hata: {1}", dosyalar.Count - hata, hata);
-        if (ilkHata != null) Console.WriteLine("[!] ilk hata: {0}", ilkHata);
+        Console.WriteLine("[*] files read: {0}, errors: {1}", files.Count - errors, errors);
+        if (firstError != null) Console.WriteLine("[!] first error: {0}", firstError);
 
-        int cokKaynakli = 0;
-        foreach (var kv in modAd) if (kv.Value > 1) cokKaynakli++;
+        int multiSource = 0;
+        foreach (var kv in modSources) if (kv.Value > 1) multiSource++;
 
         var outPath = Path.Combine(outFolder, "timecycle.tsv.gz");
         var raw = Encoding.UTF8.GetBytes(sb.ToString());
@@ -154,10 +154,10 @@ public static class TimecycleIndexer
         using (var gz = new GZipStream(fs, CompressionLevel.Optimal))
             gz.Write(raw, 0, raw.Length);
 
-        Console.WriteLine("[+] timecycle.tsv.gz  ({0} benzersiz modifier / {1} parametre satiri)",
-                          modAd.Count, nSatir);
-        Console.WriteLine("[+] birden cok kaynakta tanimli modifier: {0}", cokKaynakli);
-        Console.WriteLine("[+] {0:0.0} sn", (DateTime.Now - t0).TotalSeconds);
+        Console.WriteLine("[+] timecycle.tsv.gz  ({0} unique modifiers / {1} parameter rows)",
+                          modSources.Count, nRows);
+        Console.WriteLine("[+] modifiers defined in more than one source: {0}", multiSource);
+        Console.WriteLine("[+] {0:0.0} s", (DateTime.Now - t0).TotalSeconds);
     }
 }
 '@

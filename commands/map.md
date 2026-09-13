@@ -1,23 +1,23 @@
 ---
 description: Map branch - replace vanilla parts, destruction (RayFire), MLO props and swaps, LOD chains, vanilla interior measurements, grass/procedural
-argument-hint: <ne olacak — "köprü çöksün" / "yolu değiştir" / "bankaya kasa koy" / "uzakta kayboluyor" / "çim">
+argument-hint: <what should happen — "make the bridge collapse" / "change the road" / "put a safe in the bank" / "it disappears at a distance" / "grass">
 allowed-tools: Bash(powershell.exe:*), Bash(python:*), Read, Edit, Write, Glob, Grep, AskUserQuestion
 ---
 
-Argüman: `$ARGUMENTS`
+Argument: `$ARGUMENTS`
 
-Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içeren muto-atlas klasörü).
+Plugin root: `${CLAUDE_PLUGIN_ROOT}` (if it cannot be found, the muto-atlas folder that contains `scripts/assetdb.py`).
 
-## Bu bir DAL komutudur
+## This is a BRANCH command
 
-1. **Önce dalı oku:** `${CLAUDE_PLUGIN_ROOT}/skills/fivem-assets/branches/map/_branch.md`
-   — MLO içi/dışı, extent, LOD zinciri + `hei_`, ymap sürümleri, RayFire'ın üç varlığı, çimin dört sistemi.
-2. Argümandan **tek yaprağı** seç: vanilla parça · yıkım · MLO swap · MLO'ya prop · LOD · iç mekân ölçüsü · çim.
-   Tarif belirsizse (*"duvar kırılsın"*, *"kapı patlasın"*) `AskUserQuestion`: harita parçası mı script prop'u mu ·
-   kalıcı enkaz kalacak mı · herkes aynı anda mı görecek · yıkım sırasında üstünde yürünecek mi.
-3. Kod yazmadan sorgula: `assetdb.py where <ad>` · `mlo <ad>` · `lodchain <ad>` · `flags <n> --entity` · `near x y z`.
-4. Asset değişti → **sunucudan çık, yeniden bağlan.**
+1. **Read the branch first:** `${CLAUDE_PLUGIN_ROOT}/skills/fivem-assets/branches/map/_branch.md`
+   — inside/outside an MLO, extent, LOD chain + `hei_`, ymap versions, the three assets of RayFire, the four systems of grass.
+2. Pick **one leaf** from the argument: vanilla part · destruction · MLO swap · prop into an MLO · LOD · interior measurements · grass.
+   If the description is ambiguous (*"break the wall"*, *"blow the door up"*), `AskUserQuestion`: map part or script prop ·
+   will permanent debris remain · will everyone see it at the same time · will people walk on it during the destruction.
+3. Query before writing code: `assetdb.py where <name>` · `mlo <name>` · `lodchain <name>` · `flags <n> --entity` · `near x y z`.
+4. Asset changed → **leave the server and reconnect.**
 
-## Sonucu sunarken
-- Sihirli sayıyı (`1572872`, `18350080`) çözerek söyle, kopyalama.
-- Extent'e dokunulmadığını, `hei_` ikizinin yamalandığını, oda atamasının yapıldığını açıkça yaz.
+## When presenting the result
+- Decode a magic number (`1572872`, `18350080`) when you mention it; do not copy it.
+- State explicitly that the extent was not touched, the `hei_` twin was patched and the room assignment was done.

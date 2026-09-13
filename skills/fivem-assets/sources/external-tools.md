@@ -1,105 +1,105 @@
-# Dış araç gözlemleri — başkasının hattından ölçülebilen şeyler
+# External tool observations — what can be measured from someone else's pipeline
 
-**Kaynak notu — kural değil.** Dış araçların (Five Toolkit vb.) ölçülebilen kısmı ve [doğrulandı]/[çürütüldü] etiket sistemi. Taşındı: `sources/external-tools.md` (2026-09-05). Ham kopyalar `_dis-kaynak/` yanında.
+**Source note — not a rule.** The measurable part of external tools (Five Toolkit etc.) and the [verified]/[refuted] tag system. Moved: `sources/external-tools.md` (2026-09-05). Raw copies are kept alongside, in `_external/`.
 
-Bu dosya **atlas'ın ölçüm korpusu değildir.** Buradaki sayıların bir kısmı
-üçüncü taraf bir aracın ürün tercihidir; vanilla'dan ölçülmüş değerler
-`data/` altındaki tablolarda ve diğer referanslardadır.
+This file **is not the atlas's measurement corpus.** Some of the numbers here
+are a third-party tool's product choices; values measured from vanilla are
+in the tables under `data/` and in the other references.
 
-| İşaret | Anlamı |
+| Tag | Meaning |
 |---|---|
-| **[doğrulandı]** | Bizim veriyle karşılaştırıldı, tuttu. Kullanılabilir. |
-| **[dış kaynak]** | Aracın kendi verisi. Doğru olabilir, ölçüm değildir. |
-| **[çürütüldü]** | Bizim ölçümümüzle çeliştiği doğrulandı. Kullanma. |
-| **[alınacak]** | Politika/yaklaşım olarak bizim hattımıza değer. |
+| **[verified]** | Compared with our data, it held. Usable. |
+| **[external]** | The tool's own data. May be right; it is not a measurement. |
+| **[refuted]** | Confirmed to contradict our measurement. Do not use. |
+| **[adopt]** | Worth taking into our pipeline as a policy/approach. |
 
-⛔ **Genel kural:** dış bir araç bir sayı veriyorsa (tag, bayrak, lodDist,
-materyal indeksi) o sayı **kanıt değil iddiadır**. `assetdb.py` ile doğrula.
-Doğrulanmamış bir sayıyı bu dosyadan alıp koda ya da asset'e taşıma —
-`[doğrulandı]` etiketi taşımıyorsa önce ölç.
+⛔ **General rule:** if an external tool gives a number (tag, flag, lodDist,
+material index), that number is **a claim, not evidence**. Verify it with `assetdb.py`.
+Do not take an unverified number from this file into code or an asset —
+if it does not carry the `[verified]` tag, measure it first.
 
 ---
 
 ## 1. FIVE TOOLKIT — `tools.scarfacemlo.com`
 
-**İncelenme:** 2026-09-01 (ana sayfa, `tools.scarfacemlo.com/docs`, 2,09 MB JS bundle, açık API
-uçları). Scarface MLO / "3D Academy" ekibinin ücretsiz, Discord girişiyle
-kapılı, tarayıcı tabanlı FiveM asset üretim hattı.
-Sloganı: *"3D modelden FiveM sunucusuna, Blender yok."*
+**Examined:** 2026-09-01 (home page, `tools.scarfacemlo.com/docs`, 2.09 MB JS bundle, open API
+endpoints). The free, Discord-login-gated, browser-based FiveM asset production pipeline
+of the Scarface MLO / "3D Academy" team.
+Its slogan: *"From 3D model to FiveM server, no Blender."*
 
-### 1.0 Erişim ve mimari [dış kaynak]
+### 1.0 Access and architecture [external]
 
 React + three.js (R3F) + zustand + GSAP, Vite; Caddy + Cloudflare.
-**GTA'ya dokunan her şey sunucuda** — tarayıcı yalnız editör.
-Giriş `/api/auth/discord/login`; `/api/auth/me` →
-`{authEnabled, authenticated, inGuild}`. Araç sayfaları (**/armes**, **/props**, **/optimiseur**, **/shell**)
-giriş arkasında; `/api/shaders` ve
-`/api/shells/catalog` **açık**.
+**Everything that touches GTA runs on the server** — the browser is only the editor.
+Login `/api/auth/discord/login`; `/api/auth/me` →
+`{authEnabled, authenticated, inGuild}`. The tool pages (**/armes**, **/props**, **/optimiseur**, **/shell**)
+are behind login; `/api/shaders` and
+`/api/shells/catalog` are **open**.
 
-CSP'de `wasm-unsafe-eval` var (tarayıcı tarafında WASM çalışıyor).
+The CSP has `wasm-unsafe-eval` (WASM runs on the browser side).
 `connect-src`: Sketchfab + `*.amazonaws.com` + `*.cloudfront.net`.
-Sketchfab içe aktarma **kullanıcının kendi API token'ıyla**, token yalnız
-istemcide saklanıyor. Modellerin saklanmadığı iddia ediliyor.
+Sketchfab import uses **the user's own API token**; the token is stored only on the
+client. They claim that models are not stored.
 
-Araçlar: Weapons Creator (12 adım), Props Creator (6 adım), Resource
-Optimizer (3 adım), Tattoo Creator, Vehicle Debadger, Weapon Editor;
-geliştirmede Shell Creator, Cloth Creator, Map Conflict Fix.
+Tools: Weapons Creator (12 steps), Props Creator (6 steps), Resource
+Optimizer (3 steps), Tattoo Creator, Vehicle Debadger, Weapon Editor;
+in development: Shell Creator, Cloth Creator, Map Conflict Fix.
 
-⚠️ İstemcide **hiçbir kütüphane/plugin atfı yok** (`sollumz`, `codewalker`,
-`plugin`, `credit`, `powered by`, `open source` — sıfır eşleşme). Hangi hattı
-kullandıkları dışarıdan görülmüyor; anlamak için giriş yapıp bir çıktı üretmek
-ve vanilla ile ikili karşılaştırmak gerekir.
+⚠️ The client has **no library/plugin attribution at all** (`sollumz`, `codewalker`,
+`plugin`, `credit`, `powered by`, `open source` — zero matches). Which pipeline they
+use cannot be seen from outside; to find out, you would have to log in, produce an output
+and compare it byte by byte with vanilla.
 
-### 1a. ⛔ Silah kemik tag tablosu YANLIŞ [çürütüldü]
+### 1a. ⛔ The weapon bone tag table is WRONG [refuted]
 
-Özet: `gun_root 0` ve
-`gun_gripr 18308` doğru; `gun_muzzle 55863` ve `gun_vfx_eject 5103` yanlış
-(doğrusu **17833** / **28405**); `gun_mag` · `gun_slide` · `gun_bolt` ·
-`gun_pump` diye kemik **hiç yok** (şarjör yuvası `WAPClip` 1477, kurma kolu
-`Gun_Cock1` 39439). Araç bu iskeleti kendi içinde *"prosedürel siluet"* diye
-işaretliyor ama arayüzde *"GTA adları ve ID'leri korunur"* yazıyor — yani
-kullanıcıya doğruymuş gibi görünüyor.
+Summary: `gun_root 0` and
+`gun_gripr 18308` are right; `gun_muzzle 55863` and `gun_vfx_eject 5103` are wrong
+(correct: **17833** / **28405**); bones called `gun_mag` · `gun_slide` · `gun_bolt` ·
+`gun_pump` **do not exist at all** (the magazine slot is `WAPClip` 1477, the cocking handle
+`Gun_Cock1` 39439). The tool marks this skeleton internally as a *"procedural silhouette"*,
+but the interface says *"GTA names and IDs are preserved"* — so to the
+user it looks correct.
 
-### 1b. [alınacak] "Byte-for-byte" politikası
+### 1b. [adopt] The "byte-for-byte" policy
 
-Weapon Editor ve Optimizer'ın yazılı kuralları. Başkasının kurulu
-resource'una dokunan her işte doğru duruş budur:
+The written rules of Weapon Editor and Optimizer. This is the right stance for any job that
+touches someone else's installed resource:
 
-- Değiştirilmeyen dosya **bit bit aynı** geri döner.
-- Silahın **teknik adı asla değiştirilmez** — resource zaten kurulu, yeniden
-  adlandırmak onu referans alan envanter ve script'leri kırar.
-- `cl_weaponNames.lua` yoksa **başkasının `fxmanifest.lua`'sına
-  `client_script` eklenmez**.
-- Vanilla bileşen modelleri (susturucu, dürbün…) **hiç yeniden yazılmaz**,
-  kendi dokusunu korur.
-- `fxap` (escrow) korumalı dosya **tespit edilir, dokunulmaz**; bozuk/boş
-  dosya **yalnız raporlanır**, düzeltilmeye kalkışılmaz.
-- Eklenen bileşen mevcutların **üstüne** eklenir, hiçbiri değiştirilmez.
-- 3B görünümde **yalnız silah gövdesi** çizilir; zaten kurulu bileşenler ayrı
-  model olduğu için gösterilmez — kullanıcı yeni parça yerleştirirken bu
-  açıkça söylenir. ("Göstermediğimi söyle" iyi bir desen.)
+- A file that is not changed comes back **bit for bit identical**.
+- The weapon's **technical name is never changed** — the resource is already installed; renaming
+  it breaks the inventory and the scripts that reference it.
+- If `cl_weaponNames.lua` does not exist, **no `client_script` is added to someone else's
+  `fxmanifest.lua`**.
+- Vanilla component models (suppressor, scope…) are **never rewritten**;
+  they keep their own texture.
+- A file protected by `fxap` (escrow) is **detected and left untouched**; a broken/empty
+  file is **only reported**, with no attempt to fix it.
+- An added component goes **on top of** the existing ones; none of them are changed.
+- The 3D view draws **only the weapon body**; components that are already installed are separate
+  models, so they are not shown — and the user is told this explicitly while placing a new part.
+  ("Say what I am not showing" is a good pattern.)
 
-### 1c. [dış kaynak] Eşikler — ürün tercihi, ölçüm değil
+### 1c. [external] Thresholds — product choices, not measurements
 
-| Eşik | Değer | Bağlam |
+| Threshold | Value | Context |
 |---|---:|---|
-| Silah "high poly" rozeti | 60.000 vertex | Sketchfab içe aktarmada uyarı |
-| Prop "high poly" rozeti | 37.000 vertex | *"prop, streaming'i silahtan hızlı doldurur"* |
-| "Çok yoğun model" | 150.000 üçgen | precise collision hesabı yavaşlar |
-| Upload tavanı | 100 MB | model + dokular, ya da tam resource |
+| Weapon "high poly" badge | 60,000 vertices | warning on Sketchfab import |
+| Prop "high poly" badge | 37,000 vertices | *"a prop fills streaming faster than a weapon"* |
+| "Very dense model" | 150,000 triangles | precise collision calculation slows down |
+| Upload ceiling | 100 MB | model + textures, or a full resource |
 
-Collision sadeleştirmesi: 1e-4 weld → `SimplifyModifier`, oran **[0.02, 1]**
-aralığına kırpılıyor. Collision modları: **None / Box / Precise**
-(varsayılan `none`, oran `0.5`, materyal `default`).
+Collision simplification: 1e-4 weld → `SimplifyModifier`, the ratio is clamped to the
+**[0.02, 1]** range. Collision modes: **None / Box / Precise**
+(default `none`, ratio `0.5`, material `default`).
 
-⚠️ Bu sayılar bizim poligon bütçesi ölçümlerimizin yerini **tutmaz**
-(ör. vanilla `a_c_rottweiler_02.ydd` = 11.303 üçgen). Kullanıcıya bütçe
-söylerken vanilla'dan ölç, buradan alma.
+⚠️ These numbers **do not replace** our polygon budget measurements
+(e.g. vanilla `a_c_rottweiler_02.ydd` = 11,303 triangles). When you give the user a budget,
+measure it from vanilla; do not take it from here.
 
-### 1d. [dış kaynak] Collision materyalleri — 20'lik kısa liste
+### 1d. [external] Collision materials — a short list of 20
 
-Arayüzde sundukları `bound material` adları (bizim tam tablomuz **185**
-materyal, `assetdb.py mat`):
+The `bound material` names offered in their interface (our full table has **185**
+materials, `assetdb.py mat`):
 
 ```
 default · concrete · brick · stone · marble · tarmac · sand_loose · grass
@@ -108,83 +108,83 @@ metal_hollow_medium · metal_corrugated_iron · glass_shoot_through
 plastic · rubber · cardboard_box · cloth · leather · ceramic
 ```
 
-Ad biçimi doğru (vanilla `METAL_SOLID_MEDIUM` = indeks 56). "Kullanıcıya 20
-seçenek sun, 185'i gösterme" iyi bir ürün kararı — bizim araçlarımızda da
-kısa liste + tam listeye kaçış yolu doğru desen.
+The name format is right (vanilla `METAL_SOLID_MEDIUM` = index 56). "Offer the user 20
+options, do not show 185" is a good product decision — in our tools too, a short list
++ a way out to the full list is the right pattern.
 
-### 1e. [dış kaynak] `/api/shaders` — 106 shader'lık açık tablo
+### 1e. [external] `/api/shaders` — an open table of 106 shaders
 
-Kimlik doğrulaması istemiyor. Alanlar: `name`, `sps`, `renderBucket`, vertex
+It requires no authentication. Fields: `name`, `sps`, `renderBucket`, vertex
 `layout`, `textures[{sampler, required}]`, `params[{name, value}]`.
-Kopya: `_dis-kaynak/five_toolkit_shaders.json`.
+Copy: `_external/five_toolkit_shaders.json`.
 
-Bucket dağılımı: 0 → 55 · 1 → 18 · 2 → 26 · 3 → 6 · 7 → 1
-(bucket 7'deki tek shader `glass_displacement`).
+Bucket distribution: 0 → 55 · 1 → 18 · 2 → 26 · 3 → 6 · 7 → 1
+(the only shader in bucket 7 is `glass_displacement`).
 
-**Bizde zaten daha iyisi var** (`assetdb.py shader`, 249 shader) ve bizimki
-render bucket'ı **kullanım dağılımından** veriyor:
-
-```
-normal_spec → bizde:   bucket 0 = 6405 · bucket 3 = 166 · bucket 1 = 75
-              onlarda: renderBucket 0 (tek sayı)
-```
-
-Fark: `normal_spec` için `specularIntensityMult` bizde vanilla varsayılanı
-**1**, onlarda **0.125**. Bu bir tercih; vanilla değeri diye alma. Bizde olan
-`specMapIntMask`'i listelemiyorlar, onlarda olan `globalAnimUV0/1`'i biz
-varsayılan saymıyoruz.
-
-⛔ **`required` alanı bilgi taşımıyor — ölçüldü.** 106 shader'ın **105'inde**
-tek `required` sampler `DiffuseSampler` ve o da **her zaman 0. sırada**;
-birden fazla `required` taşıyan shader **yok**; hiç `required` taşımayan tek
-shader `cable`. Yani alan "ilk sampler diffuse'tur" demekten ibaret.
-`build_shaders.py`'ye eklemeye değmez — önce ölçtüğüm için bu alan
-korpusumuza girmedi.
-
-### 1f. [dış kaynak] Shell Creator ızgara sözleşmesi
-
-Kendi shell/housing işimiz olursa hazır ölçü seti
-(`_dis-kaynak/five_toolkit_shells_catalog.json`):
+**We already have something better** (`assetdb.py shader`, 249 shaders), and ours
+gives the render bucket **from the usage distribution**:
 
 ```
-modül 2.0 m · kat yüksekliği 3.0 m · maks 4 kat · 21×21 grid
-karolar: vanilla se_stud_wall_1..16 · se_stud_tile_*
-hücre içeriği: tile · ceiling · stairs · walls{} · decor{}
-seçenekler: void (boşluk kapatma) · shadowMask
-çıktı: tek birleşik prop (.ydr + collision) + .ytd + .ytyp
-       + layout.json (housing script'i için spawn offset dahil)
+normal_spec → ours:    bucket 0 = 6405 · bucket 3 = 166 · bucket 1 = 75
+              theirs:  renderBucket 0 (a single number)
 ```
 
-### 1g. [dış kaynak] Camo / sticker yaklaşımı
+Difference: for `normal_spec`, `specularIntensityMult` is the vanilla default
+**1** in ours and **0.125** in theirs. That is a choice; do not take it as the vanilla value. They do not
+list `specMapIntMask`, which we have; we do not count their `globalAnimUV0/1` as
+a default.
 
-Tint palette shader'ıyla uğraşmıyorlar: camo ve sticker **export'ta tek
-dokuya merge ediliyor**, kesilen şarjörün `.ytd`'sine silahın dokusunun
-kopyası veriliyor. Vertex color global çarpan olarak sunuluyor
-(*"beyaz = etkisiz; başka değer silahı boyar"* — bu doğru, motor vertex
-color'ı dokuyla çarpar; varsayılan `[255,255,255,255]`).
+⛔ **The `required` field carries no information — measured.** In **105** of the 106 shaders
+the only `required` sampler is `DiffuseSampler`, and it is **always in position 0**;
+there is **no** shader with more than one `required`; the only shader with no `required`
+at all is `cable`. So the field says nothing more than "the first sampler is diffuse".
+Not worth adding to `build_shaders.py` — because it was measured first, this field
+did not enter our corpus.
 
-Camo dokuları `/camo/<id>.webp`, ızgara 2×2 aynalama + mip zinciriyle
-üretiliyor, `hue-rotate` + `saturate` CSS filtresiyle renklendiriliyor.
-14 hazır desen: `darkmatter · eclaire · zombie_nuk · diamant · or_emeraude ·
+### 1f. [external] Shell Creator grid contract
+
+A ready set of dimensions if we ever do shell/housing work of our own
+(`_external/five_toolkit_shells_catalog.json`):
+
+```
+module 2.0 m · floor height 3.0 m · max 4 floors · 21×21 grid
+tiles: vanilla se_stud_wall_1..16 · se_stud_tile_*
+cell content: tile · ceiling · stairs · walls{} · decor{}
+options: void (closing gaps) · shadowMask
+output: one merged prop (.ydr + collision) + .ytd + .ytyp
+        + layout.json (spawn offset for the housing script included)
+```
+
+### 1g. [external] Camo / sticker approach
+
+They do not bother with the tint palette shader: camo and stickers are **merged into a single
+texture on export**, and the `.ytd` of a cut-out magazine gets a copy of the weapon's
+texture. Vertex colour is offered as a global multiplier
+(*"white = no effect; any other value paints the weapon"* — this is right, the engine multiplies vertex
+colour with the texture; default `[255,255,255,255]`).
+
+Camo textures are `/camo/<id>.webp`, generated with 2×2 grid mirroring + a mip chain,
+and coloured with the `hue-rotate` + `saturate` CSS filters.
+14 ready patterns: `darkmatter · eclaire · zombie_nuk · diamant · or_emeraude ·
 sable · romain · crane · flamme · miami · weed · weed2 · coeur · rose`.
 
-⚠️ Kendi uyarıları da doğru: kesilen şarjör birden fazla materyale yayılırsa
-oyunda **tek doku** taşır, kalan yüzler yanlış çıkar.
+⚠️ Their own warning is right too: if a cut-out magazine spans more than one material,
+in game it carries **a single texture** and the remaining faces come out wrong.
 
-### 1h. [dış kaynak] Doku yeniden kodlama
+### 1h. [external] Texture re-encoding
 
-*"Değiştirilen dokular DXT5'e yeniden kodlanır; DXT1 olanlar yaklaşık iki
-katı ağırlaşır."* Bizim ölçümümüzle tutarlı (`core.ypt` gömülü partikül
-dokuları: DXT5 75 · DXT1 32). Kullanıcıya boyut artışını **önceden**
-söylemek iyi bir desen.
+*"Changed textures are re-encoded to DXT5; DXT1 ones become about twice
+as heavy."* Consistent with our measurement (`core.ypt` embedded particle
+textures: DXT5 75 · DXT1 32). Telling the user about the size increase **in advance** is a
+good pattern.
 
-### 1i. Baz silah kataloğu — 28 sınıf
+### 1i. Base weapon catalogue — 28 classes
 
-**Model adları [doğrulandı]:** 28'inin **tamamı** bizim iskelet korpusumuzda
-gerçek `.ydr` olarak var (`assetdb.py bones` ile tek tek denendi, hiçbiri
-"iskeleti yok" dönmedi). Kemik sayıları bizim ölçümümüz:
+**Model names [verified]:** **all** 28 exist in our skeleton corpus as
+real `.ydr` files (tried one by one with `assetdb.py bones`; none returned
+"no skeleton"). The bone counts are our measurement:
 
-| id | model | sınıf | kemik | damage | range | clipSize | tbs (ms) |
+| id | model | class | bones | damage | range | clipSize | tbs (ms) |
 |---|---|---|---:|---:|---:|---:|---:|
 | pistol | `w_pi_pistol` | pistol | 12 | 26 | 60 | 12 | 250 |
 | combatpistol | `w_pi_combatpistol` | pistol | 12 | 27 | 60 | 12 | 240 |
@@ -215,21 +215,21 @@ gerçek `.ydr` olarak var (`assetdb.py bones` ile tek tek denendi, hiçbiri
 | nightstick | `w_me_nightstick` | melee | 3 | 10 | 2 | 1 | 500 |
 | ball | `w_am_baseball` | thrown | 3 | 5 | 40 | 1 | 1000 |
 
-**Stat sütunları [dış kaynak] — doğrulanamadı.** Bizim `weapons.tsv.gz`
-kategori/model/mermi/bileşen/livery/flags tutuyor; `Damage`, `WeaponRange`,
-`ClipSize`, `TimeBetweenShots` alanları **korpusumuzda yok**. Başlangıç
-değeri olarak makul, "vanilla böyle" diye aktarma.
+**Stat columns [external] — could not be verified.** Our `weapons.tsv.gz`
+holds category/model/ammo/component/livery/flags; the `Damage`, `WeaponRange`,
+`ClipSize`, `TimeBetweenShots` fields **are not in our corpus**. Reasonable as starting
+values; do not pass them on as "this is vanilla".
 
-İki şüpheli nokta: `machinepistol` menzili **120** (diğer SMG'ler 40-50) ve
-`grenadelauncher`'ın kemik sınıfı olarak **shotgun**'a bağlanması —
-ikincisi bilinçli bir sadeleştirme (`gun_pump` yuvası kullanılıyor).
+Two suspicious points: the `machinepistol` range of **120** (the other SMGs 40-50) and
+`grenadelauncher` being tied to **shotgun** as its bone class —
+the second is a deliberate simplification (the `gun_pump` slot is used).
 
-Uygulama varsayılanı (baz seçilmeden): `damage 30 · range 60 · clipSize 12 ·
-timeBetweenShots 250`, ad alanı `weapon_`.
+Application default (no base selected): `damage 30 · range 60 · clipSize 12 ·
+timeBetweenShots 250`, namespace `weapon_`.
 
-### 1j. Tattoo hattı
+### 1j. Tattoo pipeline
 
-**Zone adları [doğrulandı]** — gerçek `PedDecorationCollection` bölgeleri:
+**Zone names [verified]** — the real `PedDecorationCollection` zones:
 
 ```
 ZONE_HEAD · ZONE_TORSO · ZONE_LEFT_ARM · ZONE_RIGHT_ARM
@@ -237,65 +237,65 @@ ZONE_LEFT_LEG · ZONE_RIGHT_LEG
 ```
 
 Payload: `{collection, tattoos:[{name, zone, gender, uvPos, scale, rotation}]}`
-+ dövüş başına PNG. Çıktı: **`PedDecorationCollection` XML + stream `.ytd` +
-fxmanifest + README**. Aşamalar: *görselleri oku → DDS → .ytd + XML →
-resource paketle*. Her dövmenin **benzersiz ve geçerli bir adı (hash)**
-olmak zorunda. Girdi **saydam PNG**; cinsiyet ayrı tutuluyor.
++ a PNG per tattoo. Output: **`PedDecorationCollection` XML + stream `.ytd` +
+fxmanifest + README**. Stages: *read the images → DDS → .ytd + XML →
+package the resource*. Every tattoo must have **a unique and valid name (hash)**.
+The input is **transparent PNG**; gender is kept separate.
 
-Bu yapı bilinen doğru yapı — kendi tattoo işimizde aynı iskelet kullanılır.
+This structure is the known correct structure — our own tattoo work uses the same skeleton.
 
 ### 1k. Vehicle Debadger
 
-Girdi: tam resource klasörü ya da yalnız `_hi.yft`. Export'ta korunan
-uzantılar: `yft · ytd · meta · lua · ycd`. Akış:
+Input: a full resource folder or only `_hi.yft`. Extensions kept on
+export: `yft · ytd · meta · lua · ycd`. Flow:
 
-1. **Parçalar** — tuning parçaları ve logoları otomatik tespit; hangi
-   parçaların araca monte edileceği seçilir. *Parça değiştirmek aracı
-   yeniden kurar ve süren debadging'i iptal eder.*
-2. **Debadging** — kabartma rozetler silinir. Seçim üç modda: `Parça`
-   (bağlı bileşen) · `Yüz` (üçgen üçgen) · **`Materyal`** (aynı dokuyu
-   paylaşan her şey — çoğu zaman komple "badges" materyali).
-3. **Dokular** — düz boyanmış logolar (direksiyon, ızgara, jant) damga ile
-   siliniyor ya da doku komple değiştiriliyor; materyalin UV'si üzerine
-   bindirilebiliyor. `.ytd` yoksa bu adım çalışmaz.
-4. **Export** — *"YFT'in birebir yeniden yazılır, eksik olan yalnız
-   rozetler: collision, deformasyon, kapılar ve camlar el değmemiş."*
-   Uzak LOD (`_hi` olmayan `.yft`) **kasıtlı olarak elleniyor**.
+1. **Parts** — tuning parts and logos are detected automatically; you choose which
+   parts are mounted on the vehicle. *Changing parts rebuilds the vehicle
+   and cancels any debadging in progress.*
+2. **Debadging** — embossed badges are deleted. Selection has three modes: `Part`
+   (connected component) · `Face` (triangle by triangle) · **`Material`** (everything that shares the same
+   texture — often the whole "badges" material).
+3. **Textures** — flat-painted logos (steering wheel, grille, rims) are removed with a stamp,
+   or the texture is replaced entirely; it can be overlaid on the material's UV.
+   Without a `.ytd` this step does not work.
+4. **Export** — *"your YFT is rewritten one to one; only the badges are missing:
+   collision, deformation, doors and windows untouched."*
+   The far LOD (the `.yft` that is not `_hi`) is **touched on purpose**.
 
-⚠️ Bir resource = bir araç. Birden fazla araç tespit edilirse reddediyor.
+⚠️ One resource = one vehicle. If more than one vehicle is detected, it refuses.
 
 ### 1l. Resource Optimizer
 
-Dosya durumları: `OK · Optimizable · Corrupted · Empty · Protected (fxap) ·
-Ignored`. Yalnız **aşırı büyük `.ytd`'ler** küçültülüyor; zip yapısı birebir
-korunuyor. Bozuk/boş dosya **düzeltilmiyor, raporlanıyor**. `fxap` hata
-değil, "sahibi kilitlemiş" olarak işaretlenip aynen geri veriliyor.
-Kabul edilen tek tek dosyalar: `ytd ydr ydd yft ybn ymap ytyp lua meta xml
-cfg`. **Klasör yüklenemiyor** — zip şart.
+File states: `OK · Optimizable · Corrupted · Empty · Protected (fxap) ·
+Ignored`. Only **oversized `.ytd` files** are shrunk; the zip structure is kept
+one to one. A broken/empty file is **not fixed, it is reported**. `fxap` is not flagged
+as an error but as "locked by its owner", and it is returned unchanged.
+Individual files accepted: `ytd ydr ydd yft ybn ymap ytyp lua meta xml
+cfg`. **A folder cannot be uploaded** — a zip is required.
 
-Sonuç başlıkları: `X-Original-Size`, `X-Optimized-Size`, `X-Optimized-Count`.
+Result headers: `X-Original-Size`, `X-Optimized-Size`, `X-Optimized-Count`.
 
-### 1m. API yüzeyi ve payload şekilleri [dış kaynak]
+### 1m. API surface and payload shapes [external]
 
 ```
 GET  /api/auth/me · /api/auth/logout · /api/auth/recheck · /api/auth/discord/login
-GET  /api/shaders                (açık)
-GET  /api/shells/catalog         (açık)
-POST /api/convert                → {jobId}     (silah — kuyruklu)
+GET  /api/shaders                (open)
+GET  /api/shells/catalog         (open)
+POST /api/convert                → {jobId}     (weapon — queued)
 GET  /api/convert/status?jobId=  → {state, stage, queue, error}
 GET  /api/convert/result?jobId=  → zip
-POST /api/props/convert          → zip         (senkron)
-POST /api/tattoo/convert         → {jobId}     (status/result ortak)
+POST /api/props/convert          → zip         (synchronous)
+POST /api/tattoo/convert         → {jobId}     (shared status/result)
 POST /api/shells/convert
 POST /api/optimizer/analyze  ·  POST /api/optimizer/apply?jobId=
 POST /api/vehicle/preview    ·  POST /api/vehicle/export
 POST /api/import/scan        ·  POST /api/import/export   (Weapon Editor)
 ```
 
-Durum yoklaması **2 saniyede bir**, kuyruk sırası kullanıcıya gösteriliyor.
+Status is polled **every 2 seconds**; the queue position is shown to the user.
 
-**Prop payload'ı** — minimum bir prop hattının neye ihtiyacı olduğunun iyi
-bir kontrol listesi:
+**Prop payload** — a good checklist of what a minimal prop pipeline
+needs:
 
 ```json
 { "name": "...", "lodDist": 0,
@@ -306,219 +306,219 @@ bir kontrol listesi:
   "vertexColor": [255,255,255,255] }
 ```
 
-Collision mesh'i ayrı bir parça olarak, **ham float32 position buffer**
-(indekssiz üçgen listesi) hâlinde gönderiliyor. Dokular
-`tex:<materyalIndeksi>:<samplerAdı>` alan adıyla ekleniyor.
+The collision mesh is sent as a separate part, as a **raw float32 position buffer**
+(an unindexed triangle list). Textures are attached with the field name
+`tex:<materialIndex>:<samplerName>`.
 
-**Silah aşamaları (6):** *model okuma → bake → iskelet + ağırlıklar →
-dokular → DDS → .ytd → metas → paketleme.*
+**Weapon stages (6):** *read model → bake → skeleton + weights →
+textures → DDS → .ytd → metas → packaging.*
 
-### 1n. Adım akışları — ürün tasarımı olarak [alınacak]
+### 1n. Step flows — as product design [adopt]
 
-**Silah (12):** Upload → Temizlik → Baz silah → **Hizalama** → Kemikler →
-Şarjör → Bileşenler → Vertex group → Render → Yapılandırma → Önizleme →
-Export. *Zorunlu olan tek adım baz silah seçimi;* basit vakada
-`Upload → Baz → Hizalama → Export` yeterli, kalanı varsayılanla geçiliyor.
+**Weapon (12):** Upload → Cleanup → Base weapon → **Alignment** → Bones →
+Magazine → Components → Vertex group → Render → Configuration → Preview →
+Export. *The only mandatory step is choosing the base weapon;* in a simple case
+`Upload → Base → Alignment → Export` is enough, and the rest passes with defaults.
 
-**Prop (6):** Upload → Temizlik → **Yerleştirme** → Render → Yapılandırma →
-Export. Yerleştirmede ölçek referansı olarak hayalet ped var ve **üç pozu**
-sunuluyor: *ayakta · oturur (sandalye ölçmek için) · yürür (merdiven basamağı
-için)*. Konum ve ölçek export'ta geometriye **pişiriliyor**.
+**Prop (6):** Upload → Cleanup → **Placement** → Render → Configuration →
+Export. Placement has a ghost ped as a scale reference, offered in **three poses**:
+*standing · sitting (to size a chair) · walking (for a stair
+step)*. Position and scale are **baked** into the geometry on export.
 
-**Optimizer (3):** Upload → Analiz → Export.
+**Optimizer (3):** Upload → Analysis → Export.
 
-Alınmaya değer üç desen:
-- **Seçim iki kipli**: `Parça` (tek tıkla bağlı bileşen) ve `Yüz` (üçgen
-  üçgen) — "parça gövdeye kaynamışsa Yüz'e geç" diye açıkça yazıyorlar.
-- **Her adımda "bu adımı atlayabilirsin" yazılı.** Hangi adımın gerçekten
-  zorunlu olduğu belirsiz bırakılmıyor.
-- **Önizlemenin yalan söyleyeceği önceden söyleniyor**: *"oyunda RAGE
-  shader'ları farklı aydınlatır — yalnız oyun içi test bağlayıcıdır."*
-  Bu bizim `⛔ EKRAN GÖRÜNTÜSÜ ÖLÇÜM DEĞİLDİR` kuralımızın ürün hâli.
+Three patterns worth adopting:
+- **Two-mode selection**: `Part` (one click selects a connected component) and `Face` (triangle
+  by triangle) — they write explicitly "if the part is welded to the body, switch to Face".
+- **Every step says "you can skip this step".** Which step is really
+  mandatory is not left unclear.
+- **They say in advance that the preview will lie**: *"RAGE shaders light things differently
+  in game — only the in-game test is binding."*
+  This is the product form of our `⛔ A SCREENSHOT IS NOT A MEASUREMENT` rule.
 
-### 1o. Kabul edilen formatlar [dış kaynak]
+### 1o. Accepted formats [external]
 
-| Araç | Format |
+| Tool | Format |
 |---|---|
-| Weapons | **yalnız GLB** (tek parça statik); dokular ayrı PNG/JPG |
-| Props | GLB önerilen, GLTF kabul; FBX/OBJ **reddediliyor** |
-| Bileşen içe aktarma | GLB · GLTF · FBX · OBJ |
-| Optimizer | resource zip ya da tek tek dosya |
-| Vehicle | tam resource klasörü ya da `_hi.yft` |
-| Tattoo | saydam PNG |
+| Weapons | **GLB only** (single-piece static); textures as separate PNG/JPG |
+| Props | GLB recommended, GLTF accepted; FBX/OBJ **rejected** |
+| Component import | GLB · GLTF · FBX · OBJ |
+| Optimizer | resource zip or individual files |
+| Vehicle | full resource folder or `_hi.yft` |
+| Tattoo | transparent PNG |
 
-Sketchfab'den gelen modeller için kendi uyarıları doğru: *"bazılarının dokusu
-yok ya da GTA ile uyumsuz materyal kullanıyor (prosedürel, çok-UV) — tek
-dokulu olanları tercih et."*
+For models from Sketchfab their own warning is right: *"some have no texture
+or use a material that is incompatible with GTA (procedural, multi-UV) — prefer
+single-texture ones."*
 
-### 1p. Alınmayanlar ve sebebi
+### 1p. Not adopted, and why
 
-- **Kemik tag tablosu** — çürütüldü (§1a).
-- **Shader `required` alanı** — ölçüldü, bilgi taşımıyor (§1e).
-- **Shader varsayılan paramları** — bizim ölçülmüş tablomuz daha geniş ve en
-  az bir yerde onlarınki vanilla'dan sapıyor (§1e).
-- **Silah statları** — korpusumuzda karşılığı yok, doğrulanamadı; tablo
-  `[dış kaynak]` olarak duruyor (§1i).
-- **Poligon eşikleri** — ürün tercihi; vanilla bütçesinin yerine geçmez (§1c).
-- **Dönüştürme hattının kendisi** — sunucuda, Discord girişi arkasında.
-  Hangi kütüphaneyle ürettikleri ölçülemedi; ölçmek isteyen giriş yapıp bir
-  prop üretip çıkan `.ydr`/`.ytyp`'ı vanilla ile alan alan karşılaştırsın.
-
----
-
-## Bu dosyaya yeni bir araç eklerken
-
-1. Önce **ne ölçtüğünü** yaz, sonra ne iddia edildiğini.
-2. Her sayıyı `[doğrulandı]` / `[dış kaynak]` / `[çürütüldü]` / `[alınacak]`
-   ile işaretle. Etiketsiz sayı bırakma.
-3. Bizim ölçümümüzle çelişen bir sayı bulursan **ilgili referansın kendi
-   dosyasına** uyarı bloğu koy — bu dosya arşiv, çarpma noktası orası.
-4. "Onlarda var bizde yok" demeden **önce ölç**: §1e'deki `required` alanı
-   tam olarak böyle elendi.
-
+- **Bone tag table** — refuted (§1a).
+- **Shader `required` field** — measured, carries no information (§1e).
+- **Shader default params** — our measured table is wider, and theirs deviates from vanilla
+  in at least one place (§1e).
+- **Weapon stats** — no counterpart in our corpus, could not be verified; the table
+  stays as `[external]` (§1i).
+- **Polygon thresholds** — a product choice; does not replace the vanilla budget (§1c).
+- **The conversion pipeline itself** — on the server, behind a Discord login.
+  Which library they build with could not be measured; whoever wants to measure it should log in, produce a
+  prop and compare the resulting `.ydr`/`.ytyp` with vanilla field by field.
 
 ---
 
-## 2. Sollumz Discord `#tutorials` çıkarımı (2026-08-21) — yerel `notlar/` haritası
+## Adding a new tool to this file
 
-75 mesaj, 57 video transkripti; ham veri **depoya girmez**. Damıtılmış maddeler ilgili dal yapraklarına dağıtıldı (ölçüm değil topluluk uygulaması; çakışmada ölçüm kazanır). Konu → yerel dosya:
+1. First write **what you measured**, then what is claimed.
+2. Mark every number with `[verified]` / `[external]` / `[refuted]` / `[adopt]`.
+   Do not leave an untagged number.
+3. If you find a number that contradicts our measurement, put a warning block **in the related
+   reference's own file** — this file is an archive; the point of impact is there.
+4. Before saying "they have it and we don't", **measure first**: the `required` field in §1e
+   was ruled out exactly this way.
 
-Tam adım adım yordamlar yerel çıkarım klasörünün `notlar/` dizinindedir
-(depoya girmez). Konu → dosya eşlemesi:
 
-| konu | dosya |
+---
+
+## 2. Sollumz Discord `#tutorials` extraction (2026-08-21) — map of the local `notes/` folder
+
+75 messages, 57 video transcripts; the raw data **does not enter the repo**. The distilled items were distributed to the matching branch leaves (community practice, not measurement; on a conflict the measurement wins). Topic → local file:
+
+The full step-by-step procedures are in the `notes/` directory of the local extraction folder
+(not in the repo). Topic → file mapping:
+
+| topic | file |
 |---|---|
-| animasyonlu prop+collision, fragment, prop/ped cloth, ped animasyonu, retarget | `01-animasyon-fragment-cloth.md` |
-| UV animasyonu, MLO ışığı, shadowmap, yansıma proxy, vertex AO, materyal, YBN hizalama, doortuning | `02-uv-animasyon-isik-golge-dunya.md` |
-| `.yed`/IG_/CS_, ağırlık boyama, skintone `_r`, freemode giysi, ped ölçekleme, `p_eyes`/`p_ears`, ped prop, silah | `03-ped-giysi-prop-silah.md` |
-| araç kurulumu, MLO üretimi, iç mekân LOD, arazi karışımı, parallax, timecycle, audio occlusion, ses emitter, radyo | `04-mlo-harita-ses-arac-gerec.md` |
-| grafiti/decal (Substance → DDS → render bucket 2 → ymap) | `05-decal-grafiti.md` |
-| time bound prop, Cable Tools, arazi/bina değiştirme | `06-altyazisiz-videolar-kare-turu.md` |
-| Sollumz Discord yeni kanallar turu | `07-yeni-kanallar-turu.md` |
-| çim dört sistem, arazi anatomisi, `@ma`, grass batch, LOD iki mekanizma, Sketchfab animasyonlu drawable | `08-cim-prosedurel-lod-zinciri.md` (→ `branches/map/grass-procedural.md`, `lod.md`) |
-| araç eklenti envanteri | `09-arac-eklenti-envanteri.md` (→ `branches/vehicle/`) |
+| animated prop+collision, fragment, prop/ped cloth, ped animation, retarget | `notes/01` |
+| UV animation, MLO light, shadowmap, reflection proxy, vertex AO, material, YBN alignment, doortuning | `notes/02` |
+| `.yed`/IG_/CS_, weight painting, skintone `_r`, freemode garment, ped scaling, `p_eyes`/`p_ears`, ped prop, weapon | `notes/03` |
+| vehicle setup, MLO production, interior LOD, terrain blending, parallax, timecycle, audio occlusion, sound emitter, radio | `notes/04` |
+| graffiti/decal (Substance → DDS → render bucket 2 → ymap) | `notes/05` |
+| time bound prop, Cable Tools, terrain/building replacement | `notes/06` |
+| Sollumz Discord new channels tour | `notes/07` |
+| the four grass systems, terrain anatomy, `@ma`, grass batch, the two LOD mechanisms, Sketchfab animated drawable | `notes/08` (→ `branches/map/grass-procedural.md`, `lod.md`) |
+| vehicle add-on inventory | `notes/09` (→ `branches/vehicle/`) |
 
-### Erişilemeyen kaynaklar (tekrar denendi)
-- `ttKh1iOorIU` Shadowmap (YamK Mods) — **video gizli yapılmış**
-- `IIrBh13-lG4` One room MLO (gta5 modder) — **video kaldırılmış**
+### Unreachable sources (retried)
+- `ttKh1iOorIU` Shadowmap (YamK Mods) — **the video was made private**
+- `IIrBh13-lG4` One room MLO (gta5 modder) — **the video was removed**
 
-İkisinin de konusu başka videolarla kapanıyor.
+The topics of both are covered by other videos.
 
 
 ---
 
 
-> Shader = program + render kovası ölçümü → `branches/look/shader.md`.
+> Shader = program + render bucket measurement → `branches/look/shader.md`.
 
 
-## 3. Alet envanteri — 178 transkriptin desen taraması (2026-08, topluluk)
+## 3. Tool inventory — pattern scan of 178 transcripts (2026-08, community)
 
-Sollumz'un kendi düğmeleri, dış eklentiler, Blender dışı araçlar, FiveM yardımcıları, referans siteleri ve **bizde olup toplulukta olmayanlar**. Sayı = kaç ayrı videoda geçtiği. Kaynak `notlar/09` (depoya girmez).
+Sollumz's own buttons, external add-ons, non-Blender tools, FiveM helpers, reference sites and **what we have that the community does not**. Number = in how many separate videos it appears. Source `notes/09` (not in the repo).
 
 
-178 transkriptin **tamamı** desen taramasından geçirildi (okunanlar + henüz
-okunmayanlar dahil). Yanındaki sayı **kaç ayrı videoda geçtiği** —
-topluluk standardı olup olmadığının ölçüsü.
-Ham çıktı: `arac_envanteri.txt`
+**All** 178 transcripts went through the pattern scan (the ones already read + the ones
+not read yet). The number next to each item is **in how many separate videos it appears** —
+the measure of whether it is a community standard.
+Raw output: `tool_inventory.txt`
 
-> ⚠️ Altyazısı olmayan videolardaki araçlar bu taramada **görünmez**
-> (`Catenary`, `Substance 3D Painter`, `NVIDIA Texture Tools` gibi bazıları
-> yalnız kare turundan biliniyor). Aşağıda ayrıca işaretlendi.
+> ⚠️ Tools in videos without subtitles **do not show up** in this scan
+> (some, such as `Catenary`, `Substance 3D Painter`, `NVIDIA Texture Tools`, are
+> known only from the frame tour). They are marked separately below.
 
 ---
 
-## A. Sollumz'un KENDİ araçları — eklenti değil, çoğu bilinmiyor
+## A. Sollumz's OWN tools — not add-ons, mostly unknown
 
-Bunlar zaten kurulu; ayrı bir şey indirmeye gerek yok. Buradaki asıl kazanç:
-elle yapmaya çalıştığımız birkaç işin hazır düğmesi varmış.
+These are already installed; there is nothing separate to download. The real gain here:
+several jobs we were trying to do by hand turned out to have a ready button.
 
-| araç | nerede | ne yapar |
+| tool | where | what it does |
 |---|---|---|
-| ⭐ **Add Bone Constraint** | Drawables → Bone Tools | Collision'ı kemiğe bağlayan constraint'i **kendisi kurar ve uzayını doğru ayarlar**. `Child Of` ↔ `Copy Transforms` karışıklığının sebebi buymuş — kimse elle seçmiyor. |
-| ⭐ **Apply Bone Flags: rotation and translation** | Drawables → Bone Tools | Atlas §1.5'teki *"Sollumz `Flags`'i sıfır bırakır"* sorununun Sollumz içindeki çözümü. |
-| **Bone Tools → Limit** | aynı panel | Tek kemiğin bayraklarını sıfırlayıp sınırlar (silah şarjörü hizalaması). |
-| ⭐ **Vertex Painter (`Shift+T`)** | viewport | RGBA kanal izolasyonu · palet · **multi-object vertex paint** · ⭐ **Terrain Paint** (texture 1-4 katman karışımını doğrudan boyar). |
-| ⭐ **Cloth Tools → Diagnostics → Refresh** | Drawables | Ped cloth için **gerçek doğrulama kapısı** — binding ve materyal hatalarını sayar. Hedef sıfır. |
-| **Cloth Tools → Pin / mass / pin radius** | Drawables | Cloth sabit noktaları ve vertex kütleleri. |
-| ⭐ **Cable Tools** | Drawables | Vertex başına `Radius` · `Diffuse Factor` · `Micromovements` · `Phase Offset` (+`Randomize`) · `Material Index`. |
-| **LOD Tools → Generate LODs** | Drawables | Referans mesh + Medium/Low, decimation varsayılan 0.6. |
-| **Light Tools + Light Presets (`+`)** | Drawables | Kendi ışık ön ayarını kaydeder. |
-| **Shader Tools → Convert to \<shader\>** | Drawables | Normal materyali `ped`, `ped_cloth`, `ped_emissive`, `normal_spec` vb. çevirir. |
-| **Order Shaders** | Drawable hiyerarşisi | UV animasyonlu materyali sıraya sokar (Sollumz 2.9 öncesi zorunluydu). |
-| **Fragments → Set Mass → Calculate** | Fragments | Collision kutularının kütlesini hesaplar. |
-| **Create Physic Bones (at Objects) + "Parent to selected bone"** | Fragments | Fragment kemik zinciri kurar. |
-| **Create Box From Selection** | Collisions | Seçili geometriden bound box üretir. |
-| **Map Data → Create YMAP / Create Entities** | Sollumz | Blender'dan ymap üretimi. |
-| **Archetype Definition → Auto-Create From Selected** | Sollumz | ytyp arketipi üretir; **tip `Base` yerine `Time` seçilirse** 24 saatlik kutu ızgarası açılır. |
-| **Extensions sekmesi + `Duplicate Extension`** | ytyp | Partikül/ladder/audio extension'ları. ⛔ `Shift`+sürükle ile çoğaltılmaz, bu düğme şart. |
-| **`Fill Animation Data`** | Animations | ⛔ **BOZUK** — frame count'u yanlış yazıyor, elle gir. |
+| ⭐ **Add Bone Constraint** | Drawables → Bone Tools | Sets up the constraint that ties collision to a bone **by itself and sets its space correctly**. This turned out to be the cause of the `Child Of` ↔ `Copy Transforms` confusion — nobody picks it by hand. |
+| ⭐ **Apply Bone Flags: rotation and translation** | Drawables → Bone Tools | The in-Sollumz fix for the *"Sollumz leaves `Flags` at zero"* problem in atlas §1.5. |
+| **Bone Tools → Limit** | same panel | Resets and limits the flags of a single bone (weapon magazine alignment). |
+| ⭐ **Vertex Painter (`Shift+T`)** | viewport | RGBA channel isolation · palette · **multi-object vertex paint** · ⭐ **Terrain Paint** (paints the texture 1-4 layer blend directly). |
+| ⭐ **Cloth Tools → Diagnostics → Refresh** | Drawables | The **real verification gate** for ped cloth — counts binding and material errors. Target: zero. |
+| **Cloth Tools → Pin / mass / pin radius** | Drawables | Cloth pinned points and vertex masses. |
+| ⭐ **Cable Tools** | Drawables | Per-vertex `Radius` · `Diffuse Factor` · `Micromovements` · `Phase Offset` (+`Randomize`) · `Material Index`. |
+| **LOD Tools → Generate LODs** | Drawables | Reference mesh + Medium/Low, decimation default 0.6. |
+| **Light Tools + Light Presets (`+`)** | Drawables | Saves your own light preset. |
+| **Shader Tools → Convert to \<shader\>** | Drawables | Converts a normal material to `ped`, `ped_cloth`, `ped_emissive`, `normal_spec` etc. |
+| **Order Shaders** | Drawable hierarchy | Puts the UV-animated material in order (required before Sollumz 2.9). |
+| **Fragments → Set Mass → Calculate** | Fragments | Calculates the mass of the collision boxes. |
+| **Create Physic Bones (at Objects) + "Parent to selected bone"** | Fragments | Builds a fragment bone chain. |
+| **Create Box From Selection** | Collisions | Makes a bound box from the selected geometry. |
+| **Map Data → Create YMAP / Create Entities** | Sollumz | Produces a ymap from Blender. |
+| **Archetype Definition → Auto-Create From Selected** | Sollumz | Produces a ytyp archetype; **if type `Time` is picked instead of `Base`**, a 24-hour box grid opens. |
+| **Extensions tab + `Duplicate Extension`** | ytyp | Particle/ladder/audio extensions. ⛔ They are not duplicated with `Shift`+drag; this button is required. |
+| **`Fill Animation Data`** | Animations | ⛔ **BROKEN** — writes the frame count wrong; enter it by hand. |
 
 ---
 
-## B. Blender eklentileri (dışarıdan kurulan)
+## B. Blender add-ons (installed from outside)
 
-| eklenti | kaç videoda | ne için |
+| add-on | in how many videos | what for |
 |---|---|---|
-| **Sushi Cleanups** | 3 | Boş vertex gruplarını temizler (ağırlık transferi sonrası şart). |
-| **Vertex Color Master** | 3 | Kanal bazlı vertex boyama + **Data Transfer** (AO'yu `Colour 1`'in R kanalına taşımak). |
-| **Vicho Tools** | 2 | Animasyon üretimi için "gereklilik" diye geçiyor; ayrıca **Blender içinden `.ytd` üretimi**. |
-| **Rokoko** | 2 | Retarget. ⛔ **`Auto Scale` kapalı olmalı** — açıkken root motion siliniyor. |
-| **DeepBump** | 1 | Diffuse'tan normal map üretir. |
-| **Collider Tools** | 1 | Collision kutusu üretimini kolaylaştırır. |
-| **UV Packmaster** | — | UV paketleme (adı geçti, zorunlu değil). |
-| ⚠️ **Catenary** | *(altyazısız videodan)* | Kablo için gerçek zincir eğrisi üretir. Sollumz Cable Tools ile birlikte kullanılıyor. |
-| **Quixotic'in ped listesi** | 1 | `R0sGnIgvBq0` — *"My Fave Blender Addons for Ped Editing"*, **henüz okunmadı**. |
+| **Sushi Cleanups** | 3 | Cleans up empty vertex groups (required after a weight transfer). |
+| **Vertex Color Master** | 3 | Per-channel vertex painting + **Data Transfer** (moving AO into the R channel of `Colour 1`). |
+| **Vicho Tools** | 2 | Mentioned as a "requirement" for animation production; also **`.ytd` production from inside Blender**. |
+| **Rokoko** | 2 | Retarget. ⛔ **`Auto Scale` must be off** — when it is on, root motion is deleted. |
+| **DeepBump** | 1 | Makes a normal map from a diffuse. |
+| **Collider Tools** | 1 | Makes producing collision boxes easier. |
+| **UV Packmaster** | — | UV packing (mentioned, not required). |
+| ⚠️ **Catenary** | *(from a video without subtitles)* | Generates a real catenary curve for a cable. Used together with Sollumz Cable Tools. |
+| **Quixotic's ped list** | 1 | `R0sGnIgvBq0` — *"My Fave Blender Addons for Ped Editing"*, **not read yet**. |
 
 ---
 
-## C. Dış araçlar (Blender dışı)
+## C. External tools (outside Blender)
 
-| araç | kaç videoda | not |
+| tool | in how many videos | note |
 |---|---|---|
-| **YMT Editor** (grzybeek) | **9** | En çok geçen araç. Ped bileşenleri, prop kategorileri, **render flags**, `hash_07AE529D` boy ofseti, **Generate Creature Metadata**. |
-| **Folders to YTD** | 5 | Klasörden `.ytd` üretir, gerekirse DDS'e çevirir. |
-| **OpenIV** | 5 | Çoğu videoda **eski yöntem** olarak; CodeWalker RPF Explorer tercih ediliyor. |
-| **3ds Max** | 5 | GTA IV → GTA V rigleme hattı (wolffiremodz). Sollumz alternatifi değil, farklı bir hat. |
-| **Notepad++** | 4 | XML düzenleme; tek `.ycd`'ye çok klip birleştirmenin yolu. |
-| **V Weapons Toolkit** | 3 | ⚠️ **Sürüm `1.0.3`** — sonraki sürümler bozuk. |
-| **FXDK / Cfx Development Kit** | 2 | Timecycle editörü (`timecycleeditor 1`). ⚠️ Önce **ReShade `dxgi.dll` kaldırılmalı**. |
-| **vMenu** | 2 | Timecycle/ışık ayarlarken oyun saatini değiştirmek için. |
-| **Audacity** | 2 | Sesi **left/right mono'ya** ayırmak (radyo + statik emitter). |
-| **NVIDIA Texture Tools** | 2 *(+kare turu)* | DDS export. Decal için ölçülen ayar: **BC3 · mipmap MAX · Gamma Correct · Premultiplied Alpha**. |
-| **Blender 3.3 (taşınabilir)** | 2 | ⚠️ **Yalnız eski shadowmap yöntemi için** — Shadow *render pass* kaldırıldığı için. Yeni yöntem güncel Blender'da çalışıyor. |
-| **Audio Occlusion Tool** | 1 | ytyp+ymap XML'den `.dat151` + `.ymt` üretir. |
-| **AnimKit** | 1 | 3ds Max tarafı animasyon aracı. |
-| ⚠️ **Substance 3D Painter** | *(altyazısız)* | Grafiti/decal dokusu üretimi; `Opacity` kanalı şart. |
-| ⚠️ **JPEXS + Adobe Flash CS6** | *(metin rehberi)* | MLOScaleformTools için — MLO içi Scaleform ekranları. |
+| **YMT Editor** (grzybeek) | **9** | The most mentioned tool. Ped components, prop categories, **render flags**, the `hash_07AE529D` height offset, **Generate Creature Metadata**. |
+| **Folders to YTD** | 5 | Builds a `.ytd` from a folder, converting to DDS if needed. |
+| **OpenIV** | 5 | In most videos as the **old way**; CodeWalker RPF Explorer is preferred. |
+| **3ds Max** | 5 | GTA IV → GTA V rigging pipeline (wolffiremodz). Not a Sollumz alternative; a different pipeline. |
+| **Notepad++** | 4 | XML editing; the way to merge many clips into one `.ycd`. |
+| **V Weapons Toolkit** | 3 | ⚠️ **Version `1.0.3`** — later versions are broken. |
+| **FXDK / Cfx Development Kit** | 2 | Timecycle editor (`timecycleeditor 1`). ⚠️ **Remove ReShade `dxgi.dll`** first. |
+| **vMenu** | 2 | To change the game time while adjusting timecycle/lights. |
+| **Audacity** | 2 | Splitting sound into **left/right mono** (radio + static emitter). |
+| **NVIDIA Texture Tools** | 2 *(+frame tour)* | DDS export. Setting measured for decals: **BC3 · mipmap MAX · Gamma Correct · Premultiplied Alpha**. |
+| **Blender 3.3 (portable)** | 2 | ⚠️ **Only for the old shadowmap method** — because the Shadow *render pass* was removed. The new method works in current Blender. |
+| **Audio Occlusion Tool** | 1 | Produces `.dat151` + `.ymt` from ytyp+ymap XML. |
+| **AnimKit** | 1 | Animation tool on the 3ds Max side. |
+| ⚠️ **Substance 3D Painter** | *(no subtitles)* | Graffiti/decal texture production; the `Opacity` channel is required. |
+| ⚠️ **JPEXS + Adobe Flash CS6** | *(text guide)* | For MLOScaleformTools — Scaleform screens inside an MLO. |
 
 ---
 
-## D. FiveM tarafı yardımcılar
+## D. FiveM-side helpers
 
-| | ne yapar |
+| | what it does |
 |---|---|
-| ⭐ **`echo effect`** | Partikül efektlerini **oyun içinde** kaydırıcılarla arayıp önizletir. Partikül işine girecekse ilk kurulacak şey. |
-| **`str_request_flush` benzeri konsol komutu** | Sunucuyu yeniden başlatmadan stream'i tazeler; iki videoda geçiyor, **tam adı kulaktan** — doğrulanmalı. Canary/unstable sürüm isteyebiliyor. |
+| ⭐ **`echo effect`** | Searches and previews particle effects **in game** with sliders. The first thing to install if you are getting into particle work. |
+| **A console command like `str_request_flush`** | Refreshes the stream without restarting the server; mentioned in two videos, **the exact name is from hearing it** — must be verified. May need a Canary/unstable build. |
 
 ---
 
-## E. Referans siteleri ve listeler
+## E. Reference sites and lists
 
-| kaynak | ne için |
+| source | what for |
 |---|---|
-| ⭐ **Pleb Masters: Forge** (3 video) | Prop tarayıcı. **Prop'un partikül efektini**, prosedürel modelleri ve freemode giysi bileşenlerini gösteriyor. Partikül adı aramanın en pratik yolu. |
-| **Derek Deck** listesi | Test edilmiş, **çalışan ambient partikül** adları. |
-| **Dirty Free** GTA 5 data dump | Tüm partikül adlarının tam listesi. |
-| **docs.sollumz.org** | Resmî doküman; Legacy→Enhanced dönüşümü orada. |
-| **CodeWalker Discord** | ⚠️ CodeWalker **yalnız buradan** indirilmeli — diğer siteler eski/riskli. |
+| ⭐ **Pleb Masters: Forge** (3 videos) | Prop browser. Shows **a prop's particle effect**, procedural models and freemode clothing components. The most practical way to look up a particle name. |
+| **Derek Deck**'s list | Tested, **working ambient particle** names. |
+| **Dirty Free** GTA 5 data dump | The full list of all particle names. |
+| **docs.sollumz.org** | Official documentation; the Legacy→Enhanced conversion is there. |
+| **CodeWalker Discord** | ⚠️ Download CodeWalker **only from here** — other sites are old/risky. |
 
 ---
 
-## F. Bizde olup toplulukta olmayanlar
+## F. What we have that the community does not
 
-| bizde | toplulukta |
+| ours | the community's way |
 |---|---|
-| **`assetdb.py fx --exact`** | Elle liste taraması. Bir video yazım hatası yüzünden **bir test turu** kaybetti. |
-| **`assetdb.py flags`** | Bayrak sayıları elle kopyalanıyor. |
-| **`assetdb.py light --table`** (72.539 ışık p05/medyan/p95) | *"Vanilla'ya bak ve taklit et"* deniyor, sayı yok. |
-| **RayFire (`des_*`) üretim hattı** | Hiçbir videoda geçmiyor. |
+| **`assetdb.py fx --exact`** | Scanning lists by hand. One video lost **a test round** to a typo. |
+| **`assetdb.py flags`** | Flag numbers are copied by hand. |
+| **`assetdb.py light --table`** (72,539 lights p05/median/p95) | *"Look at vanilla and imitate it"*, no numbers. |
+| **RayFire (`des_*`) production pipeline** | Not mentioned in any video. |

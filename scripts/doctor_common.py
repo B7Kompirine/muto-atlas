@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""doctor_common.py — doctor denetimlerinin ortak ilkelleri.
+"""doctor_common.py — shared primitives of the doctor checks.
 
-Ayri dosyada olmasinin sebebi dairesel import: doctor.py denetimleri cagirir,
-denetimler de siddet seviyelerine ve Rapor'a ihtiyac duyar. Ortak parcalar
-burada durunca iki yon de bu modulu import eder, birbirini degil.
+It is a separate file because of a circular import: doctor.py calls the
+checks, and the checks need the severity levels and Report. With
+the shared parts here, both sides import this module instead of each other.
 """
 from __future__ import annotations
 
@@ -13,63 +13,72 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from i18n import get_lang  # noqa: E402
 
-# --- SIDDET SEVIYELERI --------------------------------------------------------
-# FATAL  : oyun coker ya da kaynagin TAMAMI duser (hicbir komut kaydolmaz)
-# SILENT : hata vermeden calismaz -- en pahali sinif, turu yiyen budur
-# WARN   : supheli, kasitli olabilir
+# --- SEVERITY LEVELS ----------------------------------------------------------
+# FATAL  : the game crashes or the WHOLE resource dies (no command registers)
+# SILENT : does not work and gives no error -- the most expensive class, the one that eats rounds
+# WARN   : suspicious, may be deliberate
 FATAL, SILENT, WARN = "FATAL", "SILENT", "WARN"
-SIRA = {FATAL: 0, SILENT: 1, WARN: 2}
+SEVERITY_ORDER = {FATAL: 0, SILENT: 1, WARN: 2}
 
-# NOT: desteklenen binary uzantilari (RES_EXT) res_xml.py'de tanimlidir --
-# donusumu yapan modulde. Iki kopya tutmak, birine uzanti eklendiginde
-# digerinin sessizce eski kalmasi demekti.
+# NOTE: the supported binary extensions (RES_EXT) are defined in res_xml.py --
+# in the module that does the conversion. Keeping two copies meant that when an
+# extension was added to one, the other silently stayed stale.
 
 
-def _tr(d):
-    """Bilingual sozlukten aktif dile gore metin sec."""
+def _localize(d):
+    """Pick the text for the active language from a message dict.
+
+    The dict holds an "en" text; a text for another language (for example "tr")
+    may sit next to it. A missing language falls back to "en".
+    """
     return d.get(get_lang(), d.get("en", next(iter(d.values()))))
 
 
-class Bulgu:
-    __slots__ = ("seviye", "kod", "yol", "mesaj", "ipucu")
+class Finding:
+    __slots__ = ("level", "code", "path", "message", "hint")
 
-    def __init__(self, seviye, kod, yol, mesaj, ipucu=""):
-        self.seviye, self.kod, self.yol = seviye, kod, yol
-        self.mesaj, self.ipucu = mesaj, ipucu
+    def __init__(self, level, code, path, message, hint=""):
+        self.level, self.code, self.path = level, code, path
+        self.message, self.hint = message, hint
 
 
-class Rapor:
+class Report:
+    """The doctor report: findings, files that were not inspected, and the inspected count."""
+
     def __init__(self):
-        self.bulgular = []
-        self.atlanan = []      # (yol, sebep) -- DENETLENEMEDI
-        self.denetlenen = 0
+        self.findings = []
+        self.skipped = []      # (path, reason) -- NOT INSPECTED
+        self.inspected = 0
 
-    def ekle(self, seviye, kod, yol, mesaj, ipucu=""):
-        self.bulgular.append(Bulgu(seviye, kod, yol, mesaj, ipucu))
+    def add(self, level, code, path, message, hint=""):
+        self.findings.append(Finding(level, code, path, message, hint))
 
-    def atla(self, yol, sebep):
-        self.atlanan.append((yol, sebep))
+    def skip(self, path, reason):
+        self.skipped.append((path, reason))
 
 
-BOS_HASH = {"", "0", "hash_0", "hash_00000000"}
+EMPTY_HASHES = {"", "0", "hash_0", "hash_00000000"}
 
-# GTA klipleri 30 fps. OLCULDU (vanilla mp_safehousewine@ + move_m@brave ve
-# kendi derlenmis ciktimiz): animasyonun Duration alani SON KARENIN zamanidir,
+# GTA clips are 30 fps. MEASURED (vanilla mp_safehousewine@ + move_m@brave and
+# our own compiled output): the animation's Duration field is the time of the
+# LAST FRAME,
 #     Duration == (FrameCount - 1) / 30
-# ve vanilla'da klibin EndTime'i animasyonun Duration'ini HIC asmaz (olculen
-# en buyuk fark -1 kare, 37 ciftte 0 ihlal). Bir klip Duration'i asiyorsa
-# animasyonda olmayan bir kareyi istiyor demektir.
-KARE = 1.0 / 30.0
+# and in vanilla a clip's EndTime NEVER exceeds its animation's Duration (the
+# largest measured difference is -1 frame, 0 violations in 37 pairs). A clip
+# that exceeds Duration asks for a frame the animation does not have.
+FRAME_SECONDS = 1.0 / 30.0  # one frame in seconds
 
 
-def _oznitelik(el, ad="value"):
+def _attr_float(el, attr="value"):
+    """Float value of attribute `attr` of element `el`, or None."""
     if el is None:
         return None
     try:
-        return float(el.get(ad))
+        return float(el.get(attr))
     except (TypeError, ValueError):
         return None
 
 
-def _hash_bos(deger):
-    return (deger or "").strip().lower() in BOS_HASH
+def _hash_empty(value):
+    """True when a hash field is empty or hash 0."""
+    return (value or "").strip().lower() in EMPTY_HASHES

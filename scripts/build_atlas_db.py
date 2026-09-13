@@ -1,41 +1,41 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""build_atlas_db.py — bilgi agacini tek bir SQLite dosyasina doker: proje / dosya / snippet / etiket.
+"""build_atlas_db.py — dumps the knowledge tree into one SQLite file: project / file / snippet / tag.
 
-NEDEN: Markdown agaci okumak icin iyidir, ama "isik saati hakkinda ne
-biliyoruz" sorusu 45 dosyayi gezmeyi gerektirir. Bu betik agaci snippet'lere
-boler, her snippet'i klasor adindan gelen PROJEYE baglar, Claude ile
-etiketler ve FTS5 ile aranabilir yapar. Uretilen dosya (data/atlas.db)
-depoya girmez; herkes kendi kopyasindan uretir.
+WHY: the Markdown tree is good for reading, but "what do we know about light
+hours" means walking 45 files. This script splits the tree into snippets,
+links every snippet to a PROJECT named after its folder, tags it with Claude
+and makes it searchable with FTS5. The generated file (data/atlas.db) is not
+committed; everyone builds it from their own copy.
 
-Proje = klasor adi:
-  skills/fivem-assets/branches/<branch>/      -> <dal>
-  skills/fivem-assets/trunk/ + SKILL.md  -> govde
-  skills/fivem-assets/sources/         -> kaynaklar
-  skills/<baska-skill>/                  -> <baska-skill>
-  --source DIR ile eklenen DIR/<klasor>/ -> <klasor>
+Project = folder name:
+  skills/fivem-assets/branches/<branch>/ -> <branch>
+  skills/fivem-assets/trunk/ + SKILL.md  -> trunk
+  skills/fivem-assets/sources/           -> sources
+  skills/<other-skill>/                  -> <other-skill>
+  DIR/<folder>/ added with --source DIR  -> <folder>
 
-Snippet = basliga gore bolunmus bolum; kod bloklari ayri 'code' snippet'idir.
-Uzun bolumler ~4000 karakterlik parcalara bolunur (kesilmez, parcalanir).
+Snippet = a section split at headings; code blocks are separate 'code' snippets.
+Long sections are split into ~4000-character pieces (split, never cut off).
 
-Etiket:
-  --tagger claude  Claude secer (varsayilan claude-opus-5). Sonuc icerik
-                   ozetiyle (sha256) tag_cache'e yazilir; yeniden uretimde
-                   yalniz degisen snippet API'ye gider. Yarim kalan uretim
-                   (Ctrl+C, cokme) .tmp'de kalir, sonraki uretim onu tasir.
-  --tagger rules   anahtar kelime kurallari: cevrimdisi, ucretsiz.
-  --tagger auto    (varsayilan) anthropic paketi ve kimlik bilgisi varsa
-                   claude, yoksa rules. Hangisinin calistigi HER ZAMAN yazilir.
+Tags:
+  --tagger claude  Claude chooses (default claude-opus-5). The result is stored
+                   in tag_cache under the content hash (sha256); a rebuild sends
+                   only changed snippets to the API. An interrupted build
+                   (Ctrl+C, crash) stays in .tmp and the next build carries it over.
+  --tagger rules   keyword rules: offline, free.
+  --tagger auto    (default) claude when the anthropic package and credentials
+                   exist, otherwise rules. Which one ran is ALWAYS printed.
 
-Kullanim:
+Usage:
   python scripts/build_atlas_db.py
   python scripts/build_atlas_db.py --tagger claude [--model claude-opus-5] [--effort low]
-  python scripts/build_atlas_db.py --source ../notlarim
+  python scripts/build_atlas_db.py --source ../my-notes
   python scripts/build_atlas_db.py --search "TimeFlags" [--project look] [--tag light]
   python scripts/build_atlas_db.py --stats
 
-Cikis: 0 tamam | 1 arama sonucsuz | 2 veritabani yok / Claude istendi ama
-       kullanilamiyor | 3 veritabani okunamadi / dogrulama tutmadi (eski veritabani korunur)
+Exit: 0 done | 1 no search results | 2 no database / Claude requested but
+      unavailable | 3 database unreadable / verification failed (the previous database is kept)
 """
 import argparse
 import functools
@@ -60,15 +60,16 @@ from i18n import add_lang_arg, set_lang, t  # noqa: E402
 
 EXIT_OK, EXIT_EMPTY, EXIT_UNAVAILABLE, EXIT_INTERNAL = 0, 1, 2, 3
 SCHEMA_VERSION = "2"
-PROMPT_VERSION = "tags-v1"
+PROMPT_VERSION = "tags-v2"
 MAX_CHARS = 4000
 DEFAULT_MODEL = "claude-opus-5"
 FALLBACK_MODELS = {"claude-opus-5", "claude-fable-5-1"}   # server-side refusal fallbacks
-NO_EFFORT_PREFIXES = ("claude-haiku-",)                   # effort parametresi bu modellerde hata verir
+NO_EFFORT_PREFIXES = ("claude-haiku-",)                   # these models reject the effort parameter
 SLUG = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
-# Etiket sozlugu: etiket -> kural etiketleyicinin aradigi kaliplar (buyuk/kucuk harf duyarsiz).
-# Claude'a da ayni liste gider; etiketler buradan secilir.
+# Tag vocabulary: tag -> patterns the rule tagger looks for (case-insensitive).
+# Claude gets the same list and picks its tags from it. The Turkish patterns stay on purpose:
+# Turkish notes added with --source are tagged as well.
 VOCAB = {
     "ydr": [r"\.ydr\b", r"\bdrawable\b"],
     "yft": [r"\.yft\b"],
@@ -169,8 +170,9 @@ HEADING = re.compile(r"^(#{1,4})\s+(.*\S)\s*$")
 FENCE = re.compile(r"^\s*(`{3,}|~{3,})\s*([\w+#.-]*)")
 
 
-# unicode61 'ı'yi 'i'ye indirmez: "carpisma" aramasi "çarpışma"yi bulmuyordu (946 snippet, 0 isabet).
-# Sorgu ve 'folded' sutunu ayni katlamadan gecer; orijinal metin kendi sutununda aranir ve gosterilir.
+# unicode61 does not fold the dotless i (U+0131) to 'i': a search for "carpisma" did not find the word
+# written with Turkish letters (946 snippets, 0 hits).
+# The query and the 'folded' column go through the same folding; the original text is searched and shown in its own column.
 _FOLD = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
 
 
@@ -184,7 +186,7 @@ def _sha(*parts):
 
 def _chunks(entries, limit=MAX_CHARS):
     """[(first_line, last_line, text)] -> [(text, first_line, last_line)].
-    Bos satirda bolmeyi tercih eder; parcanin basindaki/sonundaki bos satirlar satir araligina girmez."""
+    Prefers to split at a blank line; blank lines at the start or end of a piece are not part of its line range."""
     out, buf, size = [], [], 0
 
     def emit():
@@ -208,8 +210,8 @@ def _chunks(entries, limit=MAX_CHARS):
 
 def split_markdown(text):
     """Markdown -> snippet dicts (kind, lang, heading, heading_path, start_line, end_line, content, sha256).
-    Kod blogu ayri 'code' snippet'i olur; bolumde yerine [dil: N satır] yer tutucusu kalir ve
-    bolumun satir araligi blogu kapsar."""
+    A code block becomes its own 'code' snippet; the section keeps a [lang: N lines] placeholder in its
+    place and the section's line range covers the block."""
     lines = text.splitlines()
     first = 0
     if lines and lines[0].strip() == "---":
@@ -298,7 +300,7 @@ def collect(sources):
                     text = fh.read()
                 project = project_of(rel, label)
                 snippets = split_markdown(text)
-                # baslik kod blogu disindaki ilk basliktir ("# yorum" satiri baslik sayilmaz)
+                # the title is the first heading outside a code block (a "# comment" line is not a heading)
                 title = next((s["heading_path"].split(" > ")[0] for s in snippets if s["heading_path"]), rel)
                 for s in snippets:
                     s["project"] = project
@@ -371,8 +373,8 @@ class ClaudeTagger:
         self.client = client
         vocab_lines = "\n".join(f"- {tag}: {', '.join(dict.fromkeys(_hint(p) for p in pats))}" for tag, pats in VOCAB.items())
         self.system = (
-            "You tag snippets from a GTA V / FiveM modding knowledge base. Most prose is Turkish; file formats, tool "
-            "names and code are English.\n\n"
+            "You tag snippets from a GTA V / FiveM modding knowledge base. The prose is English, though notes added "
+            "from other folders may be Turkish; file formats, tool names and code are English.\n\n"
             "For every snippet you receive, choose 1 to 6 tags from the vocabulary below that describe what the "
             "snippet is about - its subject, not every word it happens to mention. If no vocabulary tag covers a "
             "central topic, you may add up to 2 extra tags: lowercase ASCII words joined by hyphens, at most 32 "
@@ -482,15 +484,15 @@ def build(out_path, sources, tagger_choice="auto", model=DEFAULT_MODEL, effort="
     projects = sorted({f["project"] for f in files})
     log(t("adb_collected", files=len(files), snippets=total, projects=len(projects), names=", ".join(projects)))
 
-    # Etiket onbellegi onceki veritabanindan VE yarim kalmis bir uretimin .tmp'sinden tasinir:
-    # Ctrl+C ya da cokme Claude'a odenmis etiketleri kaybettirmez.
+    # The tag cache is carried over from the previous database AND from the .tmp of an interrupted
+    # build: Ctrl+C or a crash does not lose tags already paid for.
     tmp = out_path + ".tmp"
-    carried, unsaved = [], 0          # unsaved: yalniz .tmp'de duran odenmis etiket sayisi
+    carried, unsaved = [], 0          # unsaved: paid tags that exist only in .tmp
     for prev in (out_path, tmp):
         if not os.path.isfile(prev):
             continue
         try:
-            with closing(_ro(prev)) as old:   # Windows: acik kalan baglanti os.replace'i engeller
+            with closing(_ro(prev)) as old:   # Windows: a connection left open blocks os.replace
                 if old.execute("select 1 from sqlite_master where type='table' and name='tag_cache'").fetchone():
                     rows = old.execute("select sha256, tagger, tags, created from tag_cache").fetchall()
                     carried += rows
@@ -507,7 +509,7 @@ def build(out_path, sources, tagger_choice="auto", model=DEFAULT_MODEL, effort="
 
     def abort(code):
         con.close()
-        if not unsaved:          # odenmis etiket tasiyan .tmp bir sonraki uretime birakilir
+        if not unsaved:          # a .tmp holding paid tags is left for the next build
             os.remove(tmp)
         return code
 
@@ -545,7 +547,7 @@ def build(out_path, sources, tagger_choice="auto", model=DEFAULT_MODEL, effort="
                     log(t("adb_claude_required", why=why))
                     return abort(EXIT_UNAVAILABLE)
                 log(t("adb_claude_error", kind=kind, why=why, left=sum(1 for sha in unique if sha not in cached)))
-            except BaseException:   # Ctrl+C: commit'li etiketler .tmp'de kalir, sonraki uretim tasir
+            except BaseException:   # Ctrl+C: committed tags stay in .tmp, the next build carries them over
                 con.close()
                 raise
             if tagger.refused:
@@ -601,7 +603,7 @@ def build(out_path, sources, tagger_choice="auto", model=DEFAULT_MODEL, effort="
     con.executemany("insert into meta(key, value) values (?, ?)", sorted(meta.items()))
     con.commit()
 
-    # geri oku: sayilar, FTS, butunluk -- tutmazsa eski veritabani yerinde kalir
+    # read back: counts, FTS, integrity -- on a mismatch the previous database stays in place
     problems = []
     got = {k: con.execute(f"select count(*) from {k}").fetchone()[0] for k in ("files", "snippets", "projects", "snippets_fts")}
     if got["files"] != len(files):
@@ -641,7 +643,7 @@ def _fts_query(text):
 
 
 def _guard(fn):
-    """Veritabani yok -> (2, None); sqlite hatasi -> (3, 'Tip: mesaj'). CLI ve MCP ayni cevabi verir."""
+    """No database -> (2, None); sqlite error -> (3, 'Type: message'). The CLI and MCP give the same answer."""
     @functools.wraps(fn)
     def wrapped(db, *args, **kwargs):
         if not os.path.isfile(db):
@@ -775,7 +777,7 @@ def main():
             return EXIT_UNAVAILABLE
         base = label = os.path.basename(os.path.normpath(full))
         n = 2
-        while any(label == seen for seen, _ in sources):   # ayni adli iki kaynak dosya yolunda cakismasin
+        while any(label == seen for seen, _ in sources):   # two sources with the same name must not collide in file paths
             label, n = f"{base}-{n}", n + 1
         sources.append((label, full))
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
@@ -785,6 +787,6 @@ def main():
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except (sqlite3.Error, OSError) as e:   # sozlesme: ic hata exit 3, iz yigini degil
+    except (sqlite3.Error, OSError) as e:   # contract: an internal error is exit 3, not a traceback
         print(t("adb_internal", why=f"{type(e).__name__}: {e}"))
         sys.exit(EXIT_INTERNAL)

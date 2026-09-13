@@ -1,21 +1,21 @@
-# URETILMIS INDEKSLER — DAGITILMAZ.
-# Bunlar kullanicinin KENDI GTA V kurulumundan CodeWalker ile uretilir
-# (290 MB) ve oyun surumune baglidir. Alici `/asset-build` ile kurar.
-# Ayrica Rockstar'in verisi; paylasilmasi dogru degil.
+# GENERATED INDEXES — NOT DISTRIBUTED.
+# They are built with CodeWalker from the user's OWN GTA V install
+# (290 MB) and depend on the game version. The recipient builds them with `/asset-build`.
+# They are also Rockstar's data; sharing them would not be right.
 data/
 
-# ISTISNA — ELLE YAZILMIS tablolar. Bunlarin ureten betigi YOKTUR; Rockstar'in
-# toplu verisi degil, topluluk/Sollumz arastirmasindan derlenmis kucuk
-# eslesme tablolaridir (toplam ~20 KB). Repoda gitmeleri gerekir: yoksa
-# GTA V'i olmayan kullanicida `assetdb.py mat` calismaz ve o bilgi HICBIR
-# yerden uretilemez.
+# EXCEPTION — HAND-WRITTEN tables. No script builds them; they are not Rockstar's
+# bulk data but small lookup tables compiled from community / Sollumz research
+# (~20 KB in total). They must ship with the repository: otherwise
+# `assetdb.py mat` does not work for a user without GTA V, and that information
+# cannot be generated from ANYWHERE.
 !data/
 data/*
 !data/collision_materials.tsv
 !data/collision_flag_presets.tsv
 !data/light_presets.tsv
 
-# Gecici
+# Temporary
 *.tmp
 *.log
 _raw/
@@ -25,7 +25,7 @@ __pycache__/
 *.pyc
 *.pyo
 
-# Yedek / artik
+# Backups / leftovers (*.yedek = Turkish for backup, from older local copies)
 *.yedek
 *.bak
 *.orig

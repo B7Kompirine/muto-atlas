@@ -1,11 +1,11 @@
-﻿# clip_bones.ps1 — bir klibin hedeflediği KEMIK TAG'lerini cikarir.
+﻿# clip_bones.ps1 - extracts the BONE TAGs a clip targets.
 #
-# NEDEN: klip kac kemik animasyonluyor bilmek yetmez; HANGI kemikleri
-# hedefledigi gerekir. O tag listesi, klibi oynatabilecek modeli kesin
-# olarak belirler (assetdb.py clipfit bu ciktiyi iskelet indeksiyle esler).
+# WHY: knowing how many bones a clip animates is not enough; you need WHICH bones
+# it targets. That tag list determines, without doubt, the model that can play
+# the clip (assetdb.py clipfit matches this output against the skeleton index).
 #
-# Kullanim:
-#   powershell -File clip_bones.ps1 -Dict <anim@dict> -Clip <klip> [-Json]
+# Usage:
+#   powershell -File clip_bones.ps1 -Dict <anim@dict> -Clip <clip> [-Json]
 
 param(
     [Parameter(Mandatory=$true)][string] $Dict,
@@ -18,10 +18,10 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
-if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll bulunamadi." }
+if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll not found." }
 
 $GtaFolder = & "$PSScriptRoot\paths.ps1" gta $GtaFolder
-if (-not $GtaFolder) { throw "GTA V klasoru bulunamadi." }
+if (-not $GtaFolder) { throw "GTA V folder not found." }
 
 $cwDir = Split-Path $CodeWalker -Parent
 $script:cwDir = $cwDir
@@ -103,22 +103,23 @@ public static class ClipBones
                     {
                         Console.WriteLine("dict : {0}", dictName);
                         Console.WriteLine("clip : {0}", nm);
-                        Console.WriteLine("tag  : {0} adet", uniq.Count);
+                        Console.WriteLine("tags : {0}", uniq.Count);
                         Console.WriteLine(string.Join(",", uniq));
                     }
                     return;
                 }
             }
         }
-        Console.WriteLine(json ? "{\"error\":\"bulunamadi\"}" : "BULUNAMADI: " + dictName + " / " + clipName);
+        // assetdb.py clipfit only checks that the "error" key exists.
+        Console.WriteLine(json ? "{\"error\":\"not found\"}" : "NOT FOUND: " + dictName + " / " + clipName);
     }
 }
 '@
 
-# 'System.Collections'/'System.Runtime'/'System.Console' SART: PowerShell 7 (.NET 8+)
-# altinda bu tipler netstandard'dan FORWARD edilmis durumda; referans verilmezse
-# Add-Type "CS1069: type has been forwarded" / "CS0103: Console does not exist"
-# ile coker. Windows PowerShell 5.1'de sorun cikmaz, PS7'de her seferinde cikar.
+# 'System.Collections'/'System.Runtime'/'System.Console' are REQUIRED: under PowerShell 7 (.NET 8+)
+# these types are FORWARDED from netstandard; without a reference
+# Add-Type crashes with "CS1069: type has been forwarded" / "CS0103: Console does not exist".
+# Windows PowerShell 5.1 has no problem with it; PS7 fails every time.
 $refs = @($CodeWalker, (Join-Path $cwDir 'SharpDX.dll'), (Join-Path $cwDir 'SharpDX.Mathematics.dll'), 'netstandard',
           'System.Collections', 'System.Runtime', 'System.Linq', 'System.Console', 'System.IO.Compression', 'System.Text.RegularExpressions')
 Add-Type -TypeDefinition $src -ReferencedAssemblies $refs -Language CSharp

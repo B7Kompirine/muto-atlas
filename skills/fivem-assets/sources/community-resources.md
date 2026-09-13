@@ -1,153 +1,153 @@
-# Sollumz Discord `#resources` — kaynak ve araç kataloğu
+# Sollumz Discord `#resources` — resource and tool catalogue
 
-**Kaynak notu — kural değil.** Kanalın tamamı: **12.09.2022 → 12.06.2026,
-110 mesaj**, 53 ek indirildi. Ham döküm ve dosyalar:
-yerel indirme klasörü (`_manifest.tsv` = dosya → CDN linki;
-linkler ~24 saatte bayatlar).
+**Source note — not a rule.** The whole channel: **2022-09-12 → 2026-06-12,
+110 messages**, 53 attachments downloaded. Raw dump and files:
+local download folder (`_manifest.tsv` = file → CDN link;
+the links go stale in ~24 hours).
 
-⛔ Buradaki hiçbir sayı **ölçüm değildir** — topluluk iddiasıdır. Bir değeri
-asset'e ya da koda taşımadan önce `assetdb.py` ile doğrula
-(`sources/external-tools.md` giriş kuralı burada da geçerlidir).
+⛔ No number here **is a measurement** — they are community claims. Before moving a value
+into an asset or code, verify it with `assetdb.py`
+(the entry rule of `sources/external-tools.md` holds here too).
 
-Bu dosya bir **indekstir**: "böyle bir araç / şablon / referans var mı?"
-sorusunun cevabı. Yöntem dallarda, indeks burada.
+This file is an **index**: the answer to "is there such a tool / template / reference?".
+The method lives in the branches; the index lives here.
 
 ---
 
-## Bir işe girmeden önce buraya bakılacak durumlar
+## Situations to check here before starting a job
 
-| durum | ne var |
+| situation | what exists |
 |---|---|
-| iç mekân / MLO vertex boyama | §3 R\* iç mekân renk şeması |
-| decal · kenar geçişi · terrain maskesi | §4 geonodes araçları |
-| import edilmiş drawable temizliği | §5 standart temizlik yordamı |
-| LOD ymap / YDD düzenleme | §6 şablonlar + `nametables.rpf` |
-| ped rest pose · IK rig · araç oturuşu | §7 hazır `.blend` dosyaları |
-| ışık · timecycle · lightshaft | §2 |
+| interior / MLO vertex painting | §3 R\* interior colour scheme |
+| decal · edge transition · terrain mask | §4 geonodes tools |
+| cleanup of an imported drawable | §5 standard cleanup procedure |
+| editing LOD ymap / YDD | §6 templates + `nametables.rpf` |
+| ped rest pose · IK rig · vehicle seating | §7 ready `.blend` files |
+| light · timecycle · lightshaft | §2 |
 | bake · spec/gloss · Substance | §9 |
-| ymap/ytyp toplu işlem · MLO export · su | §10 |
-| partikül önizleme · kan efekti | §11 |
-| R\* nasıl yapmış — referans dosyası | §12 iç mekân kütüphaneleri, `LS.zip` |
+| ymap/ytyp batch processing · MLO export · water | §10 |
+| particle preview · blood effect | §11 |
+| how R\* did it — reference files | §12 interior libraries, `LS.zip` |
 
 ---
 
-## 1. Shader / materyal
+## 1. Shader / material
 
-- **4 katmanlı (blend) shader** — `Colour1` vertex color: layer0 siyah,
-  layer1 mavi, layer2 yeşil. `texcoord0` ana dokular içindir. Shader'da
-  `lookup sampler` varsa maske = **`Colour0`'ın alfa kanalı** + `texcoord1`.
-- **Ayna gibi yüzey** — `SpecularFalloff` çok yüksek + `SpecularFresnel` çok
-  düşük + `SpecularIntensity` artır.
-- **Renkli su** — `water_poolenv` shader'ı, parametre **`FogColor`**
-  (RGB/255; alfa = görüş derinliği).
-- **İki mesh birleşince doku bozuluyorsa** iki objenin **UV map adları aynı
-  olmalı**.
-- **Tint shader düzeltmesi** (mevcut projede) — geometry nodes içindeki
-  IMAGE_TEXTURE düğümlerinin `interpolation`'ını `Closest` yap
-  (snippet ham dökümde).
-- **UV katmanlarını toplu yeniden adlandır** (`UVMap 0`, `UVMap 1` …) —
-  Vicho snippet'i, ham dökümde.
-- Cam tonlama örnekleri → `glass.blend` · ped spec haritası anlamı →
+- **4-layer (blend) shader** — `Colour1` vertex colour: layer0 black,
+  layer1 blue, layer2 green. `texcoord0` is for the main textures. If the shader has a
+  `lookup sampler`, the mask = **the alpha channel of `Colour0`** + `texcoord1`.
+- **Mirror-like surface** — `SpecularFalloff` very high + `SpecularFresnel` very
+  low + raise `SpecularIntensity`.
+- **Coloured water** — the `water_poolenv` shader, parameter **`FogColor`**
+  (RGB/255; alpha = visibility depth).
+- **If the texture breaks when two meshes are joined**, the two objects' **UV map names must
+  be the same**.
+- **Tint shader fix** (in the current project) — set the `interpolation` of the
+  IMAGE_TEXTURE nodes inside geometry nodes to `Closest`
+  (snippet in the raw dump).
+- **Batch-rename UV layers** (`UVMap 0`, `UVMap 1` …) —
+  Vicho's snippet, in the raw dump.
+- Glass tint examples → `glass.blend` · meaning of the ped spec map →
   `ped_spec_meaning_fuller.png`.
 
-> Doku boyutunun ikinin kuvveti olması burada da tekrarlanıyor; kural
-> gövdededir (`trunk/gta-fundamentals.md` §5), buradan alınmaz.
+> Texture size being a power of two is repeated here too; the rule
+> lives in the trunk (`trunk/gta-fundamentals.md` §5) and is not taken from here.
 
-## 2. Işık / gölge / timecycle
+## 2. Light / shadow / timecycle
 
-- **Lightshaft:** `flags = 99` + `Direction Amount = 0` → yalnız güneş
-  vurduğunda görünür ve güneş yönünü takip eder.
-- **Işık projeksiyon dokusunu Blender'da önizleme:** Cycles + emission +
-  Node Wrangler `CTRL+T`; Texture Coordinate bağlantısını **UV → Normal** al,
-  image'ı **Repeat → Clip** yap, konumu mapping XYZ, bulanıklık `Radius`.
-- **`lodlights` / `distlodlights` ayrımı:** `distlodlights.ymap` = renk/konum ·
-  `lodlights.ymap` = yoğunluk, falloff, time flags, koni açısı, korona.
-- **R\* iç mekân gölgeleri** `v_66_shadowmap2.ydr`, `v_26_shadowtrash.ydr` —
-  *"oyundaki ışıklar bu tür gölgeleri asla üretmez"* (bake edilmiş gölge mesh'i).
-- Işık culling plane rehberi (PDF) · Flashiness referans videosu ·
-  `timecycle_mods_1..4.xml` birleşimi + 426 hava dosyası ·
-  `timecycle-loader.zip` (oyunda `/timecycle <ad>` ile test).
+- **Lightshaft:** `flags = 99` + `Direction Amount = 0` → visible only when the sun
+  hits it, and it follows the sun direction.
+- **Previewing a light projection texture in Blender:** Cycles + emission +
+  Node Wrangler `CTRL+T`; switch the Texture Coordinate link **UV → Normal**,
+  set the image **Repeat → Clip**, position via mapping XYZ, blur via `Radius`.
+- **`lodlights` / `distlodlights` split:** `distlodlights.ymap` = colour/position ·
+  `lodlights.ymap` = intensity, falloff, time flags, cone angle, corona.
+- **R\* interior shadows** `v_66_shadowmap2.ydr`, `v_26_shadowtrash.ydr` —
+  *"lights in the game never produce shadows like these"* (a baked shadow mesh).
+- Light culling plane guide (PDF) · Flashiness reference video ·
+  merge of `timecycle_mods_1..4.xml` + 426 weather files ·
+  `timecycle-loader.zip` (test in game with `/timecycle <name>`).
 
 ## 3. Vertex color
 
-- ⭐ **R\* iç mekân renk şeması:** kabuğun **alt yarısı yeşil→koyu yeşil**,
-  **üst yarısı mavi→koyu mavi**. Dışarı açılan pencere/kapı boşluklarında ve
-  güneş vuran her yerde **yoğun kırmızı→sarı** (sahte aydınlanma).
-  2 katlıda birinci kat ağırlıklı yeşil, ikinci kat ağırlıklı mavi.
-- **Yağmuru engelleme (MLO dışında):** collision mesh/primitive'in vertex
-  rengine **`#32383A`**.
-- **Sahte kumaş/rüzgâr:** herhangi bir tree shader + iki vertex color kanalı;
-  `Colour0` siyah-beyaz (siyah = az hareket, beyaz = çok), `Colour1` normal
-  vertex renkleri.
-- Araçlar: **Vertex Color Master** (4.x fork'ları dahil) ·
-  **Geonodes Paint Blend** `terrain_mask_v0_5.blend` (dört kanal otomatik).
+- ⭐ **R\* interior colour scheme:** the **lower half of the shell green→dark green**,
+  the **upper half blue→dark blue**. In window/door openings to the outside and
+  everywhere the sun hits, **strong red→yellow** (fake lighting).
+  On a 2-storey interior the first floor is mostly green, the second floor mostly blue.
+- **Blocking rain (outside an MLO):** vertex colour **`#32383A`** on the collision
+  mesh/primitive.
+- **Fake cloth/wind:** any tree shader + two vertex colour channels;
+  `Colour0` black-white (black = little movement, white = a lot), `Colour1` normal
+  vertex colours.
+- Tools: **Vertex Color Master** (4.x forks included) ·
+  **Geonodes Paint Blend** `terrain_mask_v0_5.blend` (four channels automatically).
 
-## 4. Decal / geçiş
+## 4. Decal / transition
 
-- **Geonodes Edge Decal Tool** → `decal.blend` + `Decal_tool.gif` — bina, zemin
-  veya yol için geçiş mesh'i üretir, Asset Browser'a eklenir.
-  Köşe-sarma / duvar hasarı decal işine doğrudan bakan tek hazır araç budur.
+- **Geonodes Edge Decal Tool** → `decal.blend` + `Decal_tool.gif` — builds a transition mesh for a building,
+  ground or road; it is added to the Asset Browser.
+  It is the only ready-made tool that directly covers corner wrapping / wall damage decals.
 
-## 5. Geometri / mesh hijyeni
+## 5. Geometry / mesh hygiene
 
-- ⭐ **Drawable import sonrası standart temizlik:**
+- ⭐ **Standard cleanup after a drawable import:**
   1. Edit mode → `M` → **Merge by Distance**
   2. Object Data Properties → Geometry Data → **Clear Custom Split Normals Data**
   3. Edit mode `ALT+J` (Tris to Quads): Max Face Angle **90°**, Max Shape Angle
-     **90°**, Compare **UVs / Seam / Sharp / Materials** açık, **VCols kapalı**
-- **Yüz yönü kontrolü:** Show Face Orientation — mavi doğru, kırmızı ters.
-- ⛔ **Boş `.col` drawable = anında crash.** Mod parçasına geçince oyun anında
-  çöküyorsa ilk şüpheli budur; sil ve yeniden export et.
-- Primitive collision üretimi (Collider Tools) · mesh'ler arası vertex grubu
-  aktarımı · weighted normal manipülasyonu (videolar ham dökümde).
+     **90°**, Compare **UVs / Seam / Sharp / Materials** on, **VCols off**
+- **Face orientation check:** Show Face Orientation — blue is correct, red is flipped.
+- ⛔ **An empty `.col` drawable = instant crash.** If the game crashes instantly when you switch to a mod
+  part, this is the first suspect; delete it and export again.
+- Primitive collision generation (Collider Tools) · vertex group transfer
+  between meshes · weighted normal manipulation (videos in the raw dump).
 
 ## 6. LOD
 
-- `FiveM_LOD_template_2_levels.zip` (2 seviye ymap/model parenting şablonu) ·
-  `lod_tuto.zip` + `lod_tutorial.blend` (2025, oyunda denenebilir stream).
-- ⛔ **LOD (YDD) düzenlemek için `nametables.rpf` şart** — GTA 5 **ana
-  dizinine** konur. İçinde animasyon ve ses adları da var.
+- `FiveM_LOD_template_2_levels.zip` (2-level ymap/model parenting template) ·
+  `lod_tuto.zip` + `lod_tutorial.blend` (2025, a stream you can try in game).
+- ⛔ **Editing LOD (YDD) requires `nametables.rpf`** — it goes in the GTA 5
+  **root folder**. It also contains animation and sound names.
 
-## 7. Ped / animasyon / rig
+## 7. Ped / animation / rig
 
-- Rest pose şablonları: `A_pose.blend`, `T_pose.blend`, `FEMALE_A-POSE.blend`,
-  modelleme ölçeği `ped_scale.fbx`.
-- IK rig'leri: `IK_ForGTA.blend` · `Freemode_F_IK.blend` ·
-  `Freemode_M_IK.blend` · **`Freemode_M_IK_Fixed.blend`** ← root dönüklüğü
-  hatası giderilmiş sürüm, **bunu kullan**.
-- Araç oturuşu referansı: `STANDARD_driving_layout.blend`,
+- Rest pose templates: `A_pose.blend`, `T_pose.blend`, `FEMALE_A-POSE.blend`,
+  modelling scale `ped_scale.fbx`.
+- IK rigs: `IK_ForGTA.blend` · `Freemode_F_IK.blend` ·
+  `Freemode_M_IK.blend` · **`Freemode_M_IK_Fixed.blend`** ← the version with the root rotation
+  bug fixed, **use this one**.
+- Vehicle seating reference: `STANDARD_driving_layout.blend`,
   `LOW_driving_layout.blend`.
-- **FakeBones** (armature görselleştirme) · animasyon flag hesaplayıcı
+- **FakeBones** (armature visualisation) · animation flag calculator
   (`vespura.com/fivem/animations/`).
 
-## 8. Fragment / yıkım / RayFire
+## 8. Fragment / destruction / RayFire
 
-- `yft.blend` — 3 parçaya ayrılan örnek fragment.
-- **`blender_rayfirev`** — bake edilmiş animasyonlu mesh'i Sollumz 2.1+
-  drawable'ına çeviren eklenti (`github.com/ultrahacx/blender_rayfirev`).
+- `yft.blend` — an example fragment that splits into 3 pieces.
+- **`blender_rayfirev`** — an add-on that turns a baked animated mesh into a Sollumz 2.1+
+  drawable (`github.com/ultrahacx/blender_rayfirev`).
 
-## 9. Doku üretimi / bake
+## 9. Texture production / bake
 
 - **GTA baker (Substance)** `Gta_baker.sbs`, `GTA_ColorSpec.sbsar`:
   Color → `COO` curvature overlay · `AOMO` AO · `NO` normal/height.
-  Spec → `Invert` (GTA **gloss** kullanır, ters çevrilir) · `COO` · `AOMO` ·
-  `MMO` metallic çarpanı. *Hiç metallic olmayan siyaha düşmez — biraz spec
-  hep gerekir.*
-- Prosedürel materyal + bake playlist (Ryan King Art) · seamless doku videosu ·
-  kıyafet dokusu renk/detay (Photoshop) · **Folders2YTD** (DDS klasörü → `.ytd`;
-  artık Vicho's Tools ile Blender içinde de yapılabiliyor).
+  Spec → `Invert` (GTA uses **gloss**, so it is inverted) · `COO` · `AOMO` ·
+  `MMO` metallic multiplier. *Something with no metallic at all does not drop to black — a little spec
+  is always needed.*
+- Procedural material + bake playlist (Ryan King Art) · seamless texture video ·
+  clothing texture colour/detail (Photoshop) · **Folders2YTD** (DDS folder → `.ytd`;
+  now also doable inside Blender with Vicho's Tools).
 
-## 10. Harita / MLO / FiveM tarafı
+## 10. Map / MLO / FiveM side
 
 - **Arbolito** — YMAP splitter/merger, train tracks mover, YNV→ONV, prop
   replacer (`github.com/Hancapo/Arbolito`).
-- **VichoTools** — seçimi metne kaydet, **MLO transformlarını çalışır
-  `.xml.ymap` olarak export et**, transform kopyalama, YTD araçları.
+- **VichoTools** — save the selection to text, **export MLO transforms as a working
+  `.xml.ymap`**, transform copying, YTD tools.
 - **dolu_tool** · **ht_mlotool** (MLO audio occlusion) ·
-  `tiwabs_audio_door_tool` (özel kapı sesi) · `doortuning.zip`.
-- **WaterEditor** (Blender'da `water.xml`) · **Water XML Merger** (web).
-- Dinamik ymap yükleme/boşaltma (`Dynamic-loaded-map-fivem`).
-- **Vanilla iç mekânı düzgün devre dışı bırakma:**
+  `tiwabs_audio_door_tool` (custom door sound) · `doortuning.zip`.
+- **WaterEditor** (`water.xml` in Blender) · **Water XML Merger** (web).
+- Dynamic ymap loading/unloading (`Dynamic-loaded-map-fivem`).
+- **Disabling a vanilla interior properly:**
   ```lua
   CreateThread(function()
       local oldinterior = GetInteriorAtCoordsWithType(0.0, 0.0, 0.0, 'int_name')
@@ -155,51 +155,51 @@ sorusunun cevabı. Yöntem dallarda, indeks burada.
       UnpinInterior(oldinterior)
   end)
   ```
-- ⚠️ **`str_requestFlush` artık varsayılan kapalı.** Test ortamında açmak için
-  `server.cfg` / `env.cfg` sonuna: `setr str_enableFlush true`
-- Stream şablonları: `FiveM_Map_Resource.7z`,
+- ⚠️ **`str_requestFlush` is now off by default.** To turn it on in a test environment, add this at the end of
+  `server.cfg` / `env.cfg`: `setr str_enableFlush true`
+- Stream templates: `FiveM_Map_Resource.7z`,
   `FiveM_server_scenarios_example.zip`.
 
-## 11. Partikül / efekt / kan
+## 11. Particle / effect / blood
 
-- **eco_effect** (`github.com/Ekhion76/eco_effect`) — partikül efektlerini
-  **oyunda canlı** izleme, arama, ölçek ve seçenek değiştirme.
-  (`echo effect` ile aynı işi yapan ikinci araç —
+- **eco_effect** (`github.com/Ekhion76/eco_effect`) — watch particle effects
+  **live in game**, search them, change scale and options.
+  (A second tool that does the same job as `echo effect` —
   `branches/particle/ready-made-effects.md`.)
-- **`.ypt` keyframe property dokümantasyonu** — `github.com/krzysiula3000/ypt-research`.
-- **BloodFX** — `bloodfx.dat` alan anlamları, aşağıda.
+- **`.ypt` keyframe property documentation** — `github.com/krzysiula3000/ypt-research`.
+- **BloodFX** — meaning of the `bloodfx.dat` fields, below.
 
-### `bloodfx.dat` alanları (Fadilj araştırması, üçüncü taraf)
+### `bloodfx.dat` fields (Fadilj's research, third party)
 
-| alan | anlamı |
+| field | meaning |
 |---|---|
-| **PROB** | efektin kullanılma olasılığı; `1.0` açık, `0.0` kapalı. Ped damage efektleri için **ayrı** bir PROB var (yalnız mermi deliği girdisi) |
-| **SPLAT / SPRAY / MIST DCL ID** | her biri **NORM** ve **SOAK** varyantıyla; kullanılan efekti doğrulayan decal ID'leri |
-| **COL_TINT (R G B)** | yerdeki kan sıçramasının rengi |
-| **SPRAY DOT_THRESH** | yerde kaç büyük leke/birikinti üretileceği (yüksek = daha çok) |
-| **MIST THRESH** | küçük serpinti noktalarının yakınlığı (yüksek = daha yakın) |
-| **LOD RANGE (HI/LO)** | efektin görülebildiği mesafe; HI yüksek kaliteli sürüm |
-| **NUM PROBES (HI/LO)** | **belirsiz** — yazar değerleri değiştirip fark görememiş |
-| **PROBE DISTA** | atış normalinden yüzey aramak için gidilen mesafe; yüzey bulursa **Diffuse A** |
-| **PROBE DISTB** | probe A'nın **yarısından aşağı** arar, **yalnız Diffuse A gerçekleşmediyse**; bulursa **Diffuse B** |
-| **PROBE VARITN** | kanın ne kadar uzağa / çok / büyük yayılacağı |
+| **PROB** | probability that the effect is used; `1.0` on, `0.0` off. Ped damage effects have a **separate** PROB (bullet hole entry only) |
+| **SPLAT / SPRAY / MIST DCL ID** | each with a **NORM** and a **SOAK** variant; decal IDs that confirm which effect is used |
+| **COL_TINT (R G B)** | colour of the blood splash on the ground |
+| **SPRAY DOT_THRESH** | how many large stains/pools are produced on the ground (higher = more) |
+| **MIST THRESH** | how close together the small spatter dots are (higher = closer) |
+| **LOD RANGE (HI/LO)** | distance at which the effect can be seen; HI is the high-quality version |
+| **NUM PROBES (HI/LO)** | **unclear** — the author changed the values and saw no difference |
+| **PROBE DISTA** | distance travelled from the shot normal to search for a surface; if it finds one, **Diffuse A** |
+| **PROBE DISTB** | searches **below half** of probe A, **only if Diffuse A did not happen**; if it finds one, **Diffuse B** |
+| **PROBE VARITN** | how far / how much / how large the blood spreads |
 
-⛔ Dosyadaki her sayısal girdinin **hem giriş hem çıkış (entry / exit)**
-karşılığı olmak zorundadır. Size ve speed evolution'ları efektin ne kadar
-hızlı ve büyük gösterileceğine karşılık gelir.
-Tam metin: `sollumz-discord-resources\BloodFX_Documentation.md`.
+⛔ Every numeric entry in the file must have **both an entry and an exit**
+counterpart. The size and speed evolutions correspond to how fast and how large the effect
+is shown.
+Full text: `sollumz-discord-resources\BloodFX_Documentation.md`.
 
-## 12. Referans kütüphaneleri ve diğer
+## 12. Reference libraries and other
 
 - `Interior_References.7z` (207 MB) · `Interior_References_V2.7z` (849 MB,
-  25 iç mekân) — ⚠️ **V2, V1'in üst kümesi DEĞİL**: `v_bahama` ikisinde de var
-  ama V1'de 93 MB, V2'de 19,6 MB — farklı export'lar. **İkisini de tut.**
-- `LS.zip` (76 MB) — **konum ve ölçek referansı için tüm Los Santos (SLOD2)**.
-- `Procedural_IDs.txt` — collision YBN'lerde çim/çöp/döküntü spawn eden
-  materyal ID'leri (256 satır).
-- `vmt_types.txt` — 38 adet `VMT_` carcols.meta kozmetik tipi.
+  25 interiors) — ⚠️ **V2 is NOT a superset of V1**: `v_bahama` is in both,
+  but it is 93 MB in V1 and 19.6 MB in V2 — different exports. **Keep both.**
+- `LS.zip` (76 MB) — **all of Los Santos (SLOD2) for position and scale reference**.
+- `Procedural_IDs.txt` — material IDs in collision YBNs that spawn grass/litter/debris
+  (256 lines).
+- `vmt_types.txt` — 38 `VMT_` carcols.meta cosmetic types.
 - `custom_radios.zip` · `Vehicle-Siren-Meta-Files.zip` · `customped.zip`
-  (SP/RageMP ped DLC şablonu) · `asset-browser-guide.pdf`.
-- `blender-3.3.7-windows-x64.zip` **indirilmedi** (277 MB) — shadow map render
-  pass'i 3.4+ ile seçilemediği için kanalda taşınabilir 3.3.7 tutuluyor.
-  Gölge bake'i gerekirse akılda tutulacak tek sebep budur.
+  (SP/RageMP ped DLC template) · `asset-browser-guide.pdf`.
+- `blender-3.3.7-windows-x64.zip` **not downloaded** (277 MB) — the channel keeps a portable 3.3.7
+  because the shadow map render pass cannot be selected in 3.4+.
+  That is the only reason to keep in mind if a shadow bake is ever needed.

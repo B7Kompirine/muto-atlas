@@ -1,21 +1,20 @@
-# Araç kemikleri, mod, extra, handling — sorgu ve kemik adları
+# Vehicle bones, mods, extras, handling — queries and bone names
 
-**Ne zaman okunur:** araca script'le kapı/cam/kaput/ışık/egzoz/siren/mod kemiğiyle iş yapacaksın; `handlingId`, modkit, extra, sınıf soracaksın.
-**When to read:** vehicle bone names, mods, extras and handling — querying the spec sheet instead of guessing.
-**Kaynak:** `trunk/bone-tags.md` §2 (193 ad, %100 tag-kararlı) · `assetdb.py vehicle` (921 araç) · **Ölçüm:** 478.055 iskelet satırı
-**Önce:** `branches/vehicle/_branch.md`
+**When to read:** you will script a vehicle's door/window/hood/light/exhaust/siren/mod bone; you need `handlingId`, modkit, extras or class — query the spec sheet instead of guessing.
+**Source:** `trunk/bone-tags.md` §2 (193 names, 100% tag-stable) · `assetdb.py vehicle` (921 vehicles) · **Measured:** 478,055 skeleton rows
+**Read first:** `branches/vehicle/_branch.md`
 
 ---
 
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" vehicle <ad>        # handlingId, modkit, extra, sınıf, koltuk
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" bones <model>       # aracın gerçek iskeleti (ad + tag)
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" vehicle <name>      # handlingId, modkit, extra, class, seats
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" bones <model>       # the vehicle's real skeleton (name + tag)
 ```
 
-## Araç kemiklerinde AD sabittir — adı birebir kopyala
+## On vehicle bones the NAME is fixed — copy the name exactly
 
-Tam katalog ve tuzaklar `trunk/bone-tags.md` §2 ve §6'da; özet burada.
+The full catalogue and the pitfalls are in `trunk/bone-tags.md` §2 and §6; summary here.
 
-### Kategoriler
+### Categories
 
-Gövde/kök · tekerlek/süspansiyon · kapı/cam/kaput · ışıklar · motor/egzoz/şanzıman · iç mekân/koltuk · mod/extra/misc · uçak/motosiklet/tekne — adlar ve tag'ler `trunk/bone-tags.md` §2.1-2.8 (tek kopya).
+Body/root · wheel/suspension · door/window/hood · lights · engine/exhaust/transmission · interior/seat · mod/extra/misc · aircraft/motorbike/boat — names and tags in `trunk/bone-tags.md` §2.1-2.8 (single copy).

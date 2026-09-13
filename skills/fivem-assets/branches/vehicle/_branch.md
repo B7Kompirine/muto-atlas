@@ -1,34 +1,31 @@
-# Araç — dal kuralları
+# Vehicle — branch rules
 
-Komut: `/vehicle` · Klasör: `branches/vehicle/`
-Anahtar kelimeler: araç, araba, otomobil, araba kapısı, araba kemiği, vehicle, handling, handlingId, handling.meta, modkit, SetVehicleModKit, extra, SetVehicleExtra, araç sınıfı, koltuk, araç kemiği, door_dside_f, kapı kemiği, cam, kaput, siren, egzoz, wheel, livery, debadger, tint
-**Bu dala ne düşer:** **Araç** — kemiği, handling'i, modkit/extra'sı, künyesi. Sınır: aracın dokusu/boyası → `/look`.
-
-> Yukarıdaki anahtar kelimeler **hızlandırıcıdır, kapsayıcı değildir.** Bir kelime listede yoksa
-> yönlendirme durmaz — bu tanıma bakılır. *“kepenk”* listede olmasa da bir kapı nesnesidir.
-
+Command: `/vehicle`
+**Keywords:** vehicle, car, automobile, car door, car bone, handling, handlingId, handling.meta, modkit, SetVehicleModKit, extra, SetVehicleExtra, vehicle class, seat, vehicle bone, door_dside_f, door bone, window, hood, siren, exhaust, wheel, livery, debadger, tint
 **What belongs here:** **A vehicle** — its bones, handling, modkit/extras, spec sheet. Boundary: the vehicle's texture or paint → `/look`.
-**Keywords (EN):** vehicle, car, handling, handlingId, handling.meta, modkit, SetVehicleModKit, extra, SetVehicleExtra, vehicle class, seat, vehicle bone, door_dside_f, door bone, window, hood, siren, exhaust, wheel, livery, debadger, tint
+
+> The keywords above are **accelerators, not a complete list.** If a word is not on the list,
+> routing does not stop — this definition is used. *“roller shutter”* is not on the list, but it is still a door object.
 
 
-## Bu dalda her yaprakta geçerli olan
+## Valid for every leaf in this branch
 
-⚠️ **İnce dal.** Araç modelleme/kurulum videoları Sollumz çıkarımından **istek üzerine ayıklandı**; atlas'ta araç için ölçülmüş olan
-iki şey var: kemik adları ve araç künyesi. Bir araç üretimi yapılırsa ölçümler buraya gelir.
+⚠️ **Thin branch.** Vehicle modelling/setup videos were **removed from the Sollumz extraction on request**; the atlas has two measured things for vehicles:
+bone names and the vehicle spec sheet. If a vehicle build is done, its measurements go here.
 
-- **Araç kemiklerinde AD sabittir, %100 tag-kararlı** (193 ad: kapı/cam/kaput/tekerlek/ışık/motor/egzoz/koltuk/mod/extra/siren) —
-  adı birebir kopyala, `GetEntityBoneIndexByName` ile bul. Silah ve ped'de tersi olabilir → `trunk/bone-tags.md` §1 karar kuralı.
-- **Künye sorgulanır, tahmin edilmez:** `assetdb.py vehicle <ad>` → `handlingId`, modkit, extra, sınıf, koltuk (921 araç).
-- Dış araç bir sayı/tablo getirdiyse (Five Toolkit debadger, tint) **iddiadır** → `sources/external-tools.md` etiket sistemi.
-- Araç dokusu/shader'ı (`vehicle_paint*`, livery) için doku kuralları `branches/look/_branch.md`; araç collision bayrakları `trunk/flags.md` §8.
+- **On vehicle bones the NAME is fixed, 100% tag-stable** (193 names: door/window/hood/wheel/light/engine/exhaust/seat/mod/extra/siren) —
+  copy the name exactly, find it with `GetEntityBoneIndexByName`. Weapons and peds can be the opposite → `trunk/bone-tags.md` §1 decision rule.
+- **The spec sheet is queried, not guessed:** `assetdb.py vehicle <name>` → `handlingId`, modkit, extra, class, seats (921 vehicles).
+- If an external tool brought a number or table (Five Toolkit debadger, tint), it is **a claim** → `sources/external-tools.md` label system.
+- For vehicle texture/shader (`vehicle_paint*`, livery) the texture rules are in `branches/look/_branch.md`; vehicle collision flags in `trunk/flags.md` §8.
 
-## Yapraklar
+## Leaves
 
-| istenen | dosya | durum — kaynak |
+| wanted | file | status — source |
 |---|---|---|
-| Kemik / mod / extra / handling sorgusu | bones-and-mods.md | ölçüldü — trunk/kemik-tag §2 · assetdb vehicle |
-| Dış araç — debadger, ayıklanan araç videoları | external-tools.md | dış kaynak — trunk/dis-arac §1k · sollumz-discord (ayıklandı) |
+| Bone / mod / extra / handling query | bones-and-mods.md | measured — trunk/bone-tags §2 · assetdb vehicle |
+| External tool — debadger, removed vehicle videos | external-tools.md | external source — sources/external-tools §1k · sollumz-discord (removed) |
 
-## Gövdeye bakılacaklar
-- `trunk/bone-tags.md` §2 (tam tablo), §6 (kararsız adlar) · `trunk/flags.md` §8 collision · `sources/external-tools.md` §1k
-- `trunk/verification-ladder.md` — iskelet/künye geri okuma
+## Trunk files to read
+- `trunk/bone-tags.md` §2 (full table), §6 (unstable names) · `trunk/flags.md` §8 collision · `sources/external-tools.md` §1k
+- `trunk/verification-ladder.md` — skeleton/spec sheet read back

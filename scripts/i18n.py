@@ -1,25 +1,27 @@
 #!/usr/bin/env python3
-"""i18n.py — muto-atlas cikti dili (tr / en).
+"""i18n.py — muto-atlas output language (tr / en).
 
-Dil su sirayla belirlenir (ilk bulunan kazanir):
-  1. --lang bayragi          (arac calistirilirken)
-  2. MUTO_ATLAS_LANG cevre degiskeni
+The language is chosen in this order (the first one found wins):
+  1. the --lang flag          (when a tool runs)
+  2. the MUTO_ATLAS_LANG environment variable
   3. data/config.json -> "lang"
-  4. varsayilan: en
+  4. default: en
 
-NEDEN VARSAYILAN EN
--------------------
-Depo herkese aciktir; ilk calistiranin Turkce bilmesini varsayamayiz.
-Turkce isteyen bir kez `--lang tr --save` der ve bir daha ugrasmaz.
+WHY THE DEFAULT IS EN
+---------------------
+The repository is public; we cannot assume the first person to run it reads
+Turkish. Anyone who wants Turkish says `--lang tr --save` once and is done.
 
-KULLANIM
---------
+USAGE
+-----
     from i18n import t, set_lang
     print(t("layer_missing", file="archetypes.tsv.gz"))
 
-Anahtar bulunamazsa ANAHTARIN KENDISI dondurulur — cikti bozulmaz, eksik
-ceviri de gorunur olur. Sessizce bos string dondurmek, eksik cevirinin
-fark edilmemesine yol acardi.
+When a key is missing, THE KEY ITSELF is returned — the output does not break
+and the missing translation stays visible. Silently returning an empty string
+would let a missing translation go unnoticed.
+
+The "tr" entries are Turkish on purpose: they are the --lang tr output.
 """
 from __future__ import annotations
 
@@ -33,8 +35,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(os.path.dirname(HERE), "data")
 CONFIG = os.path.join(DATA, "config.json")
 
-MESAJ = {
-    # --- cikis kodlari / katman ---
+MESSAGES = {
+    # --- exit codes / layers ---
     "layer_missing": {
         "tr": "{file} yok. Uret: {cmd}",
         "en": "{file} not found. Build it with: {cmd}",
@@ -46,7 +48,7 @@ MESAJ = {
     "internal_error": {"tr": "IC HATA", "en": "INTERNAL ERROR"},
     "not_found": {"tr": "BULUNAMADI", "en": "NOT FOUND"},
 
-    # --- ortak cikti ---
+    # --- common output ---
     "results": {"tr": "{n} sonuc", "en": "{n} result(s)"},
     "hidden": {"tr": " ({n} gosterilmedi, --limit ile artir)",
                "en": " ({n} hidden, raise --limit)"},
@@ -54,7 +56,7 @@ MESAJ = {
     "usage": {"tr": "Kullanim", "en": "Usage"},
     "tip": {"tr": "Ipucu", "en": "Tip"},
 
-    # --- envanter ---
+    # --- inventory ---
     "inventory": {"tr": "KATMAN ENVANTERI", "en": "LAYER INVENTORY"},
     "inv_present": {"tr": "VAR", "en": "OK "},
     "inv_missing": {"tr": "YOK", "en": "-- "},
@@ -83,7 +85,7 @@ MESAJ = {
                "     clipset values across 1109 peds, only 37 are real dictionaries."),
     },
 
-    # --- silah ---
+    # --- weapon ---
     "wpn_category": {"tr": "kategori/hasar", "en": "category/damage"},
     "wpn_model": {"tr": "model", "en": "model"},
     "wpn_ammo": {"tr": "mermi", "en": "ammo"},
@@ -91,7 +93,7 @@ MESAJ = {
     "wpn_components": {"tr": "bilesen", "en": "components"},
     "wpn_no_model": {"tr": "- (model yok: yumruk vb.)", "en": "- (no model: melee/unarmed)"},
     "wpn_parts_tip": {
-        "tr": "bilesen/livery adlari icin --parcalar",
+        "tr": "bilesen/livery adlari icin --parts",
         "en": "use --parts to list component and livery names",
     },
     "wpn_livery_note": {
@@ -101,19 +103,19 @@ MESAJ = {
                "       GiveWeaponComponentToPed ACCEPTS them."),
     },
 
-    # --- arac ---
+    # --- vehicle ---
     "veh_class": {"tr": "sinif/tip", "en": "class/type"},
     "veh_seats": {"tr": "koltuk", "en": "seats"},
     "veh_wheels": {"tr": "teker", "en": "wheels"},
     "veh_dlc_price": {"tr": "dlc / fiyat", "en": "dlc / price"},
 
-    # --- mlo / ipl / dunya ---
+    # --- mlo / ipl / world ---
     "mlo_unplaced": {
         "tr": "YERLESTIRILMEMIS (tanimli ama hicbir ymap'te konumu yok)",
         "en": "NOT PLACED (defined but has no position in any ymap)",
     },
     "mlo_locations": {"tr": "{n} konum", "en": "{n} location(s)"},
-    "mlo_more": {"tr": "... {n} konum daha (--konum ile artir)",
+    "mlo_more": {"tr": "... {n} konum daha (--locations ile artir)",
                  "en": "... {n} more location(s) (raise --locations)"},
     "mlo_interiors": {"tr": "{n} ic mekan", "en": "{n} interior(s)"},
     "mlo_variant_note": {
@@ -158,7 +160,7 @@ MESAJ = {
     "fw_calls": {"tr": "-> {n} cagri / {u} {unit}", "en": "-> {n} calls / {u} {unit}"},
     "fw_scanned": {"tr": "{n} kurulu kaynak tarandi", "en": "{n} installed resources scanned"},
 
-    # --- anim yedek ---
+    # --- anim fallback ---
     "anim_no_clips": {
         "tr": ("clips.tsv.gz kurulu degil -> SURE ve KEMIK sayisi gosterilemiyor.\n"
                "     Bu bilgi .ycd dosyalarindan cikarilir ve GTA V kurulumu gerektirir:"),
@@ -166,7 +168,7 @@ MESAJ = {
                "     That data comes from .ycd files and requires a GTA V install:"),
     },
 
-    # --- kapi karari (verdict) — plugin'in vitrin ciktisi ---
+    # --- door verdict — the plugin's showcase output ---
     "door_q": {"tr": "kapi sistemi calisir mi", "en": "will the door system work"},
     "door_yes": {"tr": "EVET", "en": "YES"},
     "door_no": {"tr": "HAYIR", "en": "NO"},
@@ -207,8 +209,8 @@ MESAJ = {
         "en": ("     The pivot looks centred -> heading rotation spins the object around\n"
                "        its own middle; it will not read as a door. Needs an offset."),
     },
-    # ⛔ Cok satirli mesajlarda DEVAM satirlari +3 bosluk tasir: cagiran taraf
-    # print("   " + satir) yapiyor ve bu yalniz ILK satira uygulaniyor.
+    # ⛔ In multi-line messages the CONTINUATION lines carry +3 spaces: the caller does
+    # print("   " + line), and that applies to the FIRST line only.
     "v_only_fix": {
         "tr": ("     Gercek kapi olmasi icin tek kalici cozum: ytyp override ile\n"
                "        specialAttribute=7 vermek."),
@@ -246,9 +248,7 @@ MESAJ = {
         "en": "{ax}: origin on the HIGH edge (width {span:.2f}m) -> hinge is here",
     },
 
-    # specialAttribute aciklamalari — yalniz sik gorulen degerler cevrildi.
-    # Cevrilmeyenler Turkce kalir ve bu GORUNUR: eksik ceviri sessizce
-    # kaybolmaz, sonraki turda tamamlanir.
+    # specialAttribute descriptions — only the common values have entries here.
     "sa_0": {"tr": "Duz obje. Oyunun KAPI SISTEMI bu objeyi tanimaz.",
              "en": "Plain object. The game's DOOR SYSTEM does not recognise it."},
     "sa_3": {"tr": "Trafik isigi / lamba rigi.", "en": "Traffic light / lamp rig."},
@@ -258,7 +258,7 @@ MESAJ = {
              "en": "Normal hinged door. The door system's primary type."},
     "sa_8": {"tr": "Surgulu kapi. Yana kayar.", "en": "Sliding door. Slides sideways."},
 
-    # --- skill kurucu (install_skills.py) ---
+    # --- skill installer (install_skills.py) ---
     "sk_valid": {"tr": "{skill}: Agent Skills standardina uygun (ad {name}, aciklama {desc}/1024 karakter)",
                  "en": "{skill}: meets the Agent Skills spec (name {name}, description {desc}/1024 characters)"},
     "sk_invalid": {"tr": "{skill}: standarda UYMUYOR - {why}. Hicbir sey yazilmadi.",
@@ -273,7 +273,7 @@ MESAJ = {
     "sk_rerun": {"tr": "Depoyu guncelleyince (git pull) bunu yeniden calistir - kopyalar kendiliginden guncellenmez.",
                  "en": "Re-run this after updating the repository (git pull) - installed copies do not update themselves."},
 
-    # --- bilgi veritabani (build_atlas_db.py) ---
+    # --- knowledge database (build_atlas_db.py) ---
     "adb_collected": {"tr": "{files} dosya, {snippets} snippet, {projects} proje: {names}",
                       "en": "{files} files, {snippets} snippets, {projects} projects: {names}"},
     "adb_cache_unreadable": {"tr": "onceki etiket onbellegi okunamadi ({why}) - o kisim bastan etiketlenecek.",
@@ -325,7 +325,7 @@ def get_lang():
 
 
 def set_lang(lang):
-    """--lang bayragi cevre degiskenini ve config'i EZER."""
+    """The --lang flag OVERRIDES the environment variable and the config."""
     global _LANG
     if lang and lang.lower() in ("tr", "en"):
         _LANG = lang.lower()
@@ -333,9 +333,9 @@ def set_lang(lang):
 
 
 def t(key, **kw):
-    m = MESAJ.get(key)
+    m = MESSAGES.get(key)
     if not m:
-        return key  # eksik ceviri GORUNUR kalir, sessizce kaybolmaz
+        return key  # a missing translation stays VISIBLE instead of vanishing silently
     s = m.get(get_lang()) or m.get(_DEFAULT) or key
     try:
         return s.format(**kw) if kw else s
@@ -344,6 +344,6 @@ def t(key, **kw):
 
 
 def add_lang_arg(parser):
-    """Her CLI'ya ayni bayragi ekler."""
+    """Adds the same flag to every CLI."""
     parser.add_argument("--lang", choices=["tr", "en"],
-                        help="cikti dili / output language (varsayilan: en)")
+                        help="output language (default: en)")

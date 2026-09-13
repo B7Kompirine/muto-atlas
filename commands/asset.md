@@ -1,49 +1,49 @@
 ---
 description: Query prop/object/door archetype data (ytyp truth: is it a door, where is the pivot)
-argument-hint: <model adı veya arama terimi> | door <model adı>
+argument-hint: <model name or search term> | door <model name>
 allowed-tools: Bash(python:*), Read
 ---
 
-Kullanıcının sorgusu: `$ARGUMENTS`
+User query: `$ARGUMENTS`
 
-Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içeren muto-atlas klasörü).
+Plugin root: `${CLAUDE_PLUGIN_ROOT}` (if it cannot be found, the muto-atlas folder that contains `scripts/assetdb.py`).
 
-Bu komut **ytyp gerçeğini** verir: `specialAttribute`, `flags`, `assetType`,
-bounding box (pivot/menteşe konumu), fizik ve doku sözlüğü. Native denemekle
-öğrenilemeyecek şeyler bunlar.
+This command gives the **ytyp truth**: `specialAttribute`, `flags`, `assetType`,
+bounding box (pivot/hinge position), physics and texture dictionary. These are things
+you cannot learn by trying natives.
 
-## Nasıl kullan
+## How to use
 
-1. Sorgu bir model adıysa (`v_ilev_gb_teldr`, `prop_gate_prison_01`):
-
-   ```bash
-   python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" show <ad>
-   ```
-
-   Çıktı ham alanları **ve yorumu** içerir: kapı sistemi bu objeyi oynatır mı,
-   pivot kenarda mı (heading ile döndürmek doğru görünür mü).
-
-2. Soru özellikle "bu kapı açılır mı" ise:
+1. If the query is a model name (`v_ilev_gb_teldr`, `prop_gate_prison_01`):
 
    ```bash
-   python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" door <ad>
+   python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" show <name>
    ```
 
-3. Tam ad bilinmiyorsa önce ara:
+   The output contains the raw fields **and an interpretation**: does the door system move this object,
+   is the pivot on the edge (does rotating it with heading look right).
+
+2. If the question is specifically "does this door open":
 
    ```bash
-   python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" search <parça>
-   python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" prop <parça>     # spawn edilebilir proplar
+   python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" door <name>
    ```
 
-4. Model bulunamazsa: indeks eski olabilir. Kullanıcıya
-   `/asset-build` çalıştırmasını öner — **uydurma**.
+3. If the exact name is not known, search first:
 
-## Sonucu sunarken
+   ```bash
+   python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" search <part>
+   python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" prop <part>     # spawnable props
+   ```
 
-- `specialAttribute` değerini ve ne anlama geldiğini **açıkça** yaz.
-- Kapı sistemi çalışmıyorsa (`0` gibi) bunu net söyle ve alternatifi ver;
-  "AddDoorToSystem dene" deme.
-- Pivot bilgisini kullanarak `SetEntityHeading` yaklaşımının doğru görünüp
-  görünmeyeceğini söyle.
-- `custom` kaynaklı bir archetype ise hangi resource'tan geldiğini belirt.
+4. If the model is not found: the index may be old. Suggest that the user runs
+   `/asset-build` — **do not invent**.
+
+## When presenting the result
+
+- Write the `specialAttribute` value and what it means **explicitly**.
+- If the door system does not work (e.g. `0`), say so clearly and give the alternative;
+  do not say "try AddDoorToSystem".
+- Use the pivot information to say whether the `SetEntityHeading` approach will look
+  right.
+- If the archetype comes from a `custom` source, say which resource it came from.

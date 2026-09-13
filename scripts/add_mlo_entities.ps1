@@ -1,19 +1,19 @@
-﻿# add_mlo_entities.ps1 — bir MLO'nun ENTITY LISTESINE yeni obje ekler.
+﻿# add_mlo_entities.ps1 - adds new objects to an MLO's ENTITY LIST.
 #
-# NEDEN: MLO ic mekanina disaridan ymap ile prop KONULAMAZ — oda/portal
-# sistemi eler (olculdu). Script'le spawn etmek de harita objesi
-# uretmez (kapi sistemi bulamaz, fragment collision'i animasyonu takip
-# etmez) ve 60 kisilik sunucuda her istemcide ayri spawn yuku olur.
-# Dogru yol: objeyi MLO'nun KENDI listesine yazmak. Boylece objeyi MLO
-# yerlestirir, sunucuya hicbir yuk binmez ve o MLO haritada kac yerde
-# varsa (Fleeca 6 sube) hepsinde birden cikar.
+# WHY: a prop CANNOT be placed inside an MLO interior from an outside ymap - the
+# room/portal system culls it (measured). Spawning it from a script does not make
+# a map object either (the door system cannot find it, fragment collision does not
+# follow the animation), and on a 60-player server every client carries its own spawn load.
+# The right way: write the object into the MLO's OWN list. Then the MLO places
+# the object, the server carries no load, and it appears in every place the MLO
+# exists on the map (Fleeca: 6 locations) at once.
 #
-# KOORDINAT: entity konumu MLO-YEREL uzayda olmali. Hucre verisi bir
-# PARCA'nin (drawable) yerel uzayindaysa zincir:
-#     panelLocal -> (parca pos/rot) -> mloLocal
-# Bu script o donusumu yapar; dunya koordinati ISTEMEZ.
+# COORDINATES: the entity position must be in MLO-LOCAL space. If the cell data is in
+# the local space of a PART (drawable), the chain is:
+#     panelLocal -> (part pos/rot) -> mloLocal
+# This script does that transform; it does NOT need world coordinates.
 #
-# Kullanim:
+# Usage:
 #   powershell -File add_mlo_entities.ps1 `
 #       -YtypName v_int_10.ytyp -Mlo v_genbank -Part v_10_gen_country_bank `
 #       -Model my_depobox -CellsJson <...>\depobox_cells_local.json `
@@ -26,19 +26,19 @@ param(
     [Parameter(Mandatory=$true)][string] $Model,
     [Parameter(Mandatory=$true)][string] $CellsJson,
     [Parameter(Mandatory=$true)][string] $OutDir,
-    # ODA ADI — ZORUNLU DIYE DUSUN. MLO entity'si bir odanin
-    # AttachedObjects listesinde KAYITLI DEGILSE oyun onu HIC OLUSTURMAZ
-    # ve hicbir hata vermez. Sadece entities dizisine eklemek YETMEZ.
+    # ROOM NAME - TREAT IT AS REQUIRED. If an MLO entity is NOT LISTED in a
+    # room's AttachedObjects list, the game NEVER CREATES it
+    # and reports no error. Adding it to the entities array alone is NOT ENOUGH.
     [string] $Room = '',
     [int]    $Count = 20,
-    # MLO IC MEKAN entity'si icin varsayilanlar. Bagimsiz ymap
-    # degerlerini (flags=1572872, ORPHANHD) buraya koyarsan obje
-    # SESSIZCE OLUSMAZ — ytyp yuklenir, entity listede gorunur, ama
-    # oyunda hicbir sey cikmaz. Vanilla MLO entity'leri 18350080
-    # kullaniyor (v_genbank'tan olculdu).
+    # Defaults for an MLO INTERIOR entity. If you put standalone ymap
+    # values here (flags=1572872, ORPHANHD) the object
+    # SILENTLY DOES NOT APPEAR - the ytyp loads, the entity shows in the list, but
+    # nothing appears in the game. Vanilla MLO entities use 18350080
+    # (measured from v_genbank).
     [uint32] $Flags = 18350080,
     [single] $LodDist = -1,
-    # Kutuyu duvardan disari kaydirma (m). 0 = doku duzleminde.
+    # Push the box out from the wall (m). 0 = on the texture plane.
     [single] $Offset = 0.0,
     [string] $GtaFolder,
     [string] $CodeWalker
@@ -47,9 +47,9 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
-if (-not $CodeWalker) { throw "CodeWalker.Core.dll bulunamadi." }
+if (-not $CodeWalker) { throw "CodeWalker.Core.dll not found." }
 $GtaFolder = & "$PSScriptRoot\paths.ps1" gta $GtaFolder
-if (-not $GtaFolder) { throw "GTA V klasoru bulunamadi." }
+if (-not $GtaFolder) { throw "GTA V folder not found." }
 
 $cwDir = Split-Path $CodeWalker -Parent
 $script:cwDir = $cwDir
@@ -88,8 +88,8 @@ public static class MloEntityAdder
         int i = s.IndexOf(key);
         if (i < 0) return 0f;
         i = s.IndexOf(':', i) + 1;
-        // Iki noktadan sonraki BOSLUGU atla — atlanmazsa tum degerler 0
-        // okunur ve butun hucreler tek noktaya coker.
+        // Skip the WHITESPACE after the colon - if it is not skipped every value
+        // reads as 0 and all cells collapse onto one point.
         while (i < s.Length && (s[i]==' '||s[i]=='\t'||s[i]=='\n'||s[i]=='\r')) i++;
         int j = i;
         while (j < s.Length && (char.IsDigit(s[j])||s[j]=='-'||s[j]=='.'||s[j]=='+'||s[j]=='e'||s[j]=='E')) j++;
@@ -125,8 +125,8 @@ public static class MloEntityAdder
                            float lodDist, float offset, uint flags, string room)
     {
         var cells = ReadCells(cellsJson);
-        Console.WriteLine("[*] yerel hucre: {0}", cells.Count);
-        if (cells.Count == 0) { Console.WriteLine("[!] hucre okunamadi"); return; }
+        Console.WriteLine("[*] local cells: {0}", cells.Count);
+        if (cells.Count == 0) { Console.WriteLine("[!] could not read cells"); return; }
 
         uint mloHash = Joaat(mloName), partHash = Joaat(partName), modelHash = Joaat(model);
 
@@ -142,24 +142,24 @@ public static class MloEntityAdder
             }
             if (found != null) break;
         }
-        if (found == null) { Console.WriteLine("[!] {0} bulunamadi", ytypName); return; }
+        if (found == null) { Console.WriteLine("[!] {0} not found", ytypName); return; }
 
-        // YAMALAR UST USTE BINEBILMELI.
-        // Her calismada vanilla RPF'ten okursak onceki yamayi EZERIZ.
-        // (Gercek vaka: kapi degisimi yapildi, sonra ayni ytyp'ye kutu
-        // eklenince kapilar vanilla'ya geri dondu.) Cikti klasorunde
-        // dosya varsa ONDAN devam ederiz.
+        // PATCHES MUST STACK.
+        // If every run reads from the vanilla RPF we OVERWRITE the previous patch.
+        // (Real case: a door swap was made, then adding boxes to the same ytyp
+        // turned the doors back to vanilla.) If the file exists in the output
+        // folder we continue FROM IT.
         var existing = Path.Combine(outDir, ytypName);
         var y = new YtypFile();
         if (File.Exists(existing))
         {
             y.Load(File.ReadAllBytes(existing));
-            Console.WriteLine("[*] mevcut yamali dosyadan devam ediliyor: {0}", existing);
+            Console.WriteLine("[*] continuing from the existing patched file: {0}", existing);
         }
         else
         {
             y.Load(found.File.ExtractFile(found), found);
-            Console.WriteLine("[*] vanilla kaynaktan okundu");
+            Console.WriteLine("[*] read from the vanilla source");
         }
 
         MloArchetype target = null;
@@ -178,16 +178,16 @@ public static class MloEntityAdder
             }
             break;
         }
-        if (target == null) { Console.WriteLine("[!] MLO {0} bulunamadi", mloName); return; }
+        if (target == null) { Console.WriteLine("[!] MLO {0} not found", mloName); return; }
 
-        // PARCA HEDEF MLO'DA OLMAYABILIR.
-        // Ayni ic mekanin iki surumu olabiliyor (v_genbank ve
-        // hei_generic_bank_dlc) ve ikisi AYNI MLO-yerel cerceveyi
-        // paylasiyor — ayni prop ikisinde de ayni yerel konumda.
-        // Referans parca hedefte yoksa TUM ytyp'lerde ariyoruz.
+        // THE PART MAY NOT BE IN THE TARGET MLO.
+        // The same interior can have two versions (v_genbank and
+        // hei_generic_bank_dlc) and both share THE SAME MLO-local frame -
+        // the same prop sits at the same local position in both.
+        // If the reference part is not in the target we search ALL ytyps.
         if (partPos == Vector3.Zero)
         {
-            Console.WriteLine("[*] parca '{0}' bu MLO'da yok — diger MLO'larda araniyor", partName);
+            Console.WriteLine("[*] part '{0}' is not in this MLO - searching other MLOs", partName);
             bool got = false;
             foreach (var rpf2 in man.AllRpfs) {
                 foreach (var e2 in rpf2.AllEntries) {
@@ -205,7 +205,7 @@ public static class MloEntityAdder
                             partPos = me2.Data.position;
                             partRot = Safe(new Quaternion(me2.Data.rotation.X, me2.Data.rotation.Y,
                                                           me2.Data.rotation.Z, me2.Data.rotation.W));
-                            Console.WriteLine("[*] parca {0} icinde bulundu", fe2.Name);
+                            Console.WriteLine("[*] part found in {0}", fe2.Name);
                             got = true; break;
                         }
                         if (got) break;
@@ -214,14 +214,14 @@ public static class MloEntityAdder
                 }
                 if (got) break;
             }
-            if (!got) { Console.WriteLine("[!] parca {0} hicbir yerde bulunamadi", partName); return; }
+            if (!got) { Console.WriteLine("[!] part {0} not found anywhere", partName); return; }
         }
 
         int before = target.entities.Length;
-        Console.WriteLine("[*] MLO {0}: mevcut entity = {1}", mloName, before);
-        Console.WriteLine("[*] parca yerel: ({0:0.###}, {1:0.###}, {2:0.###})", partPos.X, partPos.Y, partPos.Z);
+        Console.WriteLine("[*] MLO {0}: existing entities = {1}", mloName, before);
+        Console.WriteLine("[*] part local: ({0:0.###}, {1:0.###}, {2:0.###})", partPos.X, partPos.Y, partPos.Z);
 
-        // Hucreleri ESIT ARALIKLA sec — hepsi bir kosede toplanmasin
+        // Pick cells at EVEN SPACING - so they do not all bunch up in one corner
         int step = Math.Max(1, cells.Count / Math.Max(1, count));
         var picked = new List<Cell>();
         for (int i = 0; i < cells.Count && picked.Count < count; i += step) picked.Add(cells[i]);
@@ -233,7 +233,7 @@ public static class MloEntityAdder
             var pl = new Vector3(c.X + c.NX * offset, c.Y + c.NY * offset, c.Z);
             var mlocal = partPos + Vector3.Transform(pl, partRot);
 
-            // Duvarin disa bakan normali -> entity yonu (Z etrafinda)
+            // Outward-facing wall normal -> entity heading (around Z)
             var nl = Vector3.Transform(new Vector3(c.NX, c.NY, 0f), partRot);
             double head = Math.Atan2(nl.Y, nl.X);
             var rot = Quaternion.RotationAxis(Vector3.UnitZ, (float)head);
@@ -241,7 +241,7 @@ public static class MloEntityAdder
             var ed = new CEntityDef();
             ed.archetypeName = new MetaHash(modelHash);
             ed.position = mlocal;
-            // MLO entity rotasyonu TERS (conjugate) saklanir
+            // MLO entity rotation is stored INVERTED (conjugate)
             ed.rotation = new Vector4(-rot.X, -rot.Y, -rot.Z, rot.W);
             ed.scaleXY = 1.0f; ed.scaleZ = 1.0f;
             ed.parentIndex = -1;
@@ -252,18 +252,18 @@ public static class MloEntityAdder
             ed.ambientOcclusionMultiplier = 255;
             ed.artificialAmbientOcclusion = 255;
 
-            // MCEntityDef'in parametresiz yapicisi YOK.
-            // ctor(ref CEntityDef, MloArchetype) kullanilir.
+            // MCEntityDef has NO parameterless constructor.
+            // ctor(ref CEntityDef, MloArchetype) is used.
             list.Add(new MCEntityDef(ref ed, target));
         }
 
         int firstNew = target.entities.Length;
         target.entities = list.ToArray();
-        Console.WriteLine("[+] {0} entity eklendi -> toplam {1}", picked.Count, target.entities.Length);
+        Console.WriteLine("[+] {0} entities added -> total {1}", picked.Count, target.entities.Length);
 
-        // ── ODAYA BAGLA ──────────────────────────────────────────────
-        // Bu adim atlanirsa obje SESSIZCE olusmaz: ytyp yuklenir, entity
-        // listede gorunur, oyunda hicbir sey cikmaz. (Olculdu.)
+        // -- ATTACH TO ROOM ----------------------------------------------
+        // If this step is skipped the object SILENTLY does not appear: the ytyp loads, the entity
+        // shows in the list, nothing appears in the game. (Measured.)
         if (!string.IsNullOrEmpty(room) && target.rooms != null)
         {
             MCMloRoomDef rd = null;
@@ -272,7 +272,7 @@ public static class MloEntityAdder
 
             if (rd == null)
             {
-                Console.WriteLine("[X] '{0}' odasi bulunamadi. Mevcut odalar:", room);
+                Console.WriteLine("[X] room '{0}' not found. Existing rooms:", room);
                 foreach (var r in target.rooms) Console.WriteLine("      {0}", r.RoomName);
                 return;
             }
@@ -281,18 +281,18 @@ public static class MloEntityAdder
             int had = ao.Count;
             for (int i = 0; i < picked.Count; i++) ao.Add((uint)(firstNew + i));
             rd.AttachedObjects = ao.ToArray();
-            Console.WriteLine("[+] oda '{0}': attachedObjects {1} -> {2}", rd.RoomName, had, ao.Count);
+            Console.WriteLine("[+] room '{0}': attachedObjects {1} -> {2}", rd.RoomName, had, ao.Count);
         }
         else
         {
-            Console.WriteLine("[!] -Room verilmedi — entity'ler HICBIR ODAYA bagli degil, oyunda GORUNMEZ.");
+            Console.WriteLine("[!] -Room not given - the entities are attached to NO ROOM and are INVISIBLE in the game.");
         }
 
         var outPath = Path.Combine(outDir, ytypName);
         var bytes = y.Save();
         File.WriteAllBytes(outPath, bytes);
 
-        // GERI OKU VE DOGRULA
+        // READ BACK AND VERIFY
         var chk = new YtypFile();
         chk.Load(File.ReadAllBytes(outPath));
         int n = 0, mine = 0;
@@ -302,18 +302,18 @@ public static class MloEntityAdder
             n = m.entities.Length;
             foreach (var me in m.entities) if (me.Data.archetypeName.Hash == modelHash) mine++;
         }
-        Console.WriteLine("[+] yazildi: {0} ({1:N0} bayt)", outPath, bytes.Length);
+        Console.WriteLine("[+] written: {0} ({1:N0} bytes)", outPath, bytes.Length);
         Console.WriteLine(n == before + picked.Count && mine == picked.Count
-            ? string.Format("[+] dogrulama tamam: entity {0} -> {1}, '{2}' = {3} adet", before, n, model, mine)
-            : string.Format("[X] DOGRULAMA HATASI: beklenen {0}, okunan {1} ('{2}' {3})", before + picked.Count, n, model, mine));
+            ? string.Format("[+] verification OK: entities {0} -> {1}, '{2}' = {3} instances", before, n, model, mine)
+            : string.Format("[X] VERIFICATION FAILED: expected {0}, read {1} ('{2}' {3})", before + picked.Count, n, model, mine));
     }
 }
 '@
 
-# 'System.Collections'/'System.Runtime'/'System.Console' SART: PowerShell 7 (.NET 8+)
-# altinda bu tipler netstandard'dan FORWARD edilmis durumda; referans verilmezse
-# Add-Type "CS1069: type has been forwarded" / "CS0103: Console does not exist"
-# ile coker. Windows PowerShell 5.1'de sorun cikmaz, PS7'de her seferinde cikar.
+# 'System.Collections'/'System.Runtime'/'System.Console' are REQUIRED: under PowerShell 7 (.NET 8+)
+# these types are FORWARDED from netstandard; without a reference
+# Add-Type crashes with "CS1069: type has been forwarded" / "CS0103: Console does not exist".
+# Windows PowerShell 5.1 has no problem with it; PS7 fails every time.
 $refs = @($CodeWalker, (Join-Path $cwDir 'SharpDX.dll'), (Join-Path $cwDir 'SharpDX.Mathematics.dll'), 'netstandard',
           'System.Collections', 'System.Runtime', 'System.Linq', 'System.Console', 'System.IO.Compression', 'System.Text.RegularExpressions')
 Add-Type -TypeDefinition $src -ReferencedAssemblies $refs -Language CSharp

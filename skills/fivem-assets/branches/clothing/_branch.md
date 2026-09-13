@@ -1,77 +1,74 @@
-# Kıyafet — dal kuralları
+# Clothing — branch rules
 
-Komut: `/clothing` · Klasör: `branches/clothing/`
-Anahtar kelimeler: kıyafet, giysi, freemode, component, bileşen, .ydd, head_000_r, uppr, lowr, jbib, feet, accs, skintone, _r, _uni, ped prop, şapka, gözlük, p_head, p_eyes, p_ears, propsName, YMT, doku varyantı, renk varyantı, Colour 0, Colour 1, UVMap 1, kan haritası, Mesh Domain, ped ölçekleme, MH_hair_scale, cloth physics, pelerin, etek, duvak, .yld, ped cloth, ayakkabı, topuklu, topuk, boy ayarı, boy artsın, MP_HEELS, CreatureMetadataName, jiggle, spring
-**Bu dala ne düşer:** Ped'in **ÜZERİNE giyilen/takılan bileşen** — giysi, saç, şapka/gözlük, ten varyantı, ped boyu/ölçeği. Sınır: ped'in kendi iskeleti ve animasyonu bu dalın dışındadır.
+Command: `/clothing`
+**Keywords:** clothing, garment, outfit, freemode, component, .ydd, head_000_r, uppr, lowr, jbib, feet, accs, skintone, _r suffix, _uni, ped prop, hat, glasses, p_head, p_eyes, p_ears, propsName, YMT, texture variant, colour variant, Colour 0, Colour 1, UVMap 1, blood map, Mesh Domain, ped scaling, MH_hair_scale, cloth physics, cape, skirt, veil, .yld, ped cloth, shoes, heels, heel, height offset, taller, MP_HEELS, CreatureMetadataName, jiggle, spring bone
+**What belongs here:** **A component worn or attached ON a ped** — garment, hair, hat/glasses, skin-tone variant, ped height/scale. Boundary: the ped's own skeleton and animation are outside this branch.
 
-> Yukarıdaki anahtar kelimeler **hızlandırıcıdır, kapsayıcı değildir.** Bir kelime listede yoksa
-> yönlendirme durmaz — bu tanıma bakılır. *“kepenk”* listede olmasa da bir kapı nesnesidir.
-
-**What belongs here:** **A component worn or attached ON a ped** — garment, hair, hat/glasses, skin-tone variant, ped height and scale. Boundary: the ped's own skeleton and animation are outside this branch.
-**Keywords (EN):** clothing, garment, outfit, freemode, component, .ydd, head_000_r, uppr, lowr, jbib, feet, accs, skintone, _r suffix, _uni, ped prop, hat, glasses, p_head, p_eyes, p_ears, propsName, YMT, texture variant, colour variant, Colour 0, Colour 1, UVMap 1, blood map, Mesh Domain, ped scaling, MH_hair_scale, cloth physics, cape, skirt, veil, .yld, ped cloth, shoes, heels, height offset, MP_HEELS, CreatureMetadataName, jiggle, spring bone
+> The keywords above **speed up routing; they are not a complete list.** If a word is not in the list,
+> routing does not stop — this definition is checked instead. *“roller shutter”* is not in the list, but it is still a door object.
 
 
-## Bu dalda her yaprakta geçerli olan
+## What holds for every leaf in this branch
 
-⚠️ **Bu dal henüz ölçülmedi.** Kaynağın tamamı topluluk videoları (`notlar/03`); ağırlık kuralları
-ve iskelet sayıları bizim ölçümlerimizle tutuyor, geri kalanı `[video]`. Bir üretim yapıldığında
-ölçüm buraya yazılır ve `durum` sütunu değişir.
+⚠️ **This branch is not measured yet.** All of its sources are community videos (`notes/03`); the weight rules
+and skeleton counts match our own measurements, the rest is `[video]`. When a build is done, the
+measurement is written here and the `status` column changes.
 
-⚠️ **[video] — topluluk anlatımı, bizim ölçümümüz değil.** Sayı verdiği yerde `assetdb.py` ile doğrula; çakışırsa ölçüm kazanır.
-  Bu dalın kaynaklarının çoğu topluluk videosudur; **her yaprakta geçerli**.
+⚠️ **[video] — community explanation, not our measurement.** Where it gives a number, verify it with `assetdb.py`; on a conflict the measurement wins.
+  Most sources of this branch are community videos; **this holds for every leaf**.
 
-### Dosya ve iskelet
-- **Bileşen dosya adları her ped'de aynıdır** (`head_000_r.ydd`, `uppr_000_u.ydd`) → RPF'ten çıkarırken
-  `extract_asset.ps1 -PathFilter '<ped>'` şart; filtresiz onlarca ped aynı dosyaya yazar, sonuncusu kazanır.
-- **`.ydd` yüz kemikleri `FB_*_000`, `.yft` `FB_*_045`** — aynı tag, farklı ad (21 kemik); Blender adla bağlar,
-  yanlış eşleşirse yüz deforme olmaz, hata da vermez.
-- **Freemode 128 kemik, tipik ped 98**; fark `MH_hair_scale` + etek roll'ları (`SM_*SkirtRoll`) + yüz kemikleri.
-  Freemode giysisini 98'e taşımak = ağırlık transferi (**Source Layers = By Name**) ya da eksik kemikleri silip
+### Files and skeleton
+- **Component file names are the same on every ped** (`head_000_r.ydd`, `uppr_000_u.ydd`) → when extracting from the RPF,
+  `extract_asset.ps1 -PathFilter '<ped>'` is required; without the filter dozens of peds write to the same file and the last one wins.
+- **`.ydd` face bones are `FB_*_000`, `.yft` ones `FB_*_045`** — same tag, different name (21 bones); Blender binds by name,
+  and on a wrong match the face does not deform and no error is raised.
+- **Freemode has 128 bones, a typical ped 98**; the difference is `MH_hair_scale` + skirt rolls (`SM_*SkirtRoll`) + face bones.
+  Moving a freemode garment to 98 = weight transfer (**Source Layers = By Name**), or delete the missing bones and
   **Normalize All**.
-- **Ağırlık:** vertex başına ≤ 4 kemik (fazlası sessizce kesilir), toplam tam 1.0, 1/255 adımlı.
-- **Ped cloth sim mesh'i ≤ 254 vertex** (Sollumz `CLOTH_CHAR_MAX_VERTICES`, vanilla `csb_bride.yld` tam 254). Hareketle dalgalanan kumaş → `ped-cloth.md`; prop env cloth ped hareketini görmez.
-- **Ped `.yft` fiziksiz** (Sollumz ped fiziği oyunu çökertir).
+- **Weights:** ≤ 4 bones per vertex (extra ones are silently cut), total exactly 1.0, in 1/255 steps.
+- **Ped cloth sim mesh ≤ 254 vertices** (Sollumz `CLOTH_CHAR_MAX_VERTICES`, vanilla `csb_bride.yld` exactly 254). Fabric that ripples with motion → `ped-cloth.md`; prop env cloth does not see the ped's motion.
+- **A ped `.yft` has no physics** (Sollumz ped physics crashes the game).
 
-### Mesh ve doku
+### Mesh and texture
 
-**Doku adlandırma kuralı** (ezberlenir, her yaprakta aynı):
+**Texture naming rule** (learn it by heart; the same in every leaf):
 
 ```
-<bileşen>_diff_<NNN>_<harf>_<sonek>     jbib_diff_000_a_uni
-<bileşen>_normal_<NNN>                  jbib_normal_000
-<bileşen>_spec_<NNN>                    jbib_spec_000
+<component>_diff_<NNN>_<letter>_<suffix>     jbib_diff_000_a_uni
+<component>_normal_<NNN>                     jbib_normal_000
+<component>_spec_<NNN>                       jbib_spec_000
 ```
-- `<bileşen>`: `jbib` `uppr` `lowr` `feet` `hand` `teef` `accs` `task` `berd` `hair`
-- `<NNN>`: YMT'deki bileşen indeksi
-- `<harf>`: doku varyasyonu, **`a`–`z` arası 25 varyasyona kadar**
-- `<sonek>`: `uni` (evrensel) ya da ten varyantı (`r`, `lat` …)
+- `<component>`: `jbib` `uppr` `lowr` `feet` `hand` `teef` `accs` `task` `berd` `hair`
+- `<NNN>`: component index in the YMT
+- `<letter>`: texture variation, **`a`–`z`, up to 25 variations**
+- `<suffix>`: `uni` (universal) or a skin-tone variant (`r`, `lat` …)
 
-- **İki UV map zorunlu:** `UVMap 0` doku, **`UVMap 1` kan haritası** (dokunma).
-- **Vertex renkleri:** `Colour 0` = `FF8000` (aydınlatma; yoksa güneşte koyu gölgelenir), `Colour 1` = `000000`
-  alfa 0 (rüzgâr + ter; alfa > 0 giysi sallanır/parlar). Emissive parça beyaz vertex rengi + `ped_emissive`.
-- ⛔ **Export → Drawable → `Mesh Domain` = `Face Corner`**; `Vertex` yalnız MP freemode **kafaları** için.
-- **Freemode:** spec + bump gömülür, **diffuse gömülmez** (oyunda doku değişimi). **Non-streamed ped'de hiç gömülü
-  doku olmaz** — export klasöründe `textures/` çıktıysa bir yerde embed kalmış.
-- **Bileşen export'unda `Exclude Skeleton` KAPALI, ped prop export'unda AÇIK.**
-- **Doku adı Rockstar kuralına uyar:** `<bileşen>_diff_<NNN>_<harf>_<sonek>` · `_normal_<NNN>` · `_spec_<NNN>`;
-  prop'ta yalnız harf (`_a`, `_b`). Rastgele ad → ten rengi sessizce kapanır. **Doku kare.**
-- **`_r` (skintone):** ten dokusu giysinin `.ytd`'sinde değil (`mp_fm_skin`); ten UV'si **kaydırılmaz**; maske
-  specular'ın **alfa** kanalı (beyaz = kumaş).
-- **Ped prop `Render Flags` Blender shader'ıyla eşleşir** (`ped_alpha`/`ped_decal`/`ped_cutout`) — MP freemode'da
-  önemsiz, diğer tüm ped'lerde fiilen zorunlu. `peds.meta` `propsName` prop'ları aktive eden tek şey.
-- LOD: Sollumz **LOD Tools → Generate LODs** (decimation 0.6); prop'lar yalnız HIGH LOD.
+- **Two UV maps are required:** `UVMap 0` texture, **`UVMap 1` blood map** (do not touch).
+- **Vertex colours:** `Colour 0` = `FF8000` (lighting; without it the part is shaded dark in sunlight), `Colour 1` = `000000`
+  alpha 0 (wind + sweat; alpha > 0 makes the garment sway/shine). An emissive part: white vertex colour + `ped_emissive`.
+- ⛔ **Export → Drawable → `Mesh Domain` = `Face Corner`**; `Vertex` only for MP freemode **heads**.
+- **Freemode:** spec + bump are embedded, **diffuse is not embedded** (texture swaps in game). **A non-streamed ped has no embedded
+  texture at all** — if a `textures/` folder appeared in the export folder, something is still embedded somewhere.
+- **`Exclude Skeleton` OFF for a component export, ON for a ped prop export.**
+- **Texture names follow the Rockstar rule:** `<component>_diff_<NNN>_<letter>_<suffix>` · `_normal_<NNN>` · `_spec_<NNN>`;
+  on a prop only the letter (`_a`, `_b`). A random name → skin tone silently switches off. **The texture is square.**
+- **`_r` (skintone):** the skin texture is not in the garment's `.ytd` (`mp_fm_skin`); the skin UV is **not moved**; the mask is
+  the **alpha** channel of the specular (white = fabric).
+- **Ped prop `Render Flags` match the Blender shader** (`ped_alpha`/`ped_decal`/`ped_cutout`) — unimportant on MP freemode,
+  effectively required on every other ped. `peds.meta` `propsName` is the only thing that activates props.
+- LOD: Sollumz **LOD Tools → Generate LODs** (decimation 0.6); props only HIGH LOD.
 
-## Yapraklar
+## Leaves
 
-| istenen | dosya | durum — kaynak |
+| wanted | file | status — source |
 |---|---|---|
-| Freemode kıyafet ekleme / 98'e taşıma / ölçekleme | freemode-clothing.md | video — notlar/03 §2, §4-7 |
-| Ped prop — şapka, gözlük, kulaklık | ped-prop.md | video — notlar/03 §8-9 · sollumz-discord §4 |
-| Doku / renk varyantı / skintone | texture-variants.md | video — notlar/03 §3-4 |
-| Pelerin / etek / duvak — karakterle süzülen kumaş (`.yld`) | ped-cloth.md | Sollumz kaynağı + vanilla csb_bride dökümü (2026-09) |
+| Adding freemode clothing / moving it to 98 bones / scaling | freemode-clothing.md | video — notes/03 §2, §4-7 |
+| Ped prop — hat, glasses, headset | ped-prop.md | video — notes/03 §8-9 · sollumz-discord §4 |
+| Texture / colour variant / skintone | texture-variants.md | video — notes/03 §3-4 |
+| Cape / skirt / veil — fabric that flows with the character (`.yld`) | ped-cloth.md | Sollumz source + vanilla csb_bride dump (2026-09) |
 
-## Gövdeye bakılacaklar
-- `trunk/tool-pitfalls.md` §1 (Mesh Domain, gömülü doku, `hide_select`), §4 (`-PathFilter`, `-LiteralPath`)
-- `trunk/verification-ladder.md` — `.ydd` export boyutu ve gömülü doku kontrolü
-- `trunk/bone-tags.md` §4 ped kemikleri
-- Kıyafet dokusu renk/detay yordamı ve ped DLC şablonu (`customped.zip`) → `sources/community-resources.md` §9, §12 — **kaynak notu, kural değil.**
+## Trunk files to read
+- `trunk/tool-pitfalls.md` §1 (Mesh Domain, embedded texture, `hide_select`), §4 (`-PathFilter`, `-LiteralPath`)
+- `trunk/verification-ladder.md` — `.ydd` export size and embedded texture check
+- `trunk/bone-tags.md` §4 ped bones
+- Clothing texture colour/detail procedure and the ped DLC template (`customped.zip`) → `sources/community-resources.md` §9, §12 — **source note, not a rule.**

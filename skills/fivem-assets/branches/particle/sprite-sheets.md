@@ -1,599 +1,598 @@
-# Partikül doku sayfası — kare, `C4`, ızgara, yoğunluk, donör transplant
+# Particle texture sheet — frames, `C4`, grid, density, donor transplant
 
-**Ne zaman okunur:** efektin **dokusunu** üreteceksin: kaç kare, hangi çözünürlük, `C4` ne yapar, sayfa bölünüyor mu, yoğunluk/siluet nasıl ölçülür, hangi donörden transplant.
-**When to read:** the particle texture page — frame count, `C4`, grid, density, transplanting a donor's page.
-**Kaynak:** `ptfx-flipbook-uretimi.md` §1-§5 (2026-08/09) · **Ölçüm:** 15 aile oyunda; sayfa bölünmesi görsel kanıtla; 107/107 vanilla partikül dokusu DXT
-**Önce:** `branches/particle/_branch.md` · `ypt-from-scratch.md` (dosyanın kendisi) · gövde › `trunk/gta-fundamentals.md` §5 doku
+**When to read:** you will produce the effect's **texture**: how many frames, which resolution, what `C4` does, whether the sheet is sliced, how to measure density/silhouette, which donor to transplant the sheet from.
+**Source:** the former ptfx flipbook reference (2.5.0) §1-§5 (2026-08/09) · **Measured:** 15 families in game; sheet slicing with visual proof; 107/107 vanilla particle textures DXT
+**Read first:** `branches/particle/_branch.md` · `ypt-from-scratch.md` (the file itself) · trunk › `trunk/gta-fundamentals.md` §5 texture
 
 ---
 
-## 1. Kare sayısı ve çözünürlük — ⛔ İKİ KURAL DA YANLIŞ YAZILMIŞTI
+## 1. Frame count and resolution — ⛔ BOTH RULES WERE WRITTEN WRONG
 
-İlk sürümde buraya iki kural yazdım, ikisi de yanlıştı ve zincirin tamamını
-bozdu. Oyunda belirti şuydu: **her sprite 8×8 sayfanın tamamını tek karede
-çiziyordu** — ekranda "küçük görüntülerden oluşan bir ızgara". Yani motor
-ızgarayı hiç uygulamıyordu.
+In the first version I wrote two rules here; both were wrong and broke the
+whole chain. The in-game symptom was: **every sprite drew the whole 8×8 sheet in a single
+frame** — on screen "a grid made of small images". So the engine was
+not applying the grid at all.
 
-### ⛔ Yanlış 1: "ızgara dokuyu tam bölmeli"
+### ⛔ Wrong 1: "the grid must divide the texture exactly"
 
-Bölmek zorunda **değil**. Vanilla `ptfx_smoke_wispy_anim` 1024×1024 üzerinde
-**7×7**'dir: 1024/7 = **146.29**. Motor UV uzayında `1/k` adımlarla örnekler,
-piksel hizası aramaz. Bu uydurma şart yüzünden 36 kare reddedildi ve
-**64 kareye (8×8) geçildi** — asıl hata buradan doğdu.
+It does **not** have to. Vanilla `ptfx_smoke_wispy_anim` is **7×7** on 1024×1024:
+1024/7 = **146.29**. The engine samples in UV space in `1/k` steps,
+it does not look for pixel alignment. Because of this made-up condition 36 frames were rejected and
+**the switch to 64 frames (8×8) was made** — that is where the real error came from.
 
-### ⛔ Yanlış 2: "63 bandın üstünde ama motor kabul eder"
+### ⛔ Wrong 2: "above the 63 band, but the engine accepts it"
 
-Kabul etmiyor. "Geri okuma doğruladı" demek yalnızca **dosyanın öyle
-yazıldığını** doğrular; motorun onu kullandığını değil. `core.ypt`'teki
-**781 `AnimateTexture` davranışı** ölçüldü:
+It does not. "Read back verified it" only verifies **that the file was written
+that way**; not that the engine uses it. **781 `AnimateTexture` behaviours** in `core.ypt`
+were measured:
 
-| ölçüm | değer |
+| measurement | value |
 |---|---|
-| `Unknown_C4h` en büyük | **49** (yani en çok 50 kare) |
-| `C4 > 48` olan kural | **1** |
-| `C4 > 63` olan kural | **0** |
+| `Unknown_C4h` largest | **49** (i.e. at most 50 frames) |
+| rules with `C4 > 48` | **1** |
+| rules with `C4 > 63` | **0** |
 
-64 kare vanilla bandının tamamen dışındadır ve motor ızgarayı **hiç**
-uygulamaz. Güvenli tavan **49 (7×7)** — hem `ptfx_sheet.py` hem
-`build_custom_ptfx.py` artık 49'u aşanı reddediyor.
+64 frames are completely outside the vanilla band, and the engine does **not** apply the grid
+at all. Safe ceiling **49 (7×7)** — both `ptfx_sheet.py` and
+`build_custom_ptfx.py` now reject anything above 49.
 
-### ⛔ `C4` ızgara DEĞİL, oynatılacak SON KARE İNDEKSİDİR
+### ⛔ `C4` is NOT the grid, it is the INDEX OF THE LAST FRAME to play
 
-Bu ayrımı yapmadan `C4`'ten ızgara çıkarmaya çalışmak yanlış yola sokar.
-Aynı `ptfx_smoke_wispy_anim` dokusu (görsel olarak sayıldı: **7×7 = 49
-kare**) vanilla'da şu `C4` değerleriyle kullanılıyor:
-**21, 35, 37, 38, 40, 42, 43, 44, 47, 48**. Yani kurallar sayfanın bir
-**alt aralığını** oynatabiliyor.
+Trying to derive the grid from `C4` without making this distinction leads you the wrong way.
+The same `ptfx_smoke_wispy_anim` texture (counted visually: **7×7 = 49
+frames**) is used in vanilla with these `C4` values:
+**21, 35, 37, 38, 40, 42, 43, 44, 47, 48**. So rules can play a
+**sub-range** of the sheet.
 
-Izgara, dokuya göre **baskın** `C4` değerinden okunur (`grid = √(C4+1)`) ve
-gözle sayılarak doğrulanmıştır:
+The grid is read from the **dominant** `C4` value per texture (`grid = √(C4+1)`) and
+verified by counting by eye:
 
-| doku | ızgara (sayıldı) | baskın `C4` |
+| texture | grid (counted) | dominant `C4` |
 |---|---|---|
 | `ptfx_water_splashes_sheet_b` | 2×2 = 4 | 3 |
-| `ptfx_bubbles_trail_anim` | **5×5 = 25** | 24 (11/11 kural) |
+| `ptfx_bubbles_trail_anim` | **5×5 = 25** | 24 (11/11 rules) |
 | `ptfx_flipbook_fire_rgb` | 5×5 = 25 | 24 (25/25) |
 | `ptfx_smoke_billow_anim_rgba` | 6×6 = 36 | 35 (13/13) |
 | `ptfx_smoke_wispy_anim` | **7×7 = 49** | 48 (342/405) |
 
-**Üretirken alt aralık kullanma** — `C4 = kare − 1` yaz, sayfanın tamamı
-oynasın.
+**Do not use a sub-range when producing** — write `C4 = frames − 1` so the whole sheet
+plays.
 
-### Izgarayı taşımayan alanlar (elenmiş, tekrar aranmasın)
+### Fields that do not carry the grid (ruled out, do not search again)
 
-Aşağıdakilerin hiçbiri ızgarayı kodlamaz — **aynı doku için serbestçe
-değişiyorlar**, ölçüldü:
+None of the following encodes the grid — **they vary freely for the same texture**,
+measured:
 
-- `Unknown_C0h` — 776/781'de 0
-- `Unknown_C8h` — {0,1,2,4}; aynı dokuda hem 0 hem 1 geçiyor
+- `Unknown_C0h` — 0 in 776/781
+- `Unknown_C8h` — {0,1,2,4}; the same texture has both 0 and 1
 - `Unknown_CCh` — {0x01010100, 0x01000000, 0x01000100, 0x01010000};
-  wispy dokusunun tek başına dördü de var
-- `Unknown_11Ch` — aynı wispy dokusu için 12/14/16/18/20/22/23/33
-- `ShaderVars` — 21 değişkenin hiçbirinde 7 ya da 1/7 yok
-  (`Unknown_18h` bir shader **register** indeksi; `diffusetex2` register 4)
+  the wispy texture alone has all four
+- `Unknown_11Ch` — 12/14/16/18/20/22/23/33 for the same wispy texture
+- `ShaderVars` — none of the 21 variables contains 7 or 1/7
+  (`Unknown_18h` is a shader **register** index; `diffusetex2` register 4)
 
-**Yapı olarak bizim kuralımız vanilla ile eşleşiyordu**: davranış listeleri
-(L1 `... AnimateTexture Colour Sprite`, L2/L3 aynısı Sprite'sız, L5 yalnız
-`Sprite`), teknik (`RGBA_lit_soft`, vanilla'da 567 kuralda), `Sprite` bloğu
-(tek fark `Unknown_44h` 0.5/0). Tek gerçek fark kare sayısıydı.
+**Structurally our rule matched vanilla**: behaviour lists
+(L1 `... AnimateTexture Colour Sprite`, L2/L3 the same without Sprite, L5 only
+`Sprite`), technique (`RGBA_lit_soft`, in 567 rules in vanilla), `Sprite` block
+(only difference `Unknown_44h` 0.5/0). The only real difference was the frame count.
 
-Vanilla `core.ypt` ölçümü (1736 partikül kuralı):
-`ParticleBehaviourAnimateTexture` taşıyan **781 (%45)**.
-`Unknown_C4h` dağılımı: 48 ×401 · 35 ×70 · 24 ×49 · 3 ×128 · 15 ×8.
+Vanilla `core.ypt` measurement (1736 particle rules):
+**781 (45%)** carry `ParticleBehaviourAnimateTexture`.
+`Unknown_C4h` distribution: 48 ×401 · 35 ×70 · 24 ×49 · 3 ×128 · 15 ×8.
 `Unknown_CCh` 0x1010100 ×367 · `C0`=0 ×776 · `C8`=1 ×476.
 
 ---
 
-## 1b. ⛔ SIFIRDAN YAZILAN KURAL IZGARAYI UYGULATMIYOR — üretim yolu TRANSPLANT
+## 1b. ⛔ A RULE WRITTEN FROM SCRATCH DOES NOT MAKE THE ENGINE APPLY THE GRID — production path TRANSPLANT
 
-Sayfa doğru, `C4` doğru, davranış listeleri vanilla ile aynı, teknik aynı,
-`FxcFileHash` dolu — ve oyunda her sprite **sayfanın tamamını tek karede**
-çiziyor. Renk kodlu beş denekle ölçüldü (`t1..t5`, her biri ayrı renk;
-konumdan okumak iki kez yanlış teşhise yol açtı, **renkle etiketle**):
+The sheet is right, `C4` is right, the behaviour lists are the same as vanilla, the technique is the same,
+`FxcFileHash` is filled — and in game every sprite draws **the whole sheet in a single frame**.
+Measured with five colour-coded subjects (`t1..t5`, each a different colour;
+reading by position led to a wrong diagnosis twice, **label by colour**):
 
-| denek | kural | doku | sonuç |
+| subject | rule | texture | result |
 |---|---|---|---|
-| t1 | **vanilla** (2×2 donör) | bizim 2×2 | ✅ **düzgün** |
-| t2 | bizim | vanilla wispy 7×7 | ❌ ızgara |
-| t3 | bizim | bizim 7×7 | ❌ ızgara |
-| t4 | bizim + vanilla'nın 21 shader değişkeni | bizim 7×7 | ❌ ızgara |
-| t5 | bizim | bizim 2×2 | ❌ ızgara |
+| t1 | **vanilla** (2×2 donor) | our 2×2 | ✅ **correct** |
+| t2 | ours | vanilla wispy 7×7 | ❌ grid |
+| t3 | ours | our 7×7 | ❌ grid |
+| t4 | ours + vanilla's 21 shader variables | our 7×7 | ❌ grid |
+| t5 | ours | our 2×2 | ❌ grid |
 
-Okunuşu kesin: **doku hattı sağlam** (t1 bizim ürettiğimiz sayfayı
-dilimliyor), **kare sayısı ilgisiz** (t5 de 2×2), **shader değişkenleri
-ilgisiz** (t4). Değişkenin tamamı **bizim kural bloğumuzda**.
+The reading is conclusive: **the texture pipeline is sound** (t1 slices the sheet we
+produced), **the frame count is irrelevant** (t5 is 2×2 too), **the shader variables are
+irrelevant** (t4). The whole variable is **in our rule block**.
 
-Elenen alanlar (aynı doku için serbestçe değişiyorlar, ızgarayı
-kodlamıyorlar): `C0` (773/778'de 0), `C8`, `CC`, `Unknown_11Ch`,
-`ShaderVars`, `Sprite.Unknown5C` (vanilla'da da `0x100`).
-Hangi alan olduğu **henüz bulunamadı**.
+Ruled-out fields (they vary freely for the same texture, they do not encode the
+grid): `C0` (0 in 773/778), `C8`, `CC`, `Unknown_11Ch`,
+`ShaderVars`, `Sprite.Unknown5C` (`0x100` in vanilla too).
+Which field it is has **not been found yet**.
 
-### Üretim yolu: `ypt_transplant.py`
+### Production path: `ypt_transplant.py`
 
-Çalışan bir vanilla kuralı kopyalanır, yalnız doku/renk/boyut değişir.
-Donör **tek emitterli** olmalı ve `C4`'ü bizim sayfamızla eşleşmeli.
+A working vanilla rule is copied; only texture/colour/size change.
+The donor must be **single-emitter** and its `C4` must match our sheet.
 
 ```bash
-python ypt_transplant.py core.ypt.xml --efekt veh_respray_smoke     --yeni-ad my_duman --doku my_duman --klasor .     --renk 0.62 0.60 0.58 --boyut-carpan 1.0
+python ypt_transplant.py core.ypt.xml --effect veh_respray_smoke     --new-name my_smoke --texture my_smoke --folder .     --color 0.62 0.60 0.58 --size-mult 1.0
 ```
 
-`core.ypt`'te **120 tek emitterli animasyonlu donör** var; çoğu `C4=48`
-(7×7). Ölçülmüş seçim: duman/toz `veh_respray_smoke` ·
-`weap_veh_turbulance_sand` · ateş `fire_map` · kor `fire_ped_smoulder` ·
-sis `veh_vent_rc` · buhar `ent_amb_steam_prison` · sıçrama/kan
-`blood_mouth` · halka `fire_extinguish`.
+`core.ypt` has **120 single-emitter animated donors**; most are `C4=48`
+(7×7). Measured choices: smoke/dust `veh_respray_smoke` ·
+`weap_veh_turbulance_sand` · fire `fire_map` · ember `fire_ped_smoulder` ·
+fog `veh_vent_rc` · steam `ent_amb_steam_prison` · splash/blood
+`blood_mouth` · ring `fire_extinguish`.
 
-⛔ **Donör aramasını `<Name>` etiketiyle bölme.** `<Name>` keyframe
-özelliklerinde de geçer; kural sınırı `
+⛔ **Do not split the donor search on the `<Name>` tag.** `<Name>` also appears in keyframe
+properties; the rule boundary is the sequence `
   <Item>
-   <Name>` dizisidir.
-Yanlış bölme "tek emitterli animasyonlu donör **yok**" dedirtti — gerçekte
-120 tane vardı ve bir tur kaybettirdi.
+   <Name>`.
+Splitting wrongly made it say "there are **no** single-emitter animated donors" — in fact
+there were 120, and it cost a round.
 
-### ⛔ DONÖRÜN TEKNİĞİ KENDİ DOKUSUNA GÖRE SEÇİLMİŞTİR
+### ⛔ THE DONOR'S TECHNIQUE WAS CHOSEN FOR ITS OWN TEXTURE
 
-Transplant donörün `FxcTechnique` alanını da aynen taşır — ve o teknik
-**donörün kendi dokusuna** göre seçilmiştir. `fire_map` donörünün dokusu
-`ptfx_fire_v2` alfasızdır, tekniği `RGB_lit_soft`'tur.
+The transplant also carries the donor's `FxcTechnique` field unchanged — and that technique
+was chosen **for the donor's own texture**. The texture of the `fire_map` donor,
+`ptfx_fire_v2`, has no alpha; its technique is `RGB_lit_soft`.
 
-`RGB_*` teknik dokunun **alfa kanalını yok sayar**. Bizim sayfalarımızın
-şekli alfadadır (DXT5) → her parçacık hücrenin tamamını **opak bir kare**
-olarak çizer. Oyunda belirti ızgaraya çok benzer ve "hâlâ kare kare"
-diye okunur, ama sebebi bambaşkadır.
+An `RGB_*` technique **ignores the texture's alpha channel**. The shape of our sheets
+is in the alpha (DXT5) → every particle draws the whole cell as **an opaque square**.
+In game the symptom looks very much like the grid and reads as "still square by square",
+but the cause is completely different.
 
-Ölçüldü: 15 transplant çıktısının 13'ü `RGBA_lit_soft`, ikisi
-(`ates`, `alev_topu` — ikisi de `fire_map` donörlü) `RGB_lit_soft`.
-Düzeltme `RGB_x` → `RGBA_x`; teknik düz bir dize alanıdır.
+Measured: 13 of 15 transplant outputs are `RGBA_lit_soft`, two
+(`fire`, `fireball` — both with the `fire_map` donor) are `RGB_lit_soft`.
+The fix is `RGB_x` → `RGBA_x`; the technique is a plain string field.
 
-**Kapı:** transplant sonrası tekniği denetle — alfalı doku + `RGB_*`
-teknik birleşimi sessiz bir hatadır.
+**Gate:** check the technique after the transplant — an alpha texture + `RGB_*`
+technique combination is a silent failure.
 
 ---
 
-## 1d. Yoğunluk ve yapı — vanilla bandı
+## 1d. Density and structure — the vanilla band
 
-Format çalıştıktan sonra kalan şikâyet şuydu: *"referanstaki gibi yoğun
-değil"* ve *"1024 daha net göründüğü için sis efekti tam olmuyor"*.
-İkisi de içerik sorunudur, ölçülebilir.
+After the format worked, the remaining complaint was: *"not as dense as
+the reference"* and *"the fog effect does not come out right because 1024 looks sharper"*.
+Both are content problems, and both can be measured.
 
-### ⛔ SAYFALARIMIZ HİÇ OPAKLIĞA ULAŞMIYORDU
+### ⛔ OUR SHEETS NEVER REACHED OPACITY
 
-Ölçüldü — 15 ailenin alfa **tepesi** 0.30–0.47, vanilla duman sayfalarında
-0.59–0.97. Efekt yanlış değil, hiçbir yerde yeterince opak değil. Sebep tek
-bir yerde değil: kenar maskesi + bulanıklık + ömür sönmesi üst üste binince
-tepe eziliyor. Aile bazında uğraşmak yerine sayfa üretildikten **sonra**
-tepe hedefe ölçeklenir (`ALFA_TEPE` tablosu). Ölçüt **maksimum değil
-99,7'lik dilim** — tek aykırı piksel bütün sayfayı söndürür.
+Measured — the alpha **peak** of the 15 families was 0.30–0.47, in vanilla smoke sheets
+0.59–0.97. The effect is not wrong; it is just not opaque enough anywhere. The cause is not in
+one place: edge mask + blur + lifetime fade stack up and
+crush the peak. Instead of working family by family, the peak is scaled to the target **after**
+the sheet is produced (the alpha-peak table in `ptfx_sheet.py`). The criterion is **not the maximum but the
+99.7th percentile** — a single outlier pixel dims the whole sheet.
 
-### ⛔ KARŞILAŞTIRMA IZGARASI EŞLEŞMELİ
+### ⛔ THE COMPARISON GRID MUST MATCH
 
-Yoğunluğu vanilla'nın **2×2** sayfasıyla kıyaslamak yanlış hedef verdi.
-Vanilla'da ızgara büyüdükçe sayfa **seyrekleşir**:
+Comparing density with vanilla's **2×2** sheet gave the wrong target.
+In vanilla, the larger the grid, the **sparser** the sheet:
 
-| vanilla sayfa | ızgara | doluluk | alfa ort | alfa tepe | yapı |
+| vanilla sheet | grid | fill | alpha mean | alpha peak | structure |
 |---|---|---|---|---|---|
-| `ptfx_smoke_new_plumes` | 2×2 | %62,2 | 0,228 | 0,932 | 0,0120 |
-| `ptfx_smoke_billow_anim_rgba` | 6×6 | %58,3 | 0,350 | 0,965 | 0,0119 |
-| `ptfx_smoke_wispy_anim` | **7×7** | **%18,7** | **0,039** | 0,742 | **0,0052** |
-| `ptfx_smoke_thin_anim` | 6×6 | %20,3 | 0,044 | 0,709 | 0,0057 |
+| `ptfx_smoke_new_plumes` | 2×2 | 62.2% | 0.228 | 0.932 | 0.0120 |
+| `ptfx_smoke_billow_anim_rgba` | 6×6 | 58.3% | 0.350 | 0.965 | 0.0119 |
+| `ptfx_smoke_wispy_anim` | **7×7** | **18.7%** | **0.039** | 0.742 | **0.0052** |
+| `ptfx_smoke_thin_anim` | 6×6 | 20.3% | 0.044 | 0.709 | 0.0057 |
 
-Bizim 7×7 sayfamızın ölçütü `wispy`'dir, `new_plumes` değil.
+The criterion for our 7×7 sheet is `wispy`, not `new_plumes`.
 
-### ⛔ YOĞUNLUĞU GÜRÜLTÜYÜ EZEREK ARTIRMA
+### ⛔ DO NOT RAISE DENSITY BY CRUSHING THE NOISE
 
-Doluluğu yükseltmek için çarpan `0.86 + 0.34·kabar` yapıldı; aralık
-neredeyse sabit olduğu için doluluk arttı ama **yapı dümdüz oldu** — gri
-zemine bindirilince "bulanık bir top" gibi okundu. Yoğunluk **maskeden ve
-eşikten** gelir, gürültünün genliği tam kalır.
+To raise the fill, the multiplier was made `0.86 + 0.34·billow`; since the range was
+almost constant, the fill rose but **the structure went completely flat** — composited on a grey
+background it read like "a blurry ball". Density comes **from the mask and the
+threshold**; the noise amplitude stays full.
 
-### ⛔ TEK OKTAV KIVRIM VERMEZ
+### ⛔ A SINGLE OCTAVE GIVES NO CURL
 
-Vanilla dumanında iki ölçek var: kaba kabarcık + ince filament. İkinci,
-yüksek frekanslı katman (`_fbm(c, 3, 9, ...)`) eklenmeden duman "duman"
-gibi okunmuyor. Ölçüt **gradyan** (`yapı`): vanilla 7×7 = 0,0052.
+Vanilla smoke has two scales: coarse billows + fine filaments. Without the second,
+high-frequency layer (`_fbm(c, 3, 9, ...)`) smoke does not read as "smoke".
+The criterion is the **gradient** (`structure`): vanilla 7×7 = 0.0052.
 
-### ⛔ EROZYON EŞİĞİ ZAMANLA YÜKSELİR, DÜŞMEZ
+### ⛔ THE EROSION THRESHOLD RISES OVER TIME, IT DOES NOT FALL
 
-`esik = 0.44 − 0.24·t` yazıldığında geç karelerde eşik o kadar düşüyordu ki
-gürültünün **tamamı** geçiyor, modülasyon bitiyor ve geriye **çıplak radyal
-maske — düz bir disk** kalıyordu. Gerçek duman dağılırken **parçalanır**:
-`esik = 0.34 + 0.26·t`.
+With `threshold = 0.44 − 0.24·t` the threshold fell so low in late frames that
+**all** of the noise passed, the modulation ended, and what remained was **the bare radial
+mask — a flat disk**. Real smoke **breaks up** as it disperses:
+`threshold = 0.34 + 0.26·t`.
 
-### ⛔ SİLUET DAİRE OLMAMALI
+### ⛔ THE SILHOUETTE MUST NOT BE A CIRCLE
 
-Maskeye sabit taban (`0.10 + ...`) eklenirse gürültünün boş olduğu yerlerde
-bile soluk bir disk kalır ve daire kenarı çıplak okunur. Taban kaldırılır,
-yarıçap gürültüyle bozulur (`r − 0.13·(d1 − 0.5)`).
+If a constant floor (`0.10 + ...`) is added to the mask, a faint disk remains even where the noise is
+empty, and the circle edge reads bare. The floor is removed, and the
+radius is disturbed by noise (`r − 0.13·(d1 − 0.5)`).
 
-### Yoğunluğu GRİ zeminde ölç
+### Measure density on a GREY background
 
-Koyu zemin alfası düşük içeriği affeder; gri zemin affetmez. Yoğunluk
-karşılaştırması `(120,122,126)` üzerinde yapılır.
+A dark background forgives low-alpha content; a grey background does not. The density
+comparison is done on `(120,122,126)`.
 
-**Sonuç (duman 7×7):** doluluk %20,0 · alfa ort 0,058 · tepe 0,618 ·
-yapı 0,0043 — vanilla `wispy` bandında.
+**Result (smoke 7×7):** fill 20.0% · alpha mean 0.058 · peak 0.618 ·
+structure 0.0043 — within the vanilla `wispy` band.
 
 ---
 
-## 1e-BIS. ✅ SAYFA BÖLÜNÜYOR — GÖRSEL KANIT ALINDI (2026-09-02)
+## 1e-BIS. ✅ THE SHEET IS SLICED — VISUAL PROOF OBTAINED (2026-09-02)
 
-**§1e'nin "sayfa dilimlemesi custom `.ypt`'de hiç çalışmıyor" hükmü
-YANLIŞTIR.** §1b'nin `t1` satırı doğruymuş.
+**§1e's verdict "sheet slicing does not work at all in a custom `.ypt`"
+IS WRONG.** §1b's `t1` row was right after all.
 
-### Kanıt — tek yorumu olan deney
+### Proof — an experiment with a single interpretation
 
-2×2 sayfa, dört hücrede **dört farklı şekil**: disk · halka · artı · üçgen.
-Oyunda çekilen tek karede **dördü de ayrı ayrı, tam parçacık olarak**
-görünüyor: iki halka (ortaları delik), iki üçgen, bir artı, iki dolu disk —
-farklı konum, farklı boyut, farklı dönüş.
+2×2 sheet, **four different shapes** in four cells: disk · ring · plus · triangle.
+In a single frame taken in game **all four appear separately, as whole particles**:
+two rings (hollow centres), two triangles, one plus, two solid disks —
+different position, different size, different rotation.
 
-⏵ Sayfa bölünmeseydi **her parçacık dördünü birden içeren tek bir kare
-damga** olurdu ve bütün parçacıklar birbirinin aynı görünürdü.
+⏵ If the sheet were not sliced, **every particle would be a single square
+stamp containing all four**, and all particles would look identical.
 
-Görsel: `flipbook_deney/P4_zoom.png` (gece arka planı şekilleri en okunur
-yapan koşuldur — gündüz kareleri düşük kontrastta okunmuyordu).
+Image: `flipbook_experiment/P4_zoom.png` (a night background is the condition that makes the shapes
+most readable — daytime frames could not be read at low contrast).
 
-**Sayısal teyit:** 25 kadraj-içi parçacığın **hiçbiri** tüm-sayfa imzasını
-taşımıyor. Yer gerçeği: disk/artı/üçgen delik=0.00, halka delik=0.41,
-**tüm sayfa delik=0.12**. Ölçülen: hepsi ≤ 0.045, çoğu ≤ 0.02.
-⚠ Bu sayım halkaları yakalayamaz (üst üste binen iki halka tek bileşene
-düşer ve delikleri kapanır) — "farklı şekiller var" iddiası görselden,
-"hiçbir parçacık tüm sayfayı çizmiyor" iddiası sayıdan okunur.
+**Numerical confirmation:** **none** of 25 in-frame particles carries the whole-sheet
+signature. Ground truth: disk/plus/triangle hole=0.00, ring hole=0.41,
+**whole sheet hole=0.12**. Measured: all ≤ 0.045, most ≤ 0.02.
+⚠ This count cannot catch rings (two overlapping rings fall into a single
+component and their holes close) — the claim "there are different shapes" is read from the image,
+the claim "no particle draws the whole sheet" is read from the numbers.
 
-### ⛔ FLİPBOOK YOK — PARÇACIK DOĞDUĞU HÜCREYE KİLİTLENİYOR (ölçüldü)
+### ⛔ NO FLIPBOOK — A PARTICLE IS LOCKED TO THE CELL IT WAS BORN IN (measured)
 
-Bölünme kanıtlandı (yukarıda) ama **animasyon yok**. Film şeridiyle
-(tek kurulum, tek koşu, 1 sn aralıklı 8 kare, gece) aynı parçacık
-**9. saniyeden 15. saniyeye** izlendi:
+Slicing was proven (above), but **there is no animation**. With a film strip
+(one setup, one run, 8 frames 1 s apart, night) the same particle
+was tracked **from second 9 to second 15**:
 
-| iz | kare | delik oranı dizisi | aralık |
+| track | frames | hole ratio sequence | range |
 |---|---:|---|---|
-| iz0 | 7 | 0.00 0.02 0.02 0.00 0.00 0.00 0.00 | 0.00-0.02 |
-| iz1 | 5 | 0.00 0.02 0.03 0.02 0.01 | 0.00-0.03 |
+| track0 | 7 | 0.00 0.02 0.02 0.00 0.00 0.00 0.00 | 0.00-0.02 |
+| track1 | 5 | 0.00 0.02 0.03 0.02 0.01 | 0.00-0.03 |
 
-Halka hücresi 0.41 verir. **Hiçbir iz oraya girmiyor.** Görselde de
-(`flipbook_deney/AYNI_PARCACIK.png`) parçacık 6 saniye boyunca **üçgen**
-kalıyor; büyüyüp soluyor ama şekil değişmiyor. `animRate` donörden
-**0.8-2** olarak geldi (sıfır değil), yani 4 karelik döngü 2-5 sn sürmeliydi;
-6 saniyede en az bir kez halkadan geçmesi gerekirdi. Geçmedi.
+The ring cell gives 0.41. **No track goes there.** In the image too
+(`flipbook_experiment/SAME_PARTICLE.png`) the particle stays a **triangle** for 6 seconds;
+it grows and fades, but the shape does not change. `animRate` came from the donor as
+**0.8-2** (not zero), so a 4-frame cycle should have taken 2-5 s;
+in 6 seconds it should have passed through the ring at least once. It did not.
 
-**Sonuç:** sayfa bir **çeşitlilik havuzu** gibi davranıyor — her parçacık
-doğarken bir hücre seçiyor ve ömrü boyunca onu çiziyor. Bu şartlarda
-"tek hücre göster, sırayla diğerlerine geç" görüntüsü **çok parçacıklı
-bir plümde elde EDİLEMEZ**: her an farklı yaştaki parçacıklar farklı
-hücreleri gösterir, kare karışık okunur.
+**Result:** the sheet behaves like a **variety pool** — each particle
+picks a cell when it is born and draws it for its whole lifetime. Under these conditions
+the look "show one cell, then move to the others in turn" **CANNOT be achieved in a multi-particle
+plume**: at any moment particles of different ages show different
+cells, and the frame reads mixed.
 
-**`animRate` SÜRÜLDÜ, DEĞİŞMEDİ (ölçüldü).** Donörün 0.8-2 değeri
-elle **12**'ye çekildi (15 kat) — 4 karelik döngü saniyede birkaç kez
-dönmeliydi. 6 saniyelik şeritte altı izin **hepsinde** delik aralığı
-0.00-0.07; görselde (`d2_kareler.png`) üstteki halka hep halka, soldaki
-üçgen hep üçgen, ortadaki artı hep artı kaldı.
-**`UnknownC8` = 2** denendi (varsayılan 1) — dört izin hepsinde 0.00-0.04,
-yine değişim yok.
+**`animRate` WAS PUSHED, NOTHING CHANGED (measured).** The donor's 0.8-2 value
+was set by hand to **12** (15 times) — a 4-frame cycle should have turned several times a
+second. In the 6-second strip the hole range of **all** six tracks was
+0.00-0.07; in the image (`d2_kareler.png`) the ring at the top stayed a ring, the triangle on the left
+a triangle, the plus in the middle a plus.
+**`UnknownC8` = 2** was tried (default 1) — all four tracks 0.00-0.04,
+again no change.
 
-⚠ Sınır: tek donör (`ent_amb_cig_smoke_linger`) ile ölçüldü; `UnknownCC`
-ve `UnknownC0` denenmedi. Başka `animRate` / `UnknownC8` / `UnknownCC` kombinasyonu farklı
-davranabilir — denenmedi.
+⚠ Limit: measured with a single donor (`ent_amb_cig_smoke_linger`); `UnknownCC`
+and `UnknownC0` were not tried. Another `animRate` / `UnknownC8` / `UnknownCC` combination may
+behave differently — not tried.
 
-### Çözüm: N emitter + `Unknown10` gecikmesi → `layered-effects.md`
+### Solution: N emitters + `Unknown10` delay → `layered-effects.md`
 
 
-### ⛔ ESKİ UYARI (geçerli): BÖLÜNME ≠ FLIPBOOK
+### ⛔ OLD WARNING (still valid): SLICING ≠ FLIPBOOK
 
-Kanıtlanan şey **bölünme**: farklı parçacıklar farklı hücre çiziyor.
-**Tek bir parçacığın ömrü boyunca hücreler arasında geçtiği
-KANITLANMADI.** İki durum çok parçacıklı tek karede birebir aynı görünür:
+What was proven is **slicing**: different particles draw different cells.
+**That a single particle moves between cells over its lifetime
+was NOT PROVEN.** In a single multi-particle frame the two cases look exactly the same:
 
-- **(A)** parçacık doğarken bir hücre seçer, ömrü boyunca onu çizer
-- **(B)** parçacık zaman içinde 0→1→2→… ilerler → GERÇEK FLIPBOOK
+- **(A)** a particle picks a cell when it is born and draws it for its whole lifetime
+- **(B)** a particle advances 0→1→2→… over time → A REAL FLIPBOOK
 
-(A)/(B) ayrımı için **film şeridi** modu eklendi (`server.lua`, `kareler`):
-kurulum BİR KEZ, aynı koşu içinde peş peşe kare. Eski `adim()` her karede
-efekti baştan başlatıyordu; iki kare iki ayrı koşuya aitti. Bir şeritte
-delik oranı 8 sn boyunca ~0.00 kaldı — **(A) yönünde eğilim** ama o koşuda
-parçacıklar üst üste bindiği için belirleyici değil. **AÇIK SORU.**
+For the (A)/(B) distinction a **film strip** mode was added (`server.lua`, `kareler` = frames):
+setup ONCE, frames in succession within the same run. The old `adim()` (step) restarted the
+effect at every frame; two frames belonged to two separate runs. In one strip the
+hole ratio stayed ~0.00 for 8 s — **a tendency towards (A)**, but in that run
+the particles overlapped, so it is not decisive. **OPEN QUESTION.**
 
-### ⛔ ÖLÇÜM REÇETESİ — buna uymadan tekrar deneme
+### ⛔ MEASUREMENT RECIPE — do not try again without following it
 
-Bu sonuca varmadan önce altı tur boşa gitti; sebepleri:
+Six rounds were wasted before reaching this result; the reasons:
 
-1. **Kalibrasyon şart.** Parçacık boyutu `--boyut-olcek` (doku) ile adım
-   `olcek`'inin (efekt) ÇARPIMIDIR. Ayrı ayrı tahmin edilirse ya kadrajı
-   doldurur ya görünmez. **Önce tek varlık dağıtıp `olcek`'i süpür**
-   (0.5/1/2/3) — yeniden derleme gerekmez. Ölçülen: `olcek=2.0` → 8 izole
-   parçacık, çap ~130 px, hepsi kadraj içinde. Aranılan bu.
-2. **Donör tipi.** `exp_grd_grenade_smoke` bir JET — parçacıklar yukarı
-   fırlayıp kadrajdan çıkıyor. Yerinde duranı kullan:
+1. **Calibration is required.** Particle size is the PRODUCT of `--size-scale` (texture) and the step's
+   `olcek` (scale, of the effect). If they are guessed separately, it either fills the frame
+   or becomes invisible. **First deploy a single asset and sweep `olcek`**
+   (0.5/1/2/3) — no rebuild needed. Measured: `olcek=2.0` → 8 isolated
+   particles, diameter ~130 px, all inside the frame. That is what you are after.
+2. **Donor type.** `exp_grd_grenade_smoke` is a JET — particles shoot upwards
+   and leave the frame. Use one that stays in place:
    **`ent_amb_cig_smoke_linger`**.
-3. **Kadraj kenarını ele.** `x<=2 || x>=1918` olan bileşen kırpılmış
-   parçadır, çapı yanlış okunur (31×110 px "parçacık" çıktı).
-4. **Yoğunluk iki kolda eşit olmalı.** Yoğun kol parçacıkları birleştirir
-   (620 px bulut), seyrek kol kadrajdan taşar; karşılaştıracak izole
-   parçacık kalmaz.
-5. **Gece arka planı gündüzden İYİ.** Şekiller koyu zeminde okunuyor.
-6. **HUD köşesini maskele** (`m[950:,1450:]=False`) — "Downloading assets"
-   bildirimi en yoğun değişen bölge olarak çıkıp kadrajı oraya çekti.
+3. **Discard the frame edge.** A component with `x<=2 || x>=1918` is a clipped
+   piece; its diameter is read wrong (a 31×110 px "particle" came out).
+4. **Density must be equal in both arms.** A dense arm merges particles
+   (620 px cloud), a sparse arm spills out of the frame; no isolated
+   particle is left to compare.
+5. **A night background is BETTER than day.** Shapes read on a dark background.
+6. **Mask the HUD corner** (`m[950:,1450:]=False`) — the "Downloading assets"
+   notification came out as the most changing region and pulled the frame there.
 
-Alternatif ayrım testi (`kanit_sayfa.py`): 2×2'de yalnız tek hücre dolu +
-dördü dolu kontrol. Bölünüyorsa izole parçacık **çapı** eşit kalır
-(sayı ~1/4'e düşer); bölünmüyorsa çap **yarıya** iner. Ölçülen oran
-0.74× ve 1.07× — ikisi de ~1.0, yani bölünme yönünde (örnek sayısı azdı,
-görsel kanıt asıl dayanaktır).
+Alternative discriminating test (`proof_sheet.py`): on a 2×2, only one cell filled +
+a control with all four filled. If it is sliced, the isolated particle **diameter** stays equal
+(the count drops to ~1/4); if it is not sliced, the diameter drops to **half**. Measured ratio
+0.74× and 1.07× — both ~1.0, i.e. towards slicing (the sample count was small,
+the visual proof is the main basis).
 
-⛔ **BU BÖLÜM BİR KEZ FAZLA GÜVENLİ YAZILDI VE GERİ ALINDI.** İlk hâli
-"sayfa dilimlemesi çalışıyor, ölçüldü" diyordu. Dayanağı ekran
-görüntüleri üzerinden **yorumdu**: farklı parçacıkların farklı şekiller
-gösterdiği izlenimi. Tek yorumu olan bir ölçüm **yapılamadı**.
-§1e'yi de bu yüzden "geçersiz" ilan etmek erkendi.
+⛔ **THIS SECTION WAS ONCE WRITTEN TOO CONFIDENTLY AND WAS TAKEN BACK.** Its first version
+said "sheet slicing works, measured". Its basis was an **interpretation** of
+screenshots: the impression that different particles showed different shapes.
+A measurement with a single interpretation **could not be made**.
+Declaring §1e "invalid" for that reason was also premature.
 
-**Durum:** §1b'nin `t1` satırı (vanilla kural + bizim 2×2 sayfamız = ✅)
-ile §1e'nin "hiç çalışmıyor" hükmü birbirini tutmuyor. Hangisinin doğru
-olduğu **hâlâ bilinmiyor**. Üretimde güvenli yol değişmedi: tek kare.
+**Status:** §1b's `t1` row (vanilla rule + our 2×2 sheet = ✅)
+and §1e's "does not work at all" verdict contradict each other. Which one is right
+is **still unknown**. The safe production path has not changed: single frame.
 
-### Ölçülmeye çalışılan İKİ AYRI soru — karıştırma
+### The TWO SEPARATE questions being measured — do not mix them
 
-1. **BÖLÜNME:** motor sayfayı hücrelere ayırıyor mu?
-2. **FLIPBOOK:** tek bir parçacık ömrü boyunca hücreler arasında geçiyor mu?
+1. **SLICING:** does the engine split the sheet into cells?
+2. **FLIPBOOK:** does a single particle move between cells over its lifetime?
 
-⚠ (1) doğru olsa bile (2) doğru olmayabilir: her parçacık doğarken bir
-hücre seçip ömrü boyunca onu çiziyor olabilir. Çok parçacıklı tek karede
-iki durum **birebir aynı** görünür. **İkisi için de temiz ölçüm yok.**
+⚠ Even if (1) is true, (2) may not be: each particle may pick a
+cell when it is born and draw it for its whole lifetime. In a single multi-particle frame
+the two cases look **exactly the same**. **There is no clean measurement for either.**
 
-### Kurulan alet (çalışıyor, kullanılabilir)
+### The tool that was built (works, usable)
 
-- **Film şeridi modu** (`server.lua`, `kareler` alanı): kurulum BİR KEZ,
-  aynı koşu içinde peş peşe kare. Eski `adim()` her karede efekti baştan
-  başlatıyordu; iki kare iki ayrı koşuya aitti, aynı parçacık izlenemiyordu.
-  (2) sorusu ancak bununla cevaplanır.
-- **Saat dondurma** (`SetMillisecondsPerGameMinute`): 15 sn'lik şerit
-  boyunca GTA saati ilerleyip sahneyi geceye çevirdi; taban kare gündüz,
-  ölçüm kareleri gece olunca fark aydınlatmaya boğuldu ve "en büyük
-  bileşen" gökyüzü çıktı. Bir seri tamamen bu yüzden geçersizdi.
-- **Ayrım sayfası** (`flipbook_deney/kanit_sayfa.py`): 2×2, yalnız tek
-  hücre dolu + dördü dolu kontrol. Tek yorumu olan test bu:
-  bölünüyorsa parçacık **boyutu** iki koşulda aynı kalır (sayı ~1/4'e
-  düşer); bölünmüyorsa parçacık sayısı aynı kalır ama disk **yarı çapta**
-  ve karenin sol-üst çeyreğinde durur.
+- **Film strip mode** (`server.lua`, the `kareler` field): setup ONCE,
+  frames in succession within the same run. The old `adim()` restarted the effect at every frame;
+  two frames belonged to two separate runs, and the same particle could not be tracked.
+  Question (2) can only be answered with this.
+- **Clock freeze** (`SetMillisecondsPerGameMinute`): during a 15 s strip
+  the GTA clock advanced and turned the scene to night; the base frame was day,
+  and when the measurement frames were night the difference drowned in lighting and the "largest
+  component" came out as the sky. One series was entirely invalid for this reason.
+- **Discrimination sheet** (`flipbook_experiment/proof_sheet.py`): 2×2, only one
+  cell filled + a control with all four filled. This is the test with a single interpretation:
+  if it is sliced, the particle **size** stays the same in both conditions (the count drops to ~1/4);
+  if it is not sliced, the particle count stays the same but the disk is at **half diameter**
+  and sits in the top-left quarter of the square.
 
-### ⛔ NEDEN SONUÇ ALINAMADI — tekrar edilmesin
+### ⛔ WHY NO RESULT WAS OBTAINED — do not repeat it
 
-Ayrım testinin iki kolu **eşit yoğunlukta olmalı**. Dört-hücreli kol
-(%7,9 parlaklık) parçacıkları birbirine karıştırdı (620 px birleşik bulut),
-tek-hücreli kol (%0,49) ise kadrajın sağ kenarına taşıp yalnız kırpılmış
-parça bıraktı (31×110 px, x=1904). **İki kolda da izole, tam görünür
-parçacık gerekiyor**; önce düşük `--oran` ile yoğunluk eşitlenir, sonra
-`--boyut-olcek` ve adım `olcek`'i **birlikte** ayarlanır (bu turda hep ters
-yönde ayarlandı: biri büyütürken diğeri kadraj dışına attı).
-Ölçüt: **izole parçacık çapı oranı** — ~1,0× bölünüyor, ~2,0× bölünmüyor.
+The two arms of the discriminating test **must have equal density**. The four-cell arm
+(7.9% brightness) blended the particles into each other (620 px merged cloud),
+while the single-cell arm (0.49%) spilled over the right edge of the frame and left only a clipped
+piece (31×110 px, x=1904). **Both arms need isolated, fully visible
+particles**; first the density is equalised with a low `--rate`, then
+`--size-scale` and the step's `olcek` are tuned **together** (in this round they were always tuned in opposite
+directions: while one enlarged, the other pushed it out of frame).
+Criterion: **isolated particle diameter ratio** — ~1.0× sliced, ~2.0× not sliced.
 
-⛔ **AŞAĞIDAKİ §1e GEÇERSİZDİR. Önce burayı oku.** §1e "dilimleme hiç
-çalışmıyor, ızgara boyutu fark etmiyor" diyordu ve üretim yolunu tek kare
-(`C4=0`) olarak koymuştu. Bu ölçümle çürütüldü. §1b'nin `t1` satırı
-(vanilla kural + bizim 2×2 sayfamız = ✅) baştan doğruymuş; §1e onu
-açıklamadan üzerine yazmış.
+⛔ **§1e BELOW IS INVALID. Read this first.** §1e said "slicing does not work
+at all, grid size makes no difference" and set the production path as single frame
+(`C4=0`). This was refuted by measurement. §1b's `t1` row
+(vanilla rule + our 2×2 sheet = ✅) was right from the start; §1e overwrote it
+without explaining it.
 
-### Ne ölçüldü
+### What was measured
 
-Altı denek, transplant yoluyla kuruldu; sayfa **dama tahtası** (hücreler
-sırayla dolu disk / ortası delik halka), DXT5 + mip, `RGBA_lit_soft`,
-`FxcFileHash` dolu, hepsi geri okunarak denetlendi:
+Six subjects, built via transplant; the sheet a **checkerboard** (cells
+alternately a solid disk / a ring with a hollow centre), DXT5 + mip, `RGBA_lit_soft`,
+`FxcFileHash` filled, all audited by read back:
 
-| denek | donör (kendi ızgarası) | yazılan `C4` | sayfa | sonuç |
+| subject | donor (its own grid) | `C4` written | sheet | result |
 |---|---|---:|---|---|
-| b1 | `exp_grd_grenade_smoke` (2×2) | 3 | 2×2 | ✅ dilimliyor |
-| b2 | aynı (2×2) | 15 | 4×4 | ✅ dilimliyor |
-| **b3** | **aynı (2×2)** | **48** | **7×7** | **✅ dilimliyor** |
-| b4 | `ent_amb_cig_smoke_linger` (7×7) | 48 | 7×7 | ✅ dilimliyor |
-| b5 | 7×7 donör | 15 | 4×4 | ✅ dilimliyor |
-| b6 | `ent_amb_bubble_stream` (5×5) | 24 | 5×5 | ✅ dilimliyor |
+| b1 | `exp_grd_grenade_smoke` (2×2) | 3 | 2×2 | ✅ slices |
+| b2 | same (2×2) | 15 | 4×4 | ✅ slices |
+| **b3** | **same (2×2)** | **48** | **7×7** | **✅ slices** |
+| b4 | `ent_amb_cig_smoke_linger` (7×7) | 48 | 7×7 | ✅ slices |
+| b5 | 7×7 donor | 15 | 4×4 | ✅ slices |
+| b6 | `ent_amb_bubble_stream` (5×5) | 24 | 5×5 | ✅ slices |
 
-### ⛔ ÖNCE BUNU OKU: "DILIMLEME" ≠ "FLIPBOOK"
+### ⛔ READ THIS FIRST: "SLICING" ≠ "FLIPBOOK"
 
-Aşağıdaki ölçümler **sayfanın bölündüğünü** kanıtlar: farklı parçacıklar
-sayfanın farklı hücrelerini çiziyor. **Tek bir parçacığın ömrü boyunca
-hücreler arasında GEÇTİĞİNİ KANITLAMAZ.** İki durum tek karede birebir
-aynı görünür:
+The measurements below prove **that the sheet is sliced**: different particles
+draw different cells of the sheet. **They DO NOT PROVE that a single particle MOVES between
+cells over its lifetime.** In a single frame the two cases look exactly
+the same:
 
-- **(A)** her parçacık doğarken bir hücre seçer, ömrü boyunca onu çizer
-  → animasyon YOK, yalnızca çeşitlilik
-- **(B)** her parçacık zaman içinde 0→1→2→... ilerler → GERÇEK FLIPBOOK
+- **(A)** each particle picks a cell when it is born and draws it for its whole lifetime
+  → NO animation, only variety
+- **(B)** each particle advances 0→1→2→... over time → A REAL FLIPBOOK
 
-Ayrım ancak **tek kosu icinde, ayni parcacigi zaman icinde izleyerek**
-yapılır. Tezgaha bunun icin `kareler` (film seridi) modu eklendi:
-kurulum BIR KEZ, sonra verilen anlarda pes pese kare (`server.lua`).
-⚠ Eski `adim()` her karede efekti BASTAN baslatiyordu; iki kare iki ayri
-kosuya aitti ve ayni parcacik izlenemiyordu.
+The distinction can only be made **within a single run, by tracking the same particle over time**.
+For this a `kareler` (film strip) mode was added to the test bench:
+setup ONCE, then frames in succession at the given moments (`server.lua`).
+⚠ The old `adim()` restarted the effect FROM SCRATCH at every frame; two frames belonged to two separate
+runs, and the same particle could not be tracked.
 
-**2026-09-02 itibariyle (A) mi (B) mi oldugu HENUZ OLCULMEDI.** Tek
-kullanilabilir serit (`ent_amb_cig_smoke_linger` donoru, 2x2, 8 sn
-boyunca) delik oranini **hep ~0.00** gosterdi — parçacık halka hücresinden
-geçseydi 0.41 olması gerekirdi, yani **(A) yonünde eğilim var** — ama o
-koşuda birden fazla parçacık üst üste bindiği için belirleyici değil.
-Tek-parçacık koşuları (`--oran 0.15-0.2`) okunamayacak kadar sönük çıktı.
+**As of 2026-09-02, whether it is (A) or (B) has NOT BEEN MEASURED YET.** The only
+usable strip (`ent_amb_cig_smoke_linger` donor, 2x2, over 8 s)
+showed the hole ratio **always ~0.00** — had the particle passed through the ring cell
+it would have had to be 0.41, so **there is a tendency towards (A)** — but in that
+run more than one particle overlapped, so it is not decisive.
+Single-particle runs (`--rate 0.15-0.2`) came out too faint to read.
 
-⛔ **Bir sonraki oturum bu ayrımı çözmeden "flipbook çalışıyor" DEME.**
-Gereken: tek parçacık (düşük `--oran`) + **okunacak kadar büyük ve parlak**
-(`--boyut-olcek` ve adım `olcek` birlikte ayarlanır) + film şeridi +
-donmus saat. Olcut: delik oraninin zaman icinde 0.00 ↔ 0.41 arasinda
-SALINMASI.
+⛔ **The next session must NOT SAY "flipbook works" without resolving this distinction.**
+Needed: a single particle (low `--rate`) + **big and bright enough to read**
+(`--size-scale` and the step's `olcek` tuned together) + film strip +
+frozen clock. Criterion: the hole ratio OSCILLATING between 0.00 ↔ 0.41
+over time.
 
-⛔ **SAATİ DONDUR.** Film şeridi 15 sn sürünce GTA saati ilerleyip sahneyi
-geceye çevirdi; taban kare gündüz, ölçüm kareleri gece oldu ve fark
-aydınlatmaya boğuldu — "en büyük bileşen" gökyüzü çıktı, bir seri
-tamamen bu yüzden geçersizdi. `SetMillisecondsPerGameMinute(2147483647)`
-`kur` icine eklendi.
+⛔ **FREEZE THE CLOCK.** When the film strip lasted 15 s, the GTA clock advanced and turned the scene
+to night; the base frame was day, the measurement frames were night, and the difference
+drowned in lighting — the "largest component" came out as the sky, and one series was
+entirely invalid for this reason. `SetMillisecondsPerGameMinute(2147483647)`
+was added inside `kur` (setup).
 
-### ✅ SONUÇ (yalnız DILIMLEME icin): IZGARAYI `C4` SÜRÜYOR, DONÖR DEĞİL
+### ✅ RESULT (for SLICING only): `C4` DRIVES THE GRID, NOT THE DONOR
 
-`b3` belirleyici: **2×2 dokulu bir donörün `C4`'ü elle 48'e yazıldı ve
-motor bizim 7×7 sayfamızı doğru dilimledi.** Yani:
+`b3` is decisive: **the `C4` of a donor with a 2×2 texture was set by hand to 48, and
+the engine sliced our 7×7 sheet correctly.** So:
 
-- İzgara boyutunda **kural olarak bir kaynak kısıtı yok**; `C4 = kare − 1`
-  yazılır ve sayfa o ızgarada bölünür.
-- Donörün kendi dokusunun ızgarası **bağlayıcı değil**. Bu önemli, çünkü
-  tek emitterli **4×4 donör YOKTUR**: `C4=15` taşıyan 8 kuralın hepsi
-  2-4 emitterli efektlerde (ölçüldü). `C4` yazılabildiği için bu bir engel
-  değil.
-- Vanilla bandı tavanı hala **49 kare (7×7, `C4=48`)** — `C4>48` olan kural
-  1, `C4>63` olan 0. 7×7 üstüne çıkma.
+- There is **no source constraint, as a rule,** on grid size; `C4 = frames − 1`
+  is written and the sheet is split on that grid.
+- The grid of the donor's own texture is **not binding**. This matters, because
+  **there is NO single-emitter 4×4 donor**: all 8 rules carrying `C4=15` are
+  in 2-4 emitter effects (measured). Since `C4` can be written, this is not an
+  obstacle.
+- The vanilla band ceiling is still **49 frames (7×7, `C4=48`)** — rules with `C4>48`:
+  1, with `C4>63`: 0. Do not go above 7×7.
 
-### ✅ ÜRETİM YOLU (§1e'nin "tek kare" reçetesi̇nin YERİNE)
+### ✅ PRODUCTION PATH (REPLACING §1e's "single frame" recipe)
 
-1. Sayfayı üret, **`C4 = kare − 1`** yaz (2×2→3 · 4×4→15 · 5×5→24 · 7×7→48)
-2. Donör **tek emitterli** olsun; `C4`'ü bizim sayfamıza göre **override et**
-3. `FxcTechnique` **`RGBA_*`** olmalı (`RGB_*` alfayı yok sayar — §1b)
-4. Doku **DXT5 + mip**, boyut 2'nin kuvveti; hücre 128-192 px hedefle
-5. `ypt_xml_to_bin.ps1` ile derle (hash), geri okuyup `C4`+teknik+boyut denetle
+1. Produce the sheet, write **`C4 = frames − 1`** (2×2→3 · 4×4→15 · 5×5→24 · 7×7→48)
+2. The donor must be **single-emitter**; **override** its `C4` to match our sheet
+3. `FxcTechnique` must be **`RGBA_*`** (`RGB_*` ignores alpha — §1b)
+4. Texture **DXT5 + mip**, size a power of 2; aim for 128-192 px cells
+5. Build with `ypt_xml_to_bin.ps1` (hash), read back and audit `C4` + technique + size
 
-### ⛔ AYAKTA KALAN KISIM: SIFIRDAN YAZILAN KURAL
+### ⛔ THE PART THAT STILL STANDS: A RULE WRITTEN FROM SCRATCH
 
-§1b'nin `t2..t5` satırları hala geçerli: **kendi üretecimizin sıfırdan
-yazdığı kural blokları ızgarayı uygulatmıyor** (2×2 dahil). Sorumlu alan
-hâlâ bulunmadı. Doğru cümle "flipbook GTA'da çalışmıyor" DEĞİL,
-"**sıfırdan kural yazıcımız çalışmıyor, transplant çalışıyor**".
+§1b's `t2..t5` rows are still valid: **the rule blocks our own generator writes
+from scratch do not make the engine apply the grid** (2×2 included). The responsible field
+has still not been found. The correct sentence is NOT "flipbook does not work in GTA", it is
+"**our from-scratch rule writer does not work, transplant works**".
 
-### ⛔ ÖLÇÜM YÖNTEMİ — tezgahta ÜÇ hata düzeltildi, üçü de SESSİZDİ
+### ⛔ MEASUREMENT METHOD — THREE errors fixed in the test bench, all three SILENT
 
-Bu turda "efekt çıkmıyor" diye iki kez yanlış teşhis kondu. Her seferinde
-**referans adımı** (oyunun kendi efekti) da boş çıktığı için kusurun bizim
-varlığımızda olmadığı anlaşıldı. **Referans adımı olmadan ölçüm yapma.**
+In this round the diagnosis "the effect does not appear" was wrongly made twice. Each time
+the **reference step** (the game's own effect) also came out empty, which showed the defect was
+not in our asset. **Do not measure without a reference step.**
 
-1. `baslat()` verilen varlığı yok sayıp sabit `VARLIK` haritasına bakıyordu;
-   harita yalnız 15 aile kataloğunu tanıyor → yeni varlık **hiç doğmadı**.
-   Düzeltildi: verilen varlık kullanılır + `RequestNamedPtfxAsset` ile istenir.
-2. Hedef sabit dünya ekseninde (`k.y + mesafe`) konuyordu → ped başka yöne
-   bakıyorsa efekt kadraj dışına düşüyor. Hedef **ileri vektöründe** olmalı.
-3. Kamera pedin arkasındaydı → hedef ileri vektöründe olunca **ped efekti
-   kapatıyor**. Kamera efektin **yanına** konur.
+1. `baslat()` (start) ignored the given asset and looked at the fixed `VARLIK` (asset) map;
+   the map only knows the 15-family catalogue → the new asset **never spawned**.
+   Fixed: the given asset is used + requested with `RequestNamedPtfxAsset`.
+2. The target was placed on a fixed world axis (`k.y + distance`) → if the ped faces another way,
+   the effect falls outside the frame. The target must be **on the forward vector**.
+3. The camera was behind the ped → with the target on the forward vector, **the ped covers
+   the effect**. The camera is placed **beside** the effect.
 
-⛔ **ADIMLAR ARASI BULAŞMA GERÇEK.** Önceki adımın yaşayan parçacıkları
-sonraki karede duruyor; renk bazlı atama da güvenilir değil (ton normalizasyonu
-farklı renkleri birbirine katıyor). **Kesin okuma için her denek TEK BAŞINA
-çekilir.** b3'ün yukarıdaki hükmü tek-denek karesinden okundu (renk farkı
-R−38 G−9 B+63 ile doğrulanarak).
+⛔ **BLEED BETWEEN STEPS IS REAL.** The living particles of the previous step stay in
+the next frame; colour-based assignment is not reliable either (hue normalisation
+blends different colours into each other). **For an exact reading each subject is shot ON ITS
+OWN.** b3's verdict above was read from a single-subject frame (verified with the colour difference
+R−38 G−9 B+63).
 
-**Okuma ölçütü (her ızgarada çalışır):** dama tahtası sayfa → dilimleme
-varsa parçacıkların bir kısmı **deliksiz** (disk), bir kısmı **delikli**
-(halka, ~0.41). Dilimleme yoksa HER parçacık halka hücrelerini de içerir →
-deliksiz parçacık **olamaz** ve delik oranı sabit ~0.20 çıkar.
-⚠ Bu istatistik 7×7'de zayıflar (hücre ekranda küçülür, delik JPEG'de
-kaybolur) — orada **görsel okuma** şarttir, ama tek-denek karesinde.
+**Reading criterion (works on any grid):** checkerboard sheet → if there is slicing,
+some particles are **without a hole** (disk) and some **with a hole**
+(ring, ~0.41). If there is no slicing, EVERY particle also contains the ring cells →
+a particle without a hole **cannot exist**, and the hole ratio comes out constant ~0.20.
+⚠ This statistic weakens at 7×7 (the cell gets small on screen, the hole is
+lost in JPEG) — there **visual reading** is required, but in a single-subject frame.
 
-Deney betikleri depoda değil (tek seferlik ölçüm).
+The experiment scripts are not in the repository (one-off measurement).
 
 ---
 
 
-## 2. ⛔ SON KARE BOŞ ÇIKAR — 15 ailenin 15'inde oldu
+## 2. ⛔ THE LAST FRAME COMES OUT EMPTY — happened in 15 of 15 families
 
-Aile üreticileri `t = i / (n - 1)` hesaplar. `n = kare` geçilirse son kare
-`t = 1.0` olur ve her ailedeki `(1 - t) ** k` sönme çarpanı **tam sıfır**
-verir. `Unknown_C4h = kare − 1` motora o kareyi de çizdirir → efekt her
-döngüde bir kare **yanıp söner**.
+The family generators compute `t = i / (n - 1)`. If `n = frames` is passed, the last frame
+gets `t = 1.0`, and the `(1 - t) ** k` fade factor in every family gives **exactly zero**.
+`Unknown_C4h = frames − 1` makes the engine draw that frame too → the effect **blinks**
+for one frame every loop.
 
-**Çözüm:** `fn(i, kare + 1, ...)` — son kare `t = 48/49 = 0.980` olur,
-sönme tamamlanır ama boşalmaz.
+**Solution:** `fn(i, frames + 1, ...)` — the last frame becomes `t = 48/49 = 0.980`;
+the fade completes but does not empty.
 
-Bu **tek başına yetmez**: sönme çarpanı düzeltildikten sonra bile 4 ailede
-boş kare kaldı, sebebi ailenin **kendi zarfıydı**:
+This is **not enough on its own**: even after the fade factor was fixed, 4 families
+still had empty frames, and the cause was the family's **own envelope**:
 
-| aile | boş kare | sebep |
+| family | empty frame | cause |
 |---|---|---|
-| `halka` | kuyruk | halka kadrajı terk ediyor |
-| `sis` | **baş** (7 kare) | zarf `t=0.5`'te tepe, iki yana sönüyor |
-| `kabarcik` | kare 0 | ilk kabarcık gecikmeyle başlıyor |
-| `toz` | **kare 11 (ortada)** | üreticinin kare düşürmesi |
+| `ring` | tail | the ring leaves the frame |
+| `fog` | **head** (7 frames) | the envelope peaks at `t=0.5` and fades to both sides |
+| `bubble` | frame 0 | the first bubble starts with a delay |
+| `dust` | **frame 11 (middle)** | the generator dropping a frame |
 
-Yani hem baş hem kuyruk hem **orta** boş olabilir; üçü ayrı sebep.
+So the head, the tail and the **middle** can all be empty; three separate causes.
 
-### Üç kademeli kapı (`sayfa()` içinde, hepsi tek yerde)
+### Three-stage gate (inside the sheet builder in `ptfx_sheet.py`, all in one place)
 
-1. **`kare + 1`** — sönme çarpanının sıfırlanmasını engeller.
-2. **Aralık daraltma, DÖNGÜLÜ.** Ölçülen ilk/son dolu kareye göre `t`
-   aralığı `[t0, t1]`'e oturtulur. ⛔ **Tek geçiş yakınsamaz** — daraltma
-   yeni sınır karelerini gene sıfıra düşürebilir (ölçüldü: `halka` bir
-   geçişle 1 boş kareden 1 boş kareye gitti, `sis` 7'den 2'ye indi ama
-   sıfırlanmadı). En fazla 6 tur, her turda %2 içe itilir.
-   Aralık kayması `n` ve `ofs` ile kurulur:
-   `(n-1) = (kare-1)/(t1-t0)` ve `ofs = t0*(n-1)`; **`ofs` tam sayı
-   yuvarlanır** çünkü bazı aileler `i`'yi rastgelelik tohumunda da
-   kullanır (`_rng(2600 + i*3)`).
-3. **Komşu harmanı.** Kalan her boş kare, en yakın dolu komşularından
-   doğrusal harmanla doldurulur. Ortadaki boşluğa dokunan tek kademe budur.
-   Kaç kare doldurulduğu **bildirilir** — yama görseldir, sebebi gizlemez.
+1. **`frames + 1`** — prevents the fade factor from reaching zero.
+2. **Range narrowing, LOOPED.** Based on the measured first/last filled frame, the `t`
+   range is fitted to `[t0, t1]`. ⛔ **A single pass does not converge** — narrowing
+   can push the new boundary frames to zero again (measured: `ring` went from 1 empty frame
+   to 1 empty frame in one pass, `fog` dropped from 7 to 2 but did not
+   reach zero). At most 6 rounds, pushed 2% inwards each round.
+   The range shift is built with `n` and `ofs`:
+   `(n-1) = (frames-1)/(t1-t0)` and `ofs = t0*(n-1)`; **`ofs` is rounded
+   to an integer** because some families also use `i` in the randomness seed
+   (`_rng(2600 + i*3)`).
+3. **Neighbour blend.** Every remaining empty frame is filled by linear blending from its nearest filled
+   neighbours. This is the only stage that touches a gap in the middle.
+   How many frames were filled **is reported** — the patch is visual, it does not hide the cause.
 
-### ⛔ Ölçüm, GÖNDERİLEN veri üzerinde yapılır
+### ⛔ Measurement is done on the data that is SENT
 
-İki tur boşa gitti: kapı alfayı **float** olarak ölçüyordu. 0.0201 değeri
-"dolu" sayıldı; ama `yaz()` uint8'e yuvarlıyor (0.0201 → 5 → 0.0196) ve
-gönderilen kare eşiğin **altına** düşüyordu. `duman` son kare ve `sis`
-kare 0 kapıdan geçti, PNG'de tamamen boş çıktı.
+Two rounds were wasted: the gate measured alpha as a **float**. A value of 0.0201
+counted as "filled"; but `write_png()` rounds to uint8 (0.0201 → 5 → 0.0196), and the
+frame that was sent fell **below** the threshold. The `smoke` last frame and the `fog`
+frame 0 passed the gate and came out completely empty in the PNG.
 
 ```python
-q = np.floor(np.clip(alfa, 0, 1) * 255.0 + 0.5) / 255.0
+q = np.floor(np.clip(alpha, 0, 1) * 255.0 + 0.5) / 255.0
 return float((q > 0.02).mean())
 ```
 
-Genel kural: **niceleme varsa kapı nicemlenmiş değere bakar.**
+General rule: **if there is quantisation, the gate looks at the quantised value.**
 
 ---
 
-## 3. ⛔ Kare, hücre kenarına DEĞMEMELİ
+## 3. ⛔ The frame must NOT TOUCH the cell edge
 
-Flipbook karesi hücre kenarına değerse oyunda sprite quad'ın sınırında
-**sert kesik** görünür; vanilla sayfalarda kareler saydam çerçeve içindedir.
+If a flipbook frame touches the cell edge, a **hard cut** appears at the border of the sprite quad
+in game; in vanilla sheets frames sit inside a transparent border.
 
-Ölçüldü: `ates` kenara **0.44** alfayla değiyordu, `duman`/`kivilcim`
-**0.00** ile temizdi. İlk elle kontrolüm yalnız 3 aileye ve 9 kareye
-baktığı için 4 aileyi kaçırdı; otomatik kapı hepsini yakaladı:
-`kor` 0.43 · `kabarcik` 0.67 · `parca` 0.42 · `elektrik` **0.98**.
+Measured: `fire` touched the edge with **0.44** alpha, `smoke`/`spark`
+were clean with **0.00**. My first manual check only looked at 3 families and 9 frames,
+so it missed 4 families; the automatic gate caught them all:
+`ember` 0.43 · `bubble` 0.67 · `debris` 0.42 · `electric` **0.98**.
 
-İki katmanlı:
-- `sayfa()` her kareye **smoothstep kenar maskesi** uygular (%4.5 pay).
-- Maske **gizlemez**: ham taşma 0.35'i aşarsa uyarı basar, çünkü o kadar
-  taşan içerik hücreye sığmıyordur ve maske onu **kırpar** (efekt seyrelir).
+Two layers:
+- The sheet builder applies a **smoothstep edge mask** to every frame (4.5% margin).
+- The mask **does not hide**: if the raw overflow exceeds 0.35 it prints a warning, because content
+  that overflows that much does not fit in the cell and the mask **clips** it (the effect thins out).
 
-**Menzil, yarıçapı hesaba katmalı.** Tanenin merkezi hücre içinde kalsa
-bile yarıçapı kadarı dışarı taşar. Serbest yürüyen içerik (elektrik arkı)
-doğrudan **kelepçelenir** (`0.12..0.88`).
-
----
-
-## 4. ⛔ rng GEÇİŞ BAŞINA TEK olmalı
-
-Kare başına yeni bir `_rng(tohum)` yaratmak her kareye **aynı** rastgele
-diziyi verir; kareler birbirinin aynı çıkar (durgun sprite) ve hata
-vermez. Aralık daraltma iki geçişli olduğu için bu tuzağa girmek kolaydır.
+**The range must account for the radius.** Even if a grain's centre stays inside the cell,
+its radius worth spills outside. Free-walking content (electric arc)
+is **clamped** directly (`0.12..0.88`).
 
 ---
 
-## 5. Aile tasarımı — ölçülmüş üç ders
+## 4. ⛔ rng must be ONE PER PASS
 
-### Fazı normalize etme, AKIŞ kur
-`kabarcik`'in ilk sürümünde her kabarcığın fazı
-`tk = (t - gecikme) / (1 - gecikme)` ile normalize ediliyordu → gecikmeli
-başlasalar da **hepsi aynı anda varıyordu**. Son karelerde üç kabarcık yan
-yana aynı yükseklikteydi; "yükselen kabarcık" değil "üç halka" gibi
-okunuyordu. Doğrusu sürekli akış: `tk = (t + k/N) % 1.0`. Yan kazanç —
-sayfa kendiliğinden kusursuz döngüye girer.
+Creating a new `_rng(seed)` per frame gives every frame **the same** random
+sequence; the frames come out identical (static sprite), and there is no
+error. Since range narrowing has two passes, it is easy to fall into this pitfall.
 
-### Rengi kanal kanal kurma
-`alev_topu`'nda R/G/B ayrı formüllerle yazıldı; kanallar farklı hızlarda
-sönünce çekirdek önce sönük turuncu, sonra **yeşilimsi** çıktı. Kanal
-kesişmesi sessizce renk uydurur. Doğrusu tek bir **sıcaklık alanı** kurup
-sabit renkler arasında interpolasyon: `duman → ateş → beyaz`.
+---
 
-### Doğru renk tek başına yetmez — ALFA da çekirdekte olmalı
-Renk düzeltildikten **sonra** bile çekirdek gri görünüyordu: oradaki alfa
-~0.34'tü ve arka plan içinden geçiyordu; kenarda loblar üst üste bindiği
-için alfa yüksekti → **"gri merkez, turuncu halka"**. Patlamanın merkezi
-en opak yeridir.
+## 5. Family design — three measured lessons
 
-### Bir efekt başka bir efektin renkli hali DEĞİLDİR
-`k_ates` başlangıçta `k_duman(sicak=True)` çağırıyordu ve ateşe hiç
-benzemiyordu. Dumanı tanımlayan şey dağılma, ateşi tanımlayan şey **yukarı
-yükselen dillerdir**. Aynı şekilde `sis` ilk hâlinde `buhar`ın aynısıydı;
-sisi ayıran şey **geniş ve alçak** olması, buharı ayıran şey **yukarı
-uzayan tutamlardır**.
+### Do not normalise the phase, build a FLOW
+In the first version of `bubble` each bubble's phase was normalised with
+`tk = (t - delay) / (1 - delay)` → even though they started with delays
+**they all arrived at the same moment**. In the last frames three bubbles were side by side
+at the same height; it read not as "rising bubbles" but as "three rings".
+The right way is a continuous flow: `tk = (t + k/N) % 1.0`. Side benefit —
+the sheet loops perfectly by itself.
+
+### Do not build colour channel by channel
+In `fireball` R/G/B were written with separate formulas; when the channels faded at different speeds,
+the core came out first dull orange, then **greenish**. Channel
+crossover silently makes up colours. The right way is to build a single **temperature field** and
+interpolate between fixed colours: `smoke → fire → white`.
+
+### The right colour alone is not enough — ALPHA must be in the core too
+Even **after** the colour was fixed, the core looked grey: the alpha there was
+~0.34 and the background showed through; at the edge the lobes overlapped, so
+the alpha was high → **"grey centre, orange ring"**. The centre of an explosion is
+its most opaque place.
+
+### One effect is NOT a coloured version of another
+The `fire` family generator initially called the `smoke` generator in its hot variant, and looked nothing
+like fire. What defines smoke is dispersal; what defines fire is **tongues
+rising upwards**. In the same way `fog` in its first version was identical to `steam`;
+what sets fog apart is being **wide and low**, what sets steam apart is **wisps
+stretching upwards**.
 
 ---

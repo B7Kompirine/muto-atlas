@@ -1,27 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""ptfx_sim.py — bir `.ypt` efektini SIMULE edip animasyonlu GIF uretir.
+"""ptfx_sim.py — SIMULATES a `.ypt` effect and writes an animated GIF.
 
-⛔ NE OLDUGU KONUSUNDA NET OL: bu motorun kendisi DEGIL, motorun
-   belgelenmis alan anlamlarini oynatan bir MODEL. Guclu bir vekil, kesin
-   kanit degil -- son soz oyunda.
+⛔ BE CLEAR ABOUT WHAT THIS IS: it is NOT the engine itself, it is a MODEL
+   that plays back the documented meaning of the engine's fields. A strong
+   proxy, not hard proof -- the game has the last word.
 
-   Ama dosya seviyesi denetimin yakalayamadigi seyi yakalar: "71/71 zincir
-   saglam" derken oyunda 38 efekt gorunmuyordu. Bu simulasyon o hatayi
-   ekranda gosterirdi.
+   But it catches what a file-level check cannot: while the check said
+   "71/71 chains intact", 38 effects were invisible in the game. This
+   simulation would have shown that failure on screen.
 
-Oynatilan alanlar (hepsi bu oturumda olculdu):
-  ptxCreationDomain:m_sizeOuterKFP  -> parcaciklarin dogdugu hacim (m)
-  ptxTargetDomain:m_positionKFP     -> yon x mesafe (omur boyunca alinan yol)
-  ptxu_Acceleration:m_xyzMinKFP     -> ivme (m/s^2)
-  ptxu_Dampening:m_xyzMinKFP        -> surtunme (0..1, saniyede kalan oran)
-  ptxu_Size:m_whdMinKFP x sizeScalar -> parcacik boyu (m)
-  ptxu_Colour:m_rgbaMinKFP          -> renk + ALFA ZARFI (omur boyunca)
-  m_spawnRateOverTimeKFP / m_particleLifeKFP -> oran ve omur
+Fields it plays back (all measured in this session):
+  ptxCreationDomain:m_sizeOuterKFP  -> volume the particles spawn in (m)
+  ptxTargetDomain:m_positionKFP     -> direction x distance (path travelled over the lifetime)
+  ptxu_Acceleration:m_xyzMinKFP     -> acceleration (m/s^2)
+  ptxu_Dampening:m_xyzMinKFP        -> damping (0..1, fraction kept per second)
+  ptxu_Size:m_whdMinKFP x sizeScalar -> particle size (m)
+  ptxu_Colour:m_rgbaMinKFP          -> color + ALPHA ENVELOPE (over the lifetime)
+  m_spawnRateOverTimeKFP / m_particleLifeKFP -> rate and lifetime
 
-Kullanim:
-  python ptfx_sim.py <ypt.xml> <efekt_adi> --cikti out.gif
-  python ptfx_sim.py <ypt.xml> --hepsi --klasor gifler/
+Usage:
+  python ptfx_sim.py <ypt.xml> <effect_name> --out out.gif
 """
 from __future__ import annotations
 
@@ -37,229 +36,229 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ptfx_quality_gate import bloklari, kfp, kfp_govde, zarf  # noqa: E402
+from ptfx_quality_gate import iter_blocks, kfp, kfp_body, kfp_envelope  # noqa: E402
 
 
-def v3(blok, ad, vars=(0.0, 0.0, 0.0)):
-    g = kfp_govde(blok, ad)
-    if g is None:
-        return list(vars)
-    v = re.findall(r"<(?:Red|Green|Blue)ChannelColour value=\"([-0-9.eE]+)\"", g)
-    return [float(x) for x in v[:3]] if len(v) >= 3 else list(vars)
+def v3(block, name, default=(0.0, 0.0, 0.0)):
+    body = kfp_body(block, name)
+    if body is None:
+        return list(default)
+    v = re.findall(r"<(?:Red|Green|Blue)ChannelColour value=\"([-0-9.eE]+)\"", body)
+    return [float(x) for x in v[:3]] if len(v) >= 3 else list(default)
 
 
-def renk_rgb(blok):
-    g = kfp_govde(blok, "ptxu_Colour:m_rgbaMinKFP")
-    if g is None:
+def color_rgb(block):
+    body = kfp_body(block, "ptxu_Colour:m_rgbaMinKFP")
+    if body is None:
         return (1.0, 1.0, 1.0)
     v = re.findall(r"<RedChannelColour value=\"([-0-9.eE]+)\" />\s*"
                    r"<GreenChannelColour value=\"([-0-9.eE]+)\" />\s*"
-                   r"<BlueChannelColour value=\"([-0-9.eE]+)\" />", g)
+                   r"<BlueChannelColour value=\"([-0-9.eE]+)\" />", body)
     return tuple(float(x) for x in v[0]) if v else (1.0, 1.0, 1.0)
 
 
-def egri_deger(zarfi, t):
-    """(zaman, deger) listesinden t anindaki degeri lineer interpolasyonla."""
-    if not zarfi:
+def curve_value(envelope, t):
+    """Linear interpolation of the value at time t from a (time, value) list."""
+    if not envelope:
         return 1.0
-    if t <= zarfi[0][0]:
-        return zarfi[0][1]
-    for i in range(1, len(zarfi)):
-        if t <= zarfi[i][0]:
-            t0, v0 = zarfi[i - 1]
-            t1, v1 = zarfi[i]
+    if t <= envelope[0][0]:
+        return envelope[0][1]
+    for i in range(1, len(envelope)):
+        if t <= envelope[i][0]:
+            t0, v0 = envelope[i - 1]
+            t1, v1 = envelope[i]
             f = 0.0 if t1 <= t0 else (t - t0) / (t1 - t0)
             return v0 + (v1 - v0) * f
-    return zarfi[-1][1]
+    return envelope[-1][1]
 
 
-class Katman:
-    """Tek bir emitter+particle cifti. Cok emitterli efekt bunlardan olusur."""
+class Layer:
+    """One emitter+particle pair. A multi-emitter effect is made of these."""
 
-    def __init__(self, emb, prb, xml_yolu, gecikme=0.0, olcek=1.0):
+    def __init__(self, emb, prb, xml_path, delay=0.0, scale=1.0):
         self.em, self.pr = emb, prb
-        self.gecikme, self.katolcek = gecikme, olcek
+        self.delay, self.layer_scale = delay, scale
 
         r = kfp(self.em, "m_spawnRateOverTimeKFP") or (10.0, 10.0)
         l = kfp(self.em, "m_particleLifeKFP") or (2.0, 2.0)
         sc = kfp(self.em, "m_sizeScalarKFP") or (100.0, 100.0)
-        self.oran = (r[0] + r[1]) / 2.0
-        self.omur = (l[0], l[1])
-        self.dogus = v3(self.em, "ptxCreationDomain:m_sizeOuterKFP", (0.2,) * 3)
-        self.hedef = v3(self.em, "ptxTargetDomain:m_positionKFP", (0, 0, 0.5))
-        self.hedef_boy = v3(self.em, "ptxTargetDomain:m_sizeOuterKFP", (0, 0, 0))
-        self.ivme = v3(self.pr, "ptxu_Acceleration:m_xyzMinKFP", (0, 0, 0))
-        self.surt = v3(self.pr, "ptxu_Dampening:m_xyzMinKFP", (0, 0, 0))
+        self.rate = (r[0] + r[1]) / 2.0
+        self.lifetime = (l[0], l[1])
+        self.spawn = v3(self.em, "ptxCreationDomain:m_sizeOuterKFP", (0.2,) * 3)
+        self.target = v3(self.em, "ptxTargetDomain:m_positionKFP", (0, 0, 0.5))
+        self.target_size = v3(self.em, "ptxTargetDomain:m_sizeOuterKFP", (0, 0, 0))
+        self.accel = v3(self.pr, "ptxu_Acceleration:m_xyzMinKFP", (0, 0, 0))
+        self.damping = v3(self.pr, "ptxu_Dampening:m_xyzMinKFP", (0, 0, 0))
         w = v3(self.pr, "ptxu_Size:m_whdMinKFP", (0.3,) * 3)
-        self.boy = max(w) * max(sc[1], 1.0) / 100.0 * self.katolcek
-        # ⛔ TEK ATIM: emitter'daki `Unknown628`. 1 ise emisyon bir kez olur,
-        #    0 ise surer. Modellemezsek carpma efekti sonsuza kadar puskurur.
+        self.size = max(w) * max(sc[1], 1.0) / 100.0 * self.layer_scale
+        # ⛔ ONE SHOT: `Unknown628` on the emitter. 1 means it emits once,
+        #    0 means it keeps emitting. Without modelling it an impact effect sprays forever.
         import re as _re
         m628 = _re.search(r"<Unknown628 value=\"([-0-9.]+)\" />", self.em)
-        self.tek_atim = bool(m628 and float(m628.group(1)) >= 1.0)
-        self.zarf = zarf(self.pr, "ptxu_Colour:m_rgbaMinKFP") or [(0, 1), (1, 0)]
-        self.renk = renk_rgb(self.pr)
+        self.one_shot = bool(m628 and float(m628.group(1)) >= 1.0)
+        self.envelope = kfp_envelope(self.pr, "ptxu_Colour:m_rgbaMinKFP") or [(0, 1), (1, 0)]
+        self.color = color_rgb(self.pr)
 
-        # doku: <FileName> ya da <Name>.dds, XML'in yanindan
+        # texture: <FileName> or <Name>.dds, next to the XML
         d = re.search(r"<TextureName>([^<]+)</TextureName>", self.pr)
-        dad = d.group(1) if d else None
+        tex_name = d.group(1) if d else None
         self.sprite = None
-        if dad:
-            for aday in (dad + ".dds", dad + ".png"):
-                p = os.path.join(os.path.dirname(xml_yolu), aday)
+        if tex_name:
+            for candidate in (tex_name + ".dds", tex_name + ".png"):
+                p = os.path.join(os.path.dirname(xml_path), candidate)
                 if os.path.exists(p):
                     self.sprite = Image.open(p).convert("RGBA")
                     break
 
 
-class Efekt:
-    """Bir efekt = bir veya daha cok KATMAN.
+class Effect:
+    """An effect = one or more LAYERS.
 
-    ⛔ Vanilla'nin %74'u cok emitterli; katman gecikmesi `Unknown10`,
-       katman boyut carpani `ParticleScale` alanindan gelir.
+    ⛔ 74% of vanilla has several emitters; the layer delay comes from the
+       `Unknown10` field, the layer size multiplier from `ParticleScale`.
     """
 
-    def __init__(self, xml_yolu, ad):
-        s = io.open(xml_yolu, encoding="utf-8", errors="replace").read()
-        blok = None
-        for a, b in bloklari(s, "EffectRuleDictionary"):
-            if a == ad:
-                blok = b
+    def __init__(self, xml_path, name):
+        s = io.open(xml_path, encoding="utf-8", errors="replace").read()
+        block = None
+        for a, b in iter_blocks(s, "EffectRuleDictionary"):
+            if a == name:
+                block = b
                 break
-        if blok is None:
-            raise KeyError("efekt yok: %s" % ad)
-        em = dict(bloklari(s, "EmitterRuleDictionary"))
-        pr = dict(bloklari(s, "ParticleRuleDictionary"))
-        i, j = blok.find("<EventEmitters>"), blok.find("</EventEmitters>")
-        g = blok[i:j] if i >= 0 else blok
-        cift = re.findall(
+        if block is None:
+            raise KeyError("no such effect: %s" % name)
+        em = dict(iter_blocks(s, "EmitterRuleDictionary"))
+        pr = dict(iter_blocks(s, "ParticleRuleDictionary"))
+        i, j = block.find("<EventEmitters>"), block.find("</EventEmitters>")
+        g = block[i:j] if i >= 0 else block
+        pairs = re.findall(
             r"<EmitterRule>([^<]*)</EmitterRule>\s*"
             r"<ParticleRule>([^<]*)</ParticleRule>\s*"
             r"<Unknown10 value=\"([-0-9.eE]+)\" />.*?"
             r"<ParticleScale value=\"([-0-9.eE]+)\"", g, re.S)
-        self.ad = ad
-        self.katmanlar = []
-        for e, p, gec, olc in cift:
+        self.name = name
+        self.layers = []
+        for e, p, delay, scale in pairs:
             if e in em and p in pr:
-                self.katmanlar.append(
-                    Katman(em[e], pr[p], xml_yolu, float(gec), float(olc)))
-        if not self.katmanlar:
-            raise KeyError("%s: katman cozulemedi" % ad)
+                self.layers.append(
+                    Layer(em[e], pr[p], xml_path, float(delay), float(scale)))
+        if not self.layers:
+            raise KeyError("%s: no layer could be resolved" % name)
 
-    def sim(self, sure=3.0, fps=20, tohum=1):
-        birlesik = []
-        for n, k in enumerate(self.katmanlar):
-            kk = k.sim(sure, fps, tohum + n * 17)
-            gk = int(k.gecikme * fps)
-            for i in range(len(kk)):
-                while len(birlesik) <= i:
-                    birlesik.append([])
-            for i, kare in enumerate(kk):
-                hedef = i + gk
-                if hedef < len(birlesik):
-                    birlesik[hedef].extend((q, k) for q in kare)
-        return birlesik
+    def sim(self, duration=3.0, fps=20, seed=1):
+        merged = []
+        for n, k in enumerate(self.layers):
+            layer_frames = k.sim(duration, fps, seed + n * 17)
+            delay_frames = int(k.delay * fps)
+            for i in range(len(layer_frames)):
+                while len(merged) <= i:
+                    merged.append([])
+            for i, frame in enumerate(layer_frames):
+                target = i + delay_frames
+                if target < len(merged):
+                    merged[target].extend((q, k) for q in frame)
+        return merged
 
     @property
     def sprite(self):
-        return self.katmanlar[0].sprite
+        return self.layers[0].sprite
 
     @property
-    def renk(self):
-        return self.katmanlar[0].renk
+    def color(self):
+        return self.layers[0].color
 
     @property
-    def boy(self):
-        return max(k.boy for k in self.katmanlar)
+    def size(self):
+        return max(k.size for k in self.layers)
 
     @property
-    def zarf(self):
-        return self.katmanlar[0].zarf
+    def envelope(self):
+        return self.layers[0].envelope
 
 
-def _katman_sim(self, sure=3.0, fps=20, tohum=1):
-        """Kareler uretir: her kare [(x, y, z, boy, alfa)]."""
-        rng = random.Random(tohum)
+def _layer_sim(self, duration=3.0, fps=20, seed=1):
+        """Produces frames: each frame [(x, y, z, size, alpha)]."""
+        rng = random.Random(seed)
         dt = 1.0 / fps
-        parcaciklar = []
-        kareler = []
-        birikim = 0.0
-        n = int(sure * fps)
+        particles = []
+        frames = []
+        accumulator = 0.0
+        n = int(duration * fps)
         for k in range(n):
-            # tek atimda emisyon yalniz ilk 0.08 sn surer
-            # ⚠ Tek atim penceresi MODEL: 0.25 sn. Motorun gercek
-            #   semantigi olculmedi (`StartParticleFxNonLooped`
-            #   efekti bir kez oynatir, suresini motor bilir).
-            if not self.tek_atim or k * dt < 0.25:
-                birikim += self.oran * dt
-            while birikim >= 1.0:
-                birikim -= 1.0
-                p = [rng.uniform(-1, 1) * self.dogus[0] * 0.5,
-                     rng.uniform(-1, 1) * self.dogus[1] * 0.5,
-                     rng.uniform(-1, 1) * self.dogus[2] * 0.5]
-                omr = rng.uniform(self.omur[0], self.omur[1]) or 1.0
-                # hedef = omur boyunca alinacak yol -> baslangic hizi
-                sap = [rng.uniform(-1, 1) * self.hedef_boy[i] * 0.5 for i in range(3)]
-                hiz = [(self.hedef[i] + sap[i]) / omr for i in range(3)]
-                parcaciklar.append({"p": p, "v": hiz, "t": 0.0, "omr": omr,
-                                    "d": rng.uniform(0, math.tau)})
-            kare = []
-            for pt in parcaciklar:
+            # in one-shot mode emission only lasts the first 0.08 s
+            # ⚠ The one-shot window is a MODEL: 0.25 s. The engine's real
+            #   semantics were not measured (`StartParticleFxNonLooped`
+            #   plays the effect once; the engine knows how long).
+            if not self.one_shot or k * dt < 0.25:
+                accumulator += self.rate * dt
+            while accumulator >= 1.0:
+                accumulator -= 1.0
+                p = [rng.uniform(-1, 1) * self.spawn[0] * 0.5,
+                     rng.uniform(-1, 1) * self.spawn[1] * 0.5,
+                     rng.uniform(-1, 1) * self.spawn[2] * 0.5]
+                life = rng.uniform(self.lifetime[0], self.lifetime[1]) or 1.0
+                # target = path to travel over the lifetime -> initial velocity
+                offset = [rng.uniform(-1, 1) * self.target_size[i] * 0.5 for i in range(3)]
+                velocity = [(self.target[i] + offset[i]) / life for i in range(3)]
+                particles.append({"p": p, "v": velocity, "t": 0.0, "life": life,
+                                  "d": rng.uniform(0, math.tau)})
+            frame = []
+            for pt in particles:
                 pt["t"] += dt
                 for i in range(3):
-                    pt["v"][i] += self.ivme[i] * dt
-                    if self.surt[i] > 0:
-                        pt["v"][i] *= max(0.0, 1.0 - self.surt[i] * dt)
+                    pt["v"][i] += self.accel[i] * dt
+                    if self.damping[i] > 0:
+                        pt["v"][i] *= max(0.0, 1.0 - self.damping[i] * dt)
                     pt["p"][i] += pt["v"][i] * dt
-                f = pt["t"] / pt["omr"]
+                f = pt["t"] / pt["life"]
                 if f <= 1.0:
-                    kare.append((pt["p"][0], pt["p"][1], pt["p"][2],
-                                 self.boy, egri_deger(self.zarf, f), pt["d"]))
-            parcaciklar = [q for q in parcaciklar if q["t"] < q["omr"]]
-            kareler.append(kare)
-        return kareler
+                    frame.append((pt["p"][0], pt["p"][1], pt["p"][2],
+                                  self.size, curve_value(self.envelope, f), pt["d"]))
+            particles = [q for q in particles if q["t"] < q["life"]]
+            frames.append(frame)
+        return frames
 
 
 
-# ⛔ Baglamayi DOSYA SONUNA koyma: `main()` `raise SystemExit(main())`
-#    ile once calisiyor ve o an `Katman.sim` henuz tanimsiz oluyor
-#    (AttributeError). Tanimin hemen ardina bagla.
-Katman.sim = _katman_sim
+# ⛔ Do NOT put the binding at the END OF THE FILE: `main()` runs first through
+#    `raise SystemExit(main())` and at that moment `Layer.sim` is still undefined
+#    (AttributeError). Bind it right after the definition.
+Layer.sim = _layer_sim
 
-def ciz(kareler, efekt, coz=384, kamera_m=4.0):
-    """Kareleri yandan bakan ortografik goruntuye cizer.
+def draw(frames, effect, resolution=384, view_m=4.0):
+    """Draws the frames as a side-on orthographic image.
 
-    ⚠ Her parcacik KENDI KATMANININ sprite ve rengini kullanir; cok
-      emitterli efektte katmanlar farkli dokular tasir.
+    ⚠ Every particle uses the sprite and color of ITS OWN LAYER; in a
+      multi-emitter effect the layers carry different textures.
     """
-    piks = coz / kamera_m          # piksel / metre
+    px_per_m = resolution / view_m          # pixels / metre
     ims = []
-    zemin = int(coz * 0.78)
-    for kare in kareler:
-        im = Image.new("RGB", (coz, coz), (26, 27, 30))
+    ground = int(resolution * 0.78)
+    for frame in frames:
+        im = Image.new("RGB", (resolution, resolution), (26, 27, 30))
         d = np.asarray(im).copy()
-        d[zemin:zemin + 1, :] = (70, 72, 78)
+        d[ground:ground + 1, :] = (70, 72, 78)
         im = Image.fromarray(d)
-        # arkadan one: y'ye gore sirala ki ortusme dogru olsun
-        for (q, kat) in sorted(kare, key=lambda t: -t[0][1]):
-            x, y, z, boy, alfa, don = q
-            if alfa <= 0.01 or kat.sprite is None:
+        # back to front: sort by y so the overlap is right
+        for (q, layer) in sorted(frame, key=lambda t: -t[0][1]):
+            x, y, z, size, alpha, angle = q
+            if alpha <= 0.01 or layer.sprite is None:
                 continue
-            px = int(coz * 0.5 + x * piks)
-            py = int(zemin - z * piks)
-            bp = max(2, int(boy * piks))
-            if bp > coz * 3 or px < -bp or px > coz + bp:
+            px = int(resolution * 0.5 + x * px_per_m)
+            py = int(ground - z * px_per_m)
+            sprite_px = max(2, int(size * px_per_m))
+            if sprite_px > resolution * 3 or px < -sprite_px or px > resolution + sprite_px:
                 continue
-            s2 = kat.sprite.resize((bp, bp), Image.LANCZOS)
-            if don:
-                s2 = s2.rotate(math.degrees(don), expand=False)
+            s2 = layer.sprite.resize((sprite_px, sprite_px), Image.LANCZOS)
+            if angle:
+                s2 = s2.rotate(math.degrees(angle), expand=False)
             a = np.asarray(s2).astype(np.float32) / 255.0
-            a[..., 0] *= kat.renk[0]
-            a[..., 1] *= kat.renk[1]
-            a[..., 2] *= kat.renk[2]
-            a[..., 3] *= alfa
-            par = Image.fromarray((np.clip(a, 0, 1) * 255).astype(np.uint8), "RGBA")
-            im.paste(par, (px - bp // 2, py - bp // 2), par)
+            a[..., 0] *= layer.color[0]
+            a[..., 1] *= layer.color[1]
+            a[..., 2] *= layer.color[2]
+            a[..., 3] *= alpha
+            tinted = Image.fromarray((np.clip(a, 0, 1) * 255).astype(np.uint8), "RGBA")
+            im.paste(tinted, (px - sprite_px // 2, py - sprite_px // 2), tinted)
         ims.append(im)
     return ims
 
@@ -267,26 +266,27 @@ def ciz(kareler, efekt, coz=384, kamera_m=4.0):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("xml")
-    ap.add_argument("efekt", nargs="?")
-    ap.add_argument("--cikti", default=None)
-    ap.add_argument("--sure", type=float, default=3.0)
+    ap.add_argument("effect", nargs="?")
+    ap.add_argument("--out", "--cikti", dest="out", default=None)
+    ap.add_argument("--duration", "--sure", dest="duration", type=float, default=3.0)
     ap.add_argument("--fps", type=int, default=20)
-    ap.add_argument("--coz", type=int, default=384)
-    ap.add_argument("--kamera", type=float, default=4.0, help="gorus genisligi (m)")
-    a = ap.parse_args()
+    ap.add_argument("--resolution", "--coz", dest="resolution", type=int, default=384)
+    ap.add_argument("--view-width", "--kamera", dest="view_width", type=float, default=4.0,
+                    help="view width (m)")
+    args = ap.parse_args()
 
-    e = Efekt(a.xml, a.efekt)
-    kareler = e.sim(a.sure, a.fps)
-    top = sum(len(k) for k in kareler)
-    tepe = max(len(k) for k in kareler) if kareler else 0
-    ims = ciz(kareler, e, a.coz, a.kamera)
-    cikti = a.cikti or (e.ad + ".gif")
-    ims[0].save(cikti, save_all=True, append_images=ims[1:],
-                duration=int(1000 / a.fps), loop=0, optimize=True)
-    print("%-26s %d katman  parcacik tepe %3d  boy %.2f m  -> %s"
-          % (e.ad, len(e.katmanlar), tepe, e.boy, os.path.basename(cikti)))
-    if tepe == 0:
-        print("   ⛔ HIC PARCACIK YOK")
+    e = Effect(args.xml, args.effect)
+    frames = e.sim(args.duration, args.fps)
+    total = sum(len(k) for k in frames)
+    peak = max(len(k) for k in frames) if frames else 0
+    ims = draw(frames, e, args.resolution, args.view_width)
+    out = args.out or (e.name + ".gif")
+    ims[0].save(out, save_all=True, append_images=ims[1:],
+                duration=int(1000 / args.fps), loop=0, optimize=True)
+    print("%-26s %d layers  particle peak %3d  size %.2f m  -> %s"
+          % (e.name, len(e.layers), peak, e.size, os.path.basename(out)))
+    if peak == 0:
+        print("   ⛔ NO PARTICLES AT ALL")
     return 0
 
 

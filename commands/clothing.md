@@ -1,21 +1,21 @@
 ---
 description: Clothing branch - freemode clothing, moving clothes to 98-bone peds, ped props (hats, glasses), texture variants and skintone (_r)
-argument-hint: <ne olacak — "freemode'a ceket ekle" / "şapka prop'u" / "ten rengi çalışmıyor" / "doku varyantı">
+argument-hint: <what should happen — "add a jacket to freemode" / "hat prop" / "skin tone not working" / "texture variant">
 allowed-tools: Bash(powershell.exe:*), Bash(python:*), Read, Edit, Write, Glob, Grep, AskUserQuestion
 ---
 
-Argüman: `$ARGUMENTS`
+Argument: `$ARGUMENTS`
 
-Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içeren muto-atlas klasörü).
+Plugin root: `${CLAUDE_PLUGIN_ROOT}` (if it cannot be found, the muto-atlas folder that contains `scripts/assetdb.py`).
 
-## Bu bir DAL komutudur
+## This is a BRANCH command
 
-1. **Önce dalı oku:** `${CLAUDE_PLUGIN_ROOT}/skills/fivem-assets/branches/clothing/_branch.md`
-   — iki UV map, `Colour 0/1`, Mesh Domain, gömülü doku kuralı, doku adlandırması, `_r` maskesi, Render Flags.
-2. Argümandan **tek yaprağı** seç: freemode kıyafet · ped prop · doku varyantı.
-3. ⚠️ Bu dal **video kaynaklı, ölçülmedi** — kullanıcıya bunu söyle; sayı verirken `assetdb.py` ile doğrula.
-4. RPF'ten çıkarma → `extract_asset.ps1 -PathFilter '<ped>'`.
+1. **Read the branch first:** `${CLAUDE_PLUGIN_ROOT}/skills/fivem-assets/branches/clothing/_branch.md`
+   — two UV maps, `Colour 0/1`, Mesh Domain, the embedded texture rule, texture naming, the `_r` mask, Render Flags.
+2. Pick **one leaf** from the argument: freemode clothing · ped prop · texture variant.
+3. ⚠️ This branch is **video-sourced, not measured** — tell the user; when you give a number, verify it with `assetdb.py`.
+4. Extracting from the RPF → `extract_asset.ps1 -PathFilter '<ped>'`.
 
-## Sonucu sunarken
-- Export'tan sonra `textures/` klasörü oluştuysa embed kalmıştır — söyle.
-- Asset değişti → sunucudan çık, yeniden bağlan.
+## When presenting the result
+- If a `textures/` folder appeared after export, something is still embedded — say so.
+- Asset changed → leave the server and reconnect.

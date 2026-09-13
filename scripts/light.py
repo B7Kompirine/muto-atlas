@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
-"""light.py — bir .ydr/.yft icindeki gomulu isiklari okur ve COZER.
+"""light.py — reads and DECODES the lights embedded in a .ydr/.yft.
 
-NEDEN VAR
-=========
-Isik parametreleri sihirli sayilarla dolu: `TimeFlags = 15728703` bir sayi
-degil, "saat 20'den 05'e kadar yanar" demektir. Bu sayiyi kopyalayip gecmek
-en sik yapilan hata; isik yanlis saatte yanar ya da hic yanmaz ve sebebi
-dosyaya bakinca gorunmez.
-    "Sihirli sayiyi kopyalama, coz."
+WHY IT EXISTS
+=============
+Light parameters are full of magic numbers: `TimeFlags = 15728703` is not a
+number, it means "lit from 20:00 to 05:00". Copying that number and moving on
+is the most common mistake; the light turns on at the wrong hour or never, and
+the reason is not visible when you look at the file.
+    "Do not copy the magic number, decode it."
 
-Isiklar `<kok>/Lights` altindadir -- hem Drawable (.ydr) hem Fragment (.yft)
-kokunde AYNI yerde. Fragment'te `Drawable/Lights` DEGILDIR (olculdu:
-prop_worklight_01a.yft -> Fragment/Lights=1, Fragment/Drawable/Lights yok).
+Lights live under `<root>/Lights` -- in the SAME place in both a Drawable (.ydr)
+and a Fragment (.yft) root. In a Fragment it is NOT `Drawable/Lights` (measured:
+prop_worklight_01a.yft -> Fragment/Lights=1, no Fragment/Drawable/Lights).
 
-KULLANIM
-========
-    python assetdb.py light <dosya.ydr|.yft|.xml>
-    python assetdb.py light <dosya> --ham        (cozumsuz, ham alanlar)
-    python assetdb.py light --tablo              (olculen vanilla referansi)
+USAGE
+=====
+    python assetdb.py light <file.ydr|.yft|.xml>
+    python assetdb.py light <file> --raw          (undecoded, raw fields)
+    python assetdb.py light --table               (measured vanilla reference)
 """
 from __future__ import annotations
 
@@ -27,21 +27,21 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from res_xml import kok_oku  # noqa: E402
+from res_xml import read_root  # noqa: E402
 
-# --- OLCULEN VANILLA REFERANSI ------------------------------------------------
-# Referans GOMULU DEGILDIR; data/lights.tsv.gz katmanindan CANLI hesaplanir
-# (build_lights.ps1 uretir, GTA'nin butun .ydr/.yft/.ydd dosyalarini tarar).
+# --- MEASURED VANILLA REFERENCE ------------------------------------------------
+# The reference is NOT EMBEDDED; it is computed LIVE from the data/lights.tsv.gz
+# layer (produced by build_lights.ps1, which scans every .ydr/.yft/.ydd file of GTA).
 #
-# Katman kurulu degilse uydurma bir aralik dondurmek yerine EXIT_NOLAYER
-# verilir: "olculmus referans" diye sunulan sey gercekten olculmus olmali.
-# Dagilima BAGLI OLMAYAN denetimler (TimeFlags 0, Intensity 0, Falloff 0,
-# ters koni) katman olmadan da calisir -- onlar mantik, istatistik degil.
+# If the layer is not installed, EXIT_NOLAYER is returned instead of an invented
+# range: what is presented as a "measured reference" must really be measured.
+# The checks that do NOT DEPEND on the distribution (TimeFlags 0, Intensity 0,
+# Falloff 0, inverted cone) work without the layer too -- they are logic, not statistics.
 DATA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 LIGHTS = os.path.join(DATA, "lights.tsv.gz")
 
-# Dagilim raporlanan sayisal alanlar: TSV sutun adi -> ekranda gorunen ad.
-SAYISAL = [
+# Numeric fields whose distribution is reported: TSV column name -> name shown on screen.
+NUMERIC = [
     ("intensity", "Intensity"),
     ("falloff", "Falloff"),
     ("falloffExp", "FalloffExponent"),
@@ -52,20 +52,20 @@ SAYISAL = [
     ("volumeIntensity", "VolumeIntensity"),
 ]
 
-SAAT_BITLERI = 24
+HOUR_BITS = 24
 
 
-def _f(el, ad="value"):
+def _f(el, attr="value"):
     if el is None:
         return None
     try:
-        return float(el.get(ad))
+        return float(el.get(attr))
     except (TypeError, ValueError):
         return None
 
 
-def _i(el, ad="value"):
-    v = _f(el, ad)
+def _i(el, attr="value"):
+    v = _f(el, attr)
     return None if v is None else int(v)
 
 
@@ -87,9 +87,10 @@ def _rgb(el):
         return None
 
 
-def isiklari_oku(kok):
-    """<kok>/Lights/Item listesi -> sozluk listesi. Lights dugumu yoksa None."""
-    L = kok.find("Lights")
+# doctor_checks.py calls light.read_lights().
+def read_lights(root):
+    """<root>/Lights/Item list -> list of dicts. None when there is no Lights node."""
+    L = root.find("Lights")
     if L is None:
         return None
     out = []
@@ -120,142 +121,143 @@ def isiklari_oku(kok):
     return out
 
 
-def aktif_saatler(timeflags):
+# doctor_checks.py calls light.active_hours().
+def active_hours(timeflags):
     if timeflags is None:
         return []
-    return [h for h in range(SAAT_BITLERI) if (timeflags >> h) & 1]
+    return [h for h in range(HOUR_BITS) if (timeflags >> h) & 1]
 
 
-def saat_bloklari(saatler):
-    """Dairesel bitisik saat bloklari. 20..5 tek blok olarak dondurulur."""
-    s = sorted(saatler)
+def hour_blocks(hours):
+    """Circular contiguous hour blocks. 20..5 is returned as a single block."""
+    s = sorted(hours)
     if not s:
         return []
-    if len(s) == SAAT_BITLERI:
+    if len(s) == HOUR_BITS:
         return [(0, 23)]
-    bas = [i for i in range(len(s)) if s[i - 1] != (s[i] - 1) % SAAT_BITLERI]
-    k = bas[0] if bas else 0
+    starts = [i for i in range(len(s)) if s[i - 1] != (s[i] - 1) % HOUR_BITS]
+    k = starts[0] if starts else 0
     s = s[k:] + s[:k]
-    bloklar, basla, onceki = [], s[0], s[0]
+    blocks, start, prev = [], s[0], s[0]
     for h in s[1:]:
-        if h == (onceki + 1) % SAAT_BITLERI:
-            onceki = h
+        if h == (prev + 1) % HOUR_BITS:
+            prev = h
             continue
-        bloklar.append((basla, onceki))
-        basla = onceki = h
-    bloklar.append((basla, onceki))
-    return bloklar
+        blocks.append((start, prev))
+        start = prev = h
+    blocks.append((start, prev))
+    return blocks
 
 
-def saat_metni(timeflags):
-    saatler = aktif_saatler(timeflags)
+def hours_text(timeflags):
+    hours = active_hours(timeflags)
     if timeflags is None:
         return "no TimeFlags"
-    if not saatler:
+    if not hours:
         return "no hour bits at all (TimeFlags 0)"
-    if len(saatler) == SAAT_BITLERI:
+    if len(hours) == HOUR_BITS:
         return "every hour (24/24)"
-    blok = ", ".join(f"{a:02d}:00-{(b + 1) % 24:02d}:00" for a, b in saat_bloklari(saatler))
-    return f"{blok}  ({len(saatler)}h)"
+    block = ", ".join(f"{a:02d}:00-{(b + 1) % 24:02d}:00" for a, b in hour_blocks(hours))
+    return f"{block}  ({len(hours)}h)"
 
 
-def bitler(v):
+def bits(v):
     return [i for i in range(32) if v is not None and (v >> i) & 1]
 
 
-def referans():
-    """data/lights.tsv.gz -> (istatistik, bayrak, timeflag, ozet) ya da None.
+def reference():
+    """data/lights.tsv.gz -> (statistics, flags, timeflags, summary) or None.
 
-    p05-p95 kullanilir, min-maks DEGIL: on binlerce isiklik bir korpusta tek
-    bir uc deger araligi anlamsiz hale getirir ve denetim hicbir zaman
-    tetiklenmez.
+    p05-p95 is used, NOT min-max: in a corpus of tens of thousands of lights a
+    single extreme value makes the range meaningless and the check never
+    fires.
     """
     if not os.path.exists(LIGHTS):
         return None
-    sutun, veri = None, collections.defaultdict(list)
-    bayrak, tf, tip = collections.Counter(), collections.Counter(), collections.Counter()
-    dosyalar = set()
+    cols, values = None, collections.defaultdict(list)
+    flags, tf, types = collections.Counter(), collections.Counter(), collections.Counter()
+    models = set()
     n = 0
     with gzip.open(LIGHTS, "rt", encoding="utf-8", errors="replace") as fh:
         for line in fh:
             p = line.rstrip("\n").split("\t")
-            if sutun is None:
-                sutun = {ad: i for i, ad in enumerate(p)}
+            if cols is None:
+                cols = {name: i for i, name in enumerate(p)}
                 continue
-            if len(p) < len(sutun):
+            if len(p) < len(cols):
                 continue
             n += 1
-            dosyalar.add(p[sutun["model"]])
-            tip[p[sutun["type"]]] += 1
-            for anahtar, _ in SAYISAL:
+            models.add(p[cols["model"]])
+            types[p[cols["type"]]] += 1
+            for key, _ in NUMERIC:
                 try:
-                    veri[anahtar].append(float(p[sutun[anahtar]]))
+                    values[key].append(float(p[cols[key]]))
                 except (ValueError, KeyError):
                     pass
             try:
-                bayrak[int(p[sutun["flags"]])] += 1
-                tf[int(p[sutun["timeFlags"]])] += 1
+                flags[int(p[cols["flags"]])] += 1
+                tf[int(p[cols["timeFlags"]])] += 1
             except ValueError:
                 pass
 
     if not n:
         return None
-    ist = {}
-    for anahtar, gosterim in SAYISAL:
-        v = sorted(veri[anahtar])
+    stats = {}
+    for key, shown in NUMERIC:
+        v = sorted(values[key])
         if not v:
             continue
-        ist[gosterim] = {
-            "n": len(v), "min": v[0], "maks": v[-1],
+        stats[shown] = {
+            "n": len(v), "min": v[0], "max": v[-1],
             "p05": v[int(0.05 * (len(v) - 1))],
-            "medyan": v[len(v) // 2],
+            "median": v[len(v) // 2],
             "p95": v[int(0.95 * (len(v) - 1))],
         }
-    return {"ist": ist, "bayrak": bayrak, "tf": tf, "tip": tip,
-            "n": n, "dosya": len(dosyalar)}
+    return {"stats": stats, "flags": flags, "tf": tf, "types": types,
+            "n": n, "models": len(models)}
 
 
-def supheli(isik, ref=None):
-    """Isigi GORUNMEZ yapan ya da olculen araligin disina dusen durumlar.
+def suspicious(light, ref=None):
+    """Cases that make the light INVISIBLE or fall outside the measured range.
 
-    Mantik denetimleri her zaman calisir; aralik denetimi yalnizca referans
-    katmani kuruluysa -- olcum yoksa "outside the range" denemez.
+    The logic checks always run; the range check only when the reference
+    layer is installed -- without a measurement you cannot say "outside the range".
     """
-    u = []
-    if not aktif_saatler(isik["TimeFlags"]):
-        # OLCULDU: 72.539 vanilla isikta TimeFlags 0 yalnizca 8 kez gecer
-        # (%0,011) -- ve gectigi yerler ic mekan lamba prop'lari
+    issues = []
+    if not active_hours(light["TimeFlags"]):
+        # MEASURED: among 72,539 vanilla lights TimeFlags 0 occurs only 8 times
+        # (0.011%) -- and where it occurs it is interior lamp props
         # (m232_lamp_office_01, m25_2_int_01_lp_m_bedroom, imp_lightrig01).
-        # Bu yuzden 0'in "hic yanmaz" mi yoksa "no hour restriction" mu demek
-        # oldugu BU VERIDEN COZULEMEZ. Nadir oldugu soylenir, davranis
-        # IDDIA EDILMEZ; ayrimi ancak oyunda test etmek kapatir.
-        u.append("TimeFlags 0: no hour bits at all. Very rare in vanilla "
-                 "(8 of 72,539 lights, 0.011%) -- the data does not settle "
-                 "what it does; test it in game")
-    if isik["Intensity"] is not None and isik["Intensity"] <= 0:
-        u.append("Intensity 0 -> emits nothing")
-    if isik["Falloff"] is not None and isik["Falloff"] <= 0:
-        u.append("Falloff 0 -> no range, the light reaches no surface")
-    if isik["Type"] == "Spot":
-        ic, dis = isik["ConeInnerAngle"], isik["ConeOuterAngle"]
-        if dis is not None and dis <= 0:
-            u.append("Spot but ConeOuterAngle 0 -> cone is shut")
-        elif ic is not None and dis is not None and ic > dis:
-            u.append(f"ConeInnerAngle ({ic:g}) > ConeOuterAngle ({dis:g}) -> cone inverted")
+        # So whether 0 means "never lit" or "no hour restriction" CANNOT BE
+        # SETTLED FROM THIS DATA. It is reported as rare, the behaviour is NOT
+        # CLAIMED; only a test in game settles the difference.
+        issues.append("TimeFlags 0: no hour bits at all. Very rare in vanilla "
+                      "(8 of 72,539 lights, 0.011%) -- the data does not settle "
+                      "what it does; test it in game")
+    if light["Intensity"] is not None and light["Intensity"] <= 0:
+        issues.append("Intensity 0 -> emits nothing")
+    if light["Falloff"] is not None and light["Falloff"] <= 0:
+        issues.append("Falloff 0 -> no range, the light reaches no surface")
+    if light["Type"] == "Spot":
+        inner, outer = light["ConeInnerAngle"], light["ConeOuterAngle"]
+        if outer is not None and outer <= 0:
+            issues.append("Spot but ConeOuterAngle 0 -> cone is shut")
+        elif inner is not None and outer is not None and inner > outer:
+            issues.append(f"ConeInnerAngle ({inner:g}) > ConeOuterAngle ({outer:g}) -> cone inverted")
     if ref:
-        for alan, s in ref["ist"].items():
-            v = isik.get(alan)
+        for field, s in ref["stats"].items():
+            v = light.get(field)
             if v is None or v == 0:
                 continue
             if v < s["p05"] or v > s["p95"]:
-                u.append(f"{alan}={v:g} is outside vanilla's 90% band "
-                         f"[{s['p05']:g}, {s['p95']:g}] (not an error - reference)")
-    return u
+                issues.append(f"{field}={v:g} is outside vanilla's 90% band "
+                              f"[{s['p05']:g}, {s['p95']:g}] (not an error - reference)")
+    return issues
 
 
-def yaz_isik(idx, i, ham=False, ref=None):
+def print_light(idx, i, raw=False, ref=None):
     print(f"\n  #{idx}  {i['Type']}")
-    if ham:
+    if raw:
         for k, v in i.items():
             print(f"      {k:<22} {v}")
         return
@@ -265,14 +267,14 @@ def yaz_isik(idx, i, ham=False, ref=None):
     if i["Intensity"] is not None:
         print(f"      intensity    {i['Intensity']:g}")
     if i["Falloff"] is not None:
-        us = f"   (exp {i['FalloffExponent']:g})" if i["FalloffExponent"] is not None else ""
-        print(f"      range        {i['Falloff']:g} m{us}")
+        exp = f"   (exp {i['FalloffExponent']:g})" if i["FalloffExponent"] is not None else ""
+        print(f"      range        {i['Falloff']:g} m{exp}")
     if i["Type"] == "Spot" and i["ConeOuterAngle"] is not None:
         print(f"      cone         inner {i['ConeInnerAngle']:g}deg -> outer "
               f"{i['ConeOuterAngle']:g}deg")
     if i["Type"] == "Capsule" and i["Extent"]:
         print(f"      extent       {i['Extent']}")
-    print(f"      hours        {saat_metni(i['TimeFlags'])}"
+    print(f"      hours        {hours_text(i['TimeFlags'])}"
           f"   [TimeFlags {i['TimeFlags']}]")
     if i["CoronaSize"]:
         print(f"      corona       size {i['CoronaSize']:g}  intensity "
@@ -282,77 +284,77 @@ def yaz_isik(idx, i, ham=False, ref=None):
               f"{i['VolumeSizeScale']:g}")
     if i["ShadowBlur"]:
         print(f"      shadow       blur {i['ShadowBlur']}")
-    b = bitler(i["Flags"])
-    yaygin = ""
-    if ref and i["Flags"] in ref["bayrak"]:
-        yaygin = f"  (vanilla x{ref['bayrak'][i['Flags']]})"
-    print(f"      flags        {i['Flags']}  = bits {b or 'none'}{yaygin}")
+    b = bits(i["Flags"])
+    common = ""
+    if ref and i["Flags"] in ref["flags"]:
+        common = f"  (vanilla x{ref['flags'][i['Flags']]})"
+    print(f"      flags        {i['Flags']}  = bits {b or 'none'}{common}")
     if i["BoneId"]:
         print(f"      bone         tag {i['BoneId']}")
     if i["ProjectedTextureHash"]:
         print(f"      projection   {i['ProjectedTextureHash']}")
-    for s in supheli(i, ref):
+    for s in suspicious(i, ref):
         print(f"      ! {s}")
 
 
-def yaz_tablo(ref):
-    tip = ", ".join(f"{k} {v}" for k, v in ref["tip"].most_common())
+def print_table(ref):
+    types = ", ".join(f"{k} {v}" for k, v in ref["types"].most_common())
     print("MEASURED VANILLA LIGHT REFERENCE")
-    print(f"  source : data/lights.tsv.gz - {ref['n']} lights / {ref['dosya']} models")
-    print(f"  types  : {tip}")
+    print(f"  source : data/lights.tsv.gz - {ref['n']} lights / {ref['models']} models")
+    print(f"  types  : {types}")
     print("  NOTE: outside the range is NOT an error, it means 'rare in vanilla'.\n")
     print(f"  {'field':<20} {'n':>7} {'min':>9} {'p05':>9} {'median':>9} "
-          f"{'p95':>9} {'maks':>9}")
-    for k, s in ref["ist"].items():
+          f"{'p95':>9} {'max':>9}")
+    for k, s in ref["stats"].items():
         print(f"  {k:<20} {s['n']:>7} {s['min']:>9g} {s['p05']:>9g} "
-              f"{s['medyan']:>9g} {s['p95']:>9g} {s['maks']:>9g}")
+              f"{s['median']:>9g} {s['p95']:>9g} {s['max']:>9g}")
 
     print("\n  Flags (8 most common):")
-    for v, c in ref["bayrak"].most_common(8):
-        print(f"    {v:<12} x{c:<7} bits {bitler(v) or 'none'}")
+    for v, c in ref["flags"].most_common(8):
+        print(f"    {v:<12} x{c:<7} bits {bits(v) or 'none'}")
     print("  Bit NAMES are not in the database -> indices are shown, names are not invented.")
 
     print("\n  TimeFlags (8 most common):")
     for v, c in ref["tf"].most_common(8):
-        print(f"    {v:<12} x{c:<7} {saat_metni(v)}")
+        print(f"    {v:<12} x{c:<7} {hours_text(v)}")
 
 
-def calistir(args):
-    ref = referans()
-    if args.tablo:
+def run(args):
+    ref = reference()
+    if args.table:
         if ref is None:
             print(f"ERROR: {LIGHTS} not found.", file=sys.stderr)
-            print("  No measured reference - NOTHING can be claimed about ranges "
-                  "edilemez. Uret: powershell -File build_lights.ps1",
+            print("  No measured reference - NOTHING can be claimed about the "
+                  "ranges. Build it: powershell -File build_lights.ps1",
                   file=sys.stderr)
             return 2
-        yaz_tablo(ref)
+        print_table(ref)
         return 0
     if not args.path:
         print("ERROR: no file given (or use --table).", file=sys.stderr)
         return 2
 
-    kok, hata = kok_oku(args.path)
-    if hata:
-        print(f"ERROR: {args.path}: {hata}", file=sys.stderr)
-        print("  File could NOT be read - nothing can be said about the lights "
-              "iddia edilemez.", file=sys.stderr)
+    root, error = read_root(args.path)
+    if error:
+        print(f"ERROR: {args.path}: {error}", file=sys.stderr)
+        print("  File could NOT be read - nothing can be claimed about whether "
+              "it holds lights.", file=sys.stderr)
         return 2
 
-    isiklar = isiklari_oku(kok)
-    if isiklar is None:
-        print(f"{os.path.basename(args.path)} ({kok.tag}): has NO <Lights> node.")
-        print("  This resource type may not carry lights at all; that is NOT the same "
-              "DEGILDIR.")
+    lights = read_lights(root)
+    if lights is None:
+        print(f"{os.path.basename(args.path)} ({root.tag}): NO <Lights> node.")
+        print("  This resource type may not carry lights; that is NOT the same "
+              "as 'no lights'.")
         return 1
-    if not isiklar:
-        print(f"{os.path.basename(args.path)} ({kok.tag}): <Lights> var ama BOS "
-              f"-> gomulu isik yok.")
+    if not lights:
+        print(f"{os.path.basename(args.path)} ({root.tag}): <Lights> exists but is EMPTY "
+              f"-> no embedded lights.")
         return 1
 
-    print(f"{os.path.basename(args.path)} ({kok.tag}): {len(isiklar)} lights")
-    for idx, i in enumerate(isiklar):
-        yaz_isik(idx, i, args.ham, ref)
-    toplam_uyari = sum(len(supheli(i, ref)) for i in isiklar)
-    print(f"\n{len(isiklar)} lights | {toplam_uyari} warnings")
+    print(f"{os.path.basename(args.path)} ({root.tag}): {len(lights)} lights")
+    for idx, i in enumerate(lights):
+        print_light(idx, i, args.raw, ref)
+    total_warnings = sum(len(suspicious(i, ref)) for i in lights)
+    print(f"\n{len(lights)} lights | {total_warnings} warnings")
     return 0

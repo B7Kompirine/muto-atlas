@@ -1,39 +1,38 @@
-# Emissive panel — fosforlu tavan lambası, tek tek kontrol, kırık panel
+# Emissive panel — fluorescent ceiling light, individual control, broken panel
 
-**Ne zaman okunur:** tavan lambası/floresan paneli kırık görünsün, titresin, parlaklığı; "emissive'in ışığı yok".
-**When to read:** a glowing ceiling panel, individually controlled lamps, a broken/flickering panel.
-**Kaynak:** `decal.md` §6 (2026-08) · **Ölçüm:** morg MLO'sunda oyunda
-**Önce:** `_branch.md` · gövde › `trunk/tool-pitfalls.md` §1-2 · shader/kova `shader.md` (emissive + CUTOUT)
+**When to read:** a glowing ceiling light / fluorescent panel that should look broken or flicker; its brightness; individually controlled lamps; "the emissive gives no light".
+**Source:** `decal.md` §6 (2026-08) · **Measured:** in game, in the morgue MLO
+**Read first:** `_branch.md` · trunk › `trunk/tool-pitfalls.md` §1-2 · shader/bucket `shader.md` (emissive + CUTOUT)
 
 ---
 
-## 6. EMISSIVE PANELLER (fosforlu tavan lambası)
+## 6. EMISSIVE PANELS (fluorescent ceiling light)
 
-`emissive.sps` shader'ının parlaklığı **`emissiveMultiplier`** parametresinde
-(morg panelinde `x=3`).
+The brightness of the `emissive.sps` shader is in the **`emissiveMultiplier`** parameter
+(`x=3` on the morgue panel).
 
-⛔ **Panellerin ışığı YOKTUR** — sadece emissive geometri. Odanın 3 büyük
-paneli tek `Geometry` (6 üçgen) ve tek shader paylaşıyordu; birini
-değiştirmek üçünü birden değiştiriyor.
+⛔ **The panels have NO light** — only emissive geometry. The room's 3 large
+panels shared one `Geometry` (6 triangles) and one shader; changing
+one changes all three.
 
-### Tek tek kontrol için geometri bölünür
-1. Shader'ı kopyala, kopyada `emissiveMultiplier` = 0 (ölü panel)
-2. `Geometry`'yi vertex konumuna göre böl, indeksleri **her geometride
-   0'dan** yeniden numaralandır
-3. Ölü panelleri yeni shader'a, canlıyı eskisine bağla
+### Split the geometry for individual control
+1. Copy the shader; in the copy `emissiveMultiplier` = 0 (dead panel)
+2. Split the `Geometry` by vertex position, renumber the indices **from 0
+   in each geometry**
+3. Bind the dead panels to the new shader, the live one to the old one
 
-Vertex/indeks biçimi (CodeWalker XML, `Layout type="GTAV1"`):
+Vertex/index format (CodeWalker XML, `Layout type="GTAV1"`):
 ```
 Position(3)  Normal(3)  Colour0(4)  TexCoord0(2)
-indeksler: 0 1 2  2 3 0   (quad basina)
+indices: 0 1 2  2 3 0   (per quad)
 ```
 
-### Emissive geometri TİTREYEMEZ
-Flicker bir **ışık** özelliğidir. Panelin kendi parıltısı sabit kalır;
-panelin altına Flashiness'li bir ışık koyarsan **odaya vuran ışık** titrer
-ve panel titriyormuş gibi okunur.
+### Emissive geometry CANNOT FLICKER
+Flicker is a **light** property. The panel's own glow stays constant;
+put a light with Flashiness under the panel and **the light falling on the room** flickers,
+which reads as the panel flickering.
 
 ---
 
 
-**Emissive panelin ışığı yoktur**, parlaklığı `emissiveMultiplier`'dadır ve bir odadaki paneller tek geometriyi paylaşır — birini kırmak için geometriyi bölmek gerekir. Emissive geometri **titreyemez**; flicker ışık özelliğidir, panelin altına `Flashiness`'li ışık konur (`lights.md`).
+**An emissive panel has no light**, its brightness is in `emissiveMultiplier`, and the panels in a room share one geometry — to break one you must split the geometry. Emissive geometry **cannot flicker**; flicker is a light property, so put a light with `Flashiness` under the panel (`lights.md`).

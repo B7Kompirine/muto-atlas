@@ -1,413 +1,413 @@
-# Işık — prop ışığını oku/düzenle/geri yaz, TimeFlags, Flashiness, gobo (projeksiyon)
+# Light — read/edit/write back a prop's light, TimeFlags, Flashiness, gobo (projection)
 
-**Ne zaman okunur:** "lambam sönük / yanmıyor / titremiyor", ışık ekle, koni geniş, projeksiyonlu ışık (gobo), Blender'dan ışık export'u.
-**When to read:** read, edit or write back a prop's light; TimeFlags, Flashiness, cone angle, corona, culling plane.
-**Kaynak:** `lights.md` okuma/gobo/flicker/export bölümleri · `decal.md` §4, §9, Flashiness · eski `/look` (2026-08/09) · **Ölçüm:** 72.539 vanilla gömülü ışık (`lights.tsv.gz`); 36 projeksiyonlu ışıklık bir set oyunda
-**Önce:** `_branch.md` · gövde › `trunk/tool-pitfalls.md` §1-2
+**When to read:** "my lamp is dim / does not light up / does not flicker"; read, edit or write back a prop's light; add a light; the cone is too wide, cone angle; TimeFlags, Flashiness, corona, culling plane; a projected light (gobo); light export from Blender.
+**Source:** `lights.md` reading/gobo/flicker/export sections · `decal.md` §4, §9, Flashiness · the former `/look` command (2026-08/09) · **Measured:** 72,539 vanilla embedded lights (`lights.tsv.gz`); a set with 36 projected lights in game
+**Read first:** `_branch.md` · trunk › `trunk/tool-pitfalls.md` §1-2
 
 ---
 
 
 
-Kullanıcının sorgusu: `$ARGUMENTS`
+User's query: `$ARGUMENTS`
 
-Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içeren muto-atlas klasörü).
+Plugin root: `${CLAUDE_PLUGIN_ROOT}` (if it cannot be found, the muto-atlas folder that contains `scripts/assetdb.py`).
 
-Işıkla ilgili **her** iş bu komuttan geçer: "lambam çok sönük", "ışık
-yanmıyor", "koni çok geniş", "prop'uma ışık ekle", "bu ışık hangi saatte
-yanar". Kullanıcı `/look` yazmasa bile ışık konusu geçtiğinde bunu kullan.
+**Every** light job goes through this command: "my lamp is too dim", "the light
+does not come on", "the cone is too wide", "add a light to my prop", "at what hour does this
+light come on". Use it whenever lights come up, even if the user does not type `/look`.
 
-## Sırayla
+## In order
 
-**1. Önce OKU — sihirli sayıyı kopyalama, çöz.**
+**1. READ first — do not copy the magic number, decode it.**
 
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" light <dosya>
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" light <file>
 ```
 
-`TimeFlags 14680095` bir sayı değil "21:00–05:00 arası yanar" demektir.
-Çıktıyı kullanıcıya bir iki cümleyle özetle: kaç ışık, tipi, hangi saatler,
-uyarı var mı.
+`TimeFlags 14680095` is not a number; it means "on between 21:00 and 05:00".
+Summarize the output for the user in a sentence or two: how many lights, their type, which hours,
+any warnings.
 
-**2. Değeri ÖLÇÜLMÜŞ ARALIĞA göre öner.**
+**2. Propose a value against the MEASURED RANGE.**
 
 ```bash
 python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" light --table
 ```
 
-72.539 vanilla ışıktan hesaplanan `p05 / medyan / p95` bandı. Bir değer
-önerirken "bence 20 olsun" deme — o alanın vanilla medyanını ve bandını
-söyle, önerin bandın neresine düşüyor belirt. Katman kurulu değilse
-**aralık uydurma**, referans veremediğini söyle.
+The `p05 / median / p95` band computed from 72,539 vanilla lights. When proposing a value,
+do not say "I think 20" — give that field's vanilla median and band,
+and say where your proposal falls in the band. If the layer is not installed,
+**do not make up a range**; say that you cannot give a reference.
 
-**3. Geri yaz ve DOĞRULA.**
-
-```bash
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" light <dosya> --apply duzenleme.json
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" light <dosya> --set 0.Intensity=8 --set 0.ConeOuterAngle=35
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" light <dosya> --add
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" light <dosya> --remove 1
-```
-
-Her yazma orijinali `<ad>.yedek` olarak saklar ve sonucu **geri okuyarak**
-doğrular. Doğrulama geçmezse dosya değişmez.
-
-## Karanlık şikâyeti üç katmanlıdır — sırayla bak
-
-Cevap çoğu zaman prop'un ışığında değil:
+**3. Write back and VERIFY.**
 
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" cycle w_clear --hour 20   # 1. taban hava
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" timecycle --mlo <ytyp>    # 2. odanın modifier'ı
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" light <dosya>             # 3. prop'un ışığı
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" light <file> --apply edits.json
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" light <file> --set 0.Intensity=8 --set 0.ConeOuterAngle=35
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" light <file> --add
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" light <file> --remove 1
 ```
 
-## Sonucu sunarken
+Every write keeps the original as `<name>.yedek` (the backup) and verifies the result **by reading
+it back**. If verification fails, the file does not change.
 
-- **Her sihirli sayıyı çöz.** `TimeFlags`, `Flags` — sayıyı tekrarlama,
-  ne anlama geldiğini söyle (`assetdb.py flags <sayı>`).
-- **Işık kemiğe bağlıdır.** `BoneId` sıfırdan farklıysa ışık modelin
-  orijininde değil, o kemiktedir; konumu ona göre anlat.
-- **Saat uyuşmazlığını söyle.** Kullanıcı "yanmıyor" diyorsa önce
-  `TimeFlags`'e bak — çoğu vakada ışık sağlamdır, saat yanlıştır.
-- `cycle` katmanı kurulu değilse `build_cycle.ps1`'i öner — **uydurma**.
+## A darkness complaint has three layers — check them in order
 
-Tam matematik, üç katmanlı timecycle ve sessiz hata kataloğu:
+The answer is usually not in the prop's light:
+
+```bash
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" cycle w_clear --hour 20   # 1. base weather
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" timecycle --mlo <ytyp>    # 2. the room's modifier
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" light <file>             # 3. the prop's light
+```
+
+## When presenting the result
+
+- **Decode every magic number.** `TimeFlags`, `Flags` — do not repeat the number,
+  say what it means (`assetdb.py flags <number>`).
+- **A light is bound to a bone.** If `BoneId` is not zero, the light is not at the model's
+  origin but on that bone; describe its position accordingly.
+- **Call out an hour mismatch.** If the user says "it does not light up", look at
+  `TimeFlags` first — in most cases the light is fine and the hours are wrong.
+- If the `cycle` layer is not installed, suggest `build_cycle.ps1` — **do not make it up**.
+
+Full math, the three timecycle layers and the silent failure catalog:
 `light-math.md`
 
 
 ---
 
-## Ölçülmüş, tahmin edilmemiş
+## Measured, not guessed
 
-Işıkla ilgili **her** iş burada başlar.
+**Every** light job starts here.
 
 ```bash
-assetdb.py light prop_lamp.ydr              # oku ve ÇÖZ (sihirli sayıları aç)
-assetdb.py light prop_lamp.ydr --table      # 72.539 vanilla ışığın ölçülmüş bandı
-assetdb.py light prop_lamp.ydr --apply duzenleme.json
+assetdb.py light prop_lamp.ydr              # read and DECODE (open up the magic numbers)
+assetdb.py light prop_lamp.ydr --table      # measured band of 72,539 vanilla lights
+assetdb.py light prop_lamp.ydr --apply edits.json
 assetdb.py light prop_lamp.ydr --set 0.Intensity=8 --set 0.ConeOuterAngle=35
 assetdb.py light prop_lamp.ydr --add | --remove 1
-assetdb.py cycle w_clear --hour 20          # hava cycle'ının taban katmanı
-assetdb.py timecycle int_hospital_dark      # odanın modifier'ı
+assetdb.py cycle w_clear --hour 20          # base layer of the weather cycle
+assetdb.py timecycle int_hospital_dark      # the room's modifier
 ```
 
-Geri yazma `res_to_xml → XML → xml_to_res` turudur ve her yazma **geri
-okunarak** doğrulanır. Değer önerirken `--table`'nun ölçülmüş bandını kullan
-(alan başına p05 / medyan / p95); katman kurulu değilse aralık **uydurma**.
+Writing back is a `res_to_xml → XML → xml_to_res` round trip, and every write is verified
+**by reading it back**. When proposing a value use the measured band from `--table`
+(p05 / median / p95 per field); if the layer is not installed, **do not make up** a range.
 
-Ölçülmüş, tahmin edilmemiş:
+Measured, not guessed:
 
-- **Işık kemiğe bağlıdır.** `prop_worklight_01a`'da `BoneId 41615` zincirde
-  **1.737 m** yukarıdadır; kemik zinciri uygulanmazsa ışık yerde durur.
-  `Position/Direction/Tangent` **kemik uzayındadır**, model orijininde değil.
-- **`TimeFlags` bir sayı değil saat kümesidir.** `14680095` = 21:00–05:00;
-  saat 20'de ışık **yanmaz**. "Yanmıyor" şikâyetinde ilk bakılacak yer budur —
-  çoğu vakada ışık sağlamdır, saat yanlıştır.
-- **Boyut geçerlilik ölçütü değildir** (RSC7 zlib'dir): 15.056 → 15.904 bayt
-  aynı içeriktir. Tek ölçüt **geri okumadır**; `--apply` her zaman geri
-  okur ve ışık sayısı tutmuyorsa yazmaz.
+- **A light is bound to a bone.** In `prop_worklight_01a`, `BoneId 41615` sits
+  **1.737 m** up the chain; if the bone chain is not applied, the light stays on the ground.
+  `Position/Direction/Tangent` **are in bone space**, not at the model origin.
+- **`TimeFlags` is not a number but a set of hours.** `14680095` = 21:00–05:00;
+  at hour 20 the light is **off**. For a "does not light up" complaint this is the first place to look —
+  in most cases the light is fine and the hours are wrong.
+- **Size is not a validity criterion** (RSC7 is zlib): 15,056 → 15,904 bytes
+  is the same content. The only criterion is **the read-back**; `--apply` always reads
+  back and does not write if the light count does not match.
 
-- **`Flashiness` (flicker) hiçbir yerde yazmaz**, 72.539 ışığın dağılımından
-  okundu: **15** alarm · **17** tünel · **9** acil durum · **19** hasarlı gemi
-  (68.036'sı 0). ⚠️ Adı "broken light" olan vanilla prop'un flashiness'i
-  **0**'dır — GTA "kırık"ı modelle yapar, titremeyle değil.
-- **Emissive panelin ışığı yoktur** — parlaklık `emissiveMultiplier`'dadır ve
-  bir odadaki paneller **tek geometriyi paylaşır**; birini kırmak için
-  geometriyi bölmek gerekir. Emissive geometri **titreyemez**.
-- **Kendi timecycle modifier'ını `data_file 'TIMECYCLEMOD_FILE'` ile KAYDET** —
-  kaydedilmezse oyun onu hiç aramaz. Paylaşılan vanilla modifier'a dokunma
-  (`morgue_dark` 6 DLC'de tanımlı, hangisinin kazandığı veriden okunamaz).
+- **`Flashiness` (flicker) is not documented anywhere**; it was read from the distribution of 72,539 lights:
+  **15** alarm · **17** tunnel · **9** emergency · **19** damaged ship
+  (68,036 of them are 0). ⚠️ The vanilla prop named "broken light" has flashiness
+  **0** — GTA makes "broken" with the model, not with flicker.
+- **An emissive panel has no light** — the brightness is in `emissiveMultiplier`, and
+  the panels in a room **share one geometry**; to break one you must split the
+  geometry. Emissive geometry **cannot flicker**.
+- **REGISTER your own timecycle modifier with `data_file 'TIMECYCLEMOD_FILE'`** —
+  without registration the game never looks for it. Do not touch a shared vanilla modifier
+  (`morgue_dark` is defined in 6 DLCs; which one wins cannot be read from the data).
 
-Tam matematik + timecycle üç katmanı: `lights.md`
-Işık/timecycle/emissive alan bulguları: `decal.md`
+Full math + the three timecycle layers: `lights.md`
+Light/timecycle/emissive field findings: `decal.md`
 
-## Işığı okuma ve geri yazma — oyuna girmeden
+## Reading and writing back a light — without going in game
 
 ```bash
-assetdb.py light prop_lamp.ydr              # oku + sihirli sayıları çöz
-assetdb.py light prop_lamp.ydr --apply duzenleme.json
+assetdb.py light prop_lamp.ydr              # read + decode the magic numbers
+assetdb.py light prop_lamp.ydr --apply edits.json
 assetdb.py light prop_lamp.ydr --set 0.Intensity=8 --add --remove 1
 ```
 
-Hat iki parçadır ve ikisi de ölçüldü:
+The pipeline has two parts, and both were measured:
 
-| parça | ne yapar | dosya |
+| part | what it does | file |
 |---|---|---|
-| çözme | `.ydr/.yft` → mesh + kemik dünya matrisleri + 40 alanlı ışıklar | `light_scene.py` |
-| geri yazma | `res_to_xml → XML → xml_to_res`, sonra **geri okuma** | `light_edit.py` |
+| decode | `.ydr/.yft` → mesh + bone world matrices + lights with 40 fields | `light_scene.py` |
+| write back | `res_to_xml → XML → xml_to_res`, then **read back** | `light_edit.py` |
 
-Ölçülmüş vanilla dağılımı `light.referans()` ile canlı gelir
-(`data/lights.tsv.gz`; bu kurulumda 72.539 ışık / 4.476 dosya):
-her sayısal alan için `p05 / medyan / p95 / min / maks`. Katman yoksa
-**aralık uydurulmaz**, referans hiç sunulmaz.
+The measured vanilla distribution comes in live through `light.reference()`
+(`data/lights.tsv.gz`; in this install 72,539 lights / 4,476 files):
+`p05 / median / p95 / min / max` for every numeric field. Without the layer
+**no range is made up**, and no reference is offered at all.
 
-### Üç sessiz bağ
+### Three silent bindings
 
-- **Işık kemiğe bağlıdır.** `prop_worklight_01a` → `BoneId 41615`
-  (`Worklight_01A_Bulb`), zincirde **1.737 m** yukarıda; ışığın kendi
-  `Position`'ı (0, −0.015, 0.009) bunun **üstüne** biner → dünya
-  (0, −0.102, 1.746). Kemik zinciri kurulmazsa ışık yerde durur ve
-  "ışığım yanlış yerde" denir. Vertex'ler de `HasSkin=1` ise kemik
-  uzayındadır (prop'ta ağırlık tek kemiğe %100, yani rijit).
-- **`TimeFlags` bir sayı değil saat kümesidir.** `14680095` = `0xE0001F`
-  → bit 0–4 ve 21–23 = **8 saat**, 21:00–05:00. Saat 20'de ışık **yanmaz**.
-  Kullanıcı "ışığım yanmıyor" dediğinde ilk bakılacak yer ışığın kendisi
-  değil, saattir. Bir önizleme bunu uygulamazsa araçta parlak görünür,
-  oyunda karanlık çıkar.
-- **Boyut geçerlilik ölçütü DEĞİLDİR.** Aynı içerik 15.056 → 15.904 bayt
-  çıktı (RSC7 zlib). Tek ölçüt geri okumadır; `--apply` yazdıktan sonra
-  dosyayı yeniden çözer, ışık sayısı tutmazsa hata verir ve orijinali
-  `.yedek` olarak korur.
+- **A light is bound to a bone.** `prop_worklight_01a` → `BoneId 41615`
+  (`Worklight_01A_Bulb`), **1.737 m** up the chain; the light's own
+  `Position` (0, −0.015, 0.009) sits **on top of** that → world
+  (0, −0.102, 1.746). If the bone chain is not built, the light stays on the ground and
+  people say "my light is in the wrong place". Vertices are in bone space too when `HasSkin=1`
+  (on a prop the weight is 100% on one bone, i.e. rigid).
+- **`TimeFlags` is not a number but a set of hours.** `14680095` = `0xE0001F`
+  → bits 0–4 and 21–23 = **8 hours**, 21:00–05:00. At hour 20 the light is **off**.
+  When the user says "my light does not come on", the first place to look is not the light
+  itself but the hours. A preview that does not apply this shows it bright in the tool,
+  and it comes out dark in game.
+- **Size is NOT a validity criterion.** The same content came out 15,056 → 15,904 bytes
+  (RSC7 zlib). The only criterion is the read-back; after writing, `--apply` decodes
+  the file again, errors out if the light count does not match, and keeps the original
+  as `.yedek`.
 
-### Köken
+### Origin
 
-Bağımsız bir uygulamadır. Matematik oyunun kendi shader dosyalarından
-(`lighting_common.fxh`, `common.fxh`, `postfx.fx`) türetilmiş ve ölçümle
-doğrulanmıştır; referans bantları kullanıcının kendi kurulumundan yerel olarak
-hesaplanır ve dağıtılmaz (`data/` gitignore'lu). Herhangi bir üçüncü taraf
-düzenleme aracının kodu, varlıkları, arayüzü, adları ya da markası **yoktur**.
+It is an independent implementation. The math is derived from the game's own shader files
+(`lighting_common.fxh`, `common.fxh`, `postfx.fx`) and verified by measurement;
+the reference bands are computed locally from the user's own install and
+are not distributed (`data/` is gitignored). It contains **no** code, assets, interface, names
+or branding of any third-party editing tool.
 
-### Bir önizleme kurarken — sınırı baştan söyle
+### When building a preview — state its limit up front
 
-Bu matematikle kurulan herhangi bir önizleme bir **render değildir**. Bilerek
-dışarıda kalanlar: **doku** (albedo tek sayıdır), **korona sprite'ı**,
-**hacimsel ışın**, deferred pass'in **SSAO/yansıması**. Cevapladığı soru
-"ışık nereye ne kadar düşüyor"dur; "sahne birebir böyle görünecek" değil.
+Any preview built with this math is **not a render**. Deliberately
+left out: **texture** (albedo is a single number), **corona sprite**,
+**volumetric beam**, the deferred pass's **SSAO/reflection**. The question it answers is
+"where does the light fall and how much", not "the scene will look exactly like this".
 
-Gölgede de fark var: oyun sanal güneş konumundan **mesafe** saklar. Derinlik
-haritasıyla kuran bir önizleme dersi koruyabilir (normal ofseti ağır işi
-yapar, bias texel dünya boyutuna göre ölçeklenir) ama depolaması farklıdır.
+Shadows differ too: the game stores **distance** from a virtual sun position. A preview built on a
+depth map can keep the lesson (the normal offset does the heavy lifting,
+bias scales with the texel's world size), but its storage is different.
 
-Bu matematik bir kez ölçülerek doğrulandı (piksel okunarak, ekran
-görüntüsüne bakılarak **değil**): saat 12 → `[107,109,110]`,
-17 → `[93,95,96]`, 20 → `[14,19,32]`, 06 → `[20,30,38]` — gün boyunca
-fiziksel olarak makul ilerleme.
+This math was verified once by measurement (by reading pixels, **not** by looking at a
+screenshot): hour 12 → `[107,109,110]`,
+17 → `[93,95,96]`, 20 → `[14,19,32]`, 06 → `[20,30,38]` — a physically plausible
+progression through the day.
 
 ---
 
-## 4. IŞIK DÜZENLEME
+## 4. EDITING LIGHTS
 
-Işıklar script'te değil **`.ydr`'nin kendi ışık dizisinde**. Modeli düzenleyip
-`stream/` içine aynı adla koymak = override.
+Lights are not in script but **in the `.ydr`'s own light array**. Editing the model and
+putting it in `stream/` under the same name = override.
 
-### İlk bakılacak yer: TimeFlags
-`16777215` = 24/24 (her saat). Vanilla'da en sık ikinci değer `14680191`
-= 21:00–07:00. **"Işık yanmıyor" şikâyetinin en sık sebebi saat penceresidir**,
-ışığın kendisi değil.
+### First place to look: TimeFlags
+`16777215` = 24/24 (every hour). The second most common value in vanilla is `14680191`
+= 21:00–07:00. **The most common cause of "the light does not come on" is the hour window**,
+not the light itself.
 
-### Flashiness — anlamı hiçbir yerde yazmıyor, dağılımdan okundu
-72.539 vanilla ışık tarandı, **68.036'sı = 0** (sabit). Sıfır olmayanlar ve
-onları kullanan modeller:
+### Flashiness — its meaning is documented nowhere, it was read from the distribution
+72,539 vanilla lights scanned, **68,036 = 0** (constant). The non-zero ones and
+the models that use them:
 
-| Değer | Adet | Kullanan modeller (ipucu) |
+| Value | Count | Models using it (hint) |
 |---|---|---|
-| 15 | 1096 | `v_med_cor_alarmlight`, `xm_prop_x17_sub_alarm_lamp` — kırmızı 255,5,0 **alarm** |
-| 17 | 693 | `cs2_30_tunnel_det_*` — tünel lambaları |
-| 11/12/13 | ~1400 | kumarhane oyun salonu, sinema — döngüler |
-| 9 | 344 | `prop_ld_alarm_alert`, `v_48_emerg_light_a` — **acil durum** |
-| 19 | 172 | `gr_prop_damship_01a` (**hasarlı gemi**) |
+| 15 | 1096 | `v_med_cor_alarmlight`, `xm_prop_x17_sub_alarm_lamp` — red 255,5,0 **alarm** |
+| 17 | 693 | `cs2_30_tunnel_det_*` — tunnel lamps |
+| 11/12/13 | ~1400 | casino arcade, cinema — cycles |
+| 9 | 344 | `prop_ld_alarm_alert`, `v_48_emerg_light_a` — **emergency** |
+| 19 | 172 | `gr_prop_damship_01a` (**damaged ship**) |
 | 20 | 39 | `ba_prop_battle_lights_fx_rige` — strobe |
-| 14 | 22 | `v_73_elev_sec*` — asansör |
+| 14 | 22 | `v_73_elev_sec*` — elevator |
 
-⚠️ **`h4_int_club_broken_light` ("kırık ışık") flashiness = 0.** Yani GTA
-"kırık" görüntüsünü flashiness ile değil **modelle** yapıyor.
+⚠️ **`h4_int_club_broken_light` ("broken light") has flashiness = 0.** So GTA
+makes the "broken" look **with the model**, not with flashiness.
 
-### Vanilla bandı (72.539 ışık)
-`Intensity` p05 0.25 · medyan 6 · p95 32 — bandın dışı hata değil, **nadir** demek.
+### Vanilla band (72,539 lights)
+`Intensity` p05 0.25 · median 6 · p95 32 — outside the band does not mean an error, it means **rare**.
 
-### Işık kemiğe bağlıdır
-`Position` **kemik uzayındadır**, model orijininde değil. `BoneId=0` ise
-objenin kendi uzayı (statik prop'ların çoğu böyle).
+### A light is bound to a bone
+`Position` **is in bone space**, not at the model origin. If `BoneId=0`, it is
+the object's own space (most static props are like this).
 
 ---
 
-## ⛔ Tek Flashiness = sahte. Kırpışma TİP çeşitliliğiyle dağıtılır
+## ⛔ A single Flashiness = fake. Spread the flicker through TYPE variety
 
-GTA'da kırpışmanın **fazı ayarlanamaz**, yalnız **tipi** seçilir. Bütün
-ışıklara aynı değeri vermek (ölçüldü: 232/232 `ELECTRIC`) hepsini aynı
-desende yakıp söndürür ve senkron göründüğü için sahte durur.
+In GTA the flicker **phase cannot be set**; only the **type** is chosen. Giving all
+lights the same value (measured: 232/232 `ELECTRIC`) switches them all on and off in the same
+pattern, and because it looks synchronized it looks fake.
 
-Çözüm: her ışığa **konumundan türetilmiş deterministik bir hash** ile
-havuzdan tip ata — komşu ışıklar farklı tip alır, periyotları farklı
-olduğu için zamanla birbirinden ayrışırlar. Morgda kullanılan ağırlıklar:
+Fix: assign each light a type from a pool with a **deterministic hash derived from its position**
+— neighboring lights get different types, and because their periods differ
+they drift apart over time. The weights used in the morgue:
 
 `ELECTRIC 30` · `RANDOM 20` · `RANDOM_FLASHINESS 12` · **`CONSTANT 12`** ·
 `ONCE_PER_SECOND 8` · `TWICE_PER_SECOND 7` · `THRESHOLD 6` · `CYCLE_1 3` ·
 `CANDLE 2`
 
-⛔ **Hepsini kırpıştırma.** Bir kısmı `CONSTANT` kalmazsa ortam disko olur;
-bozuk tesis hissi çalışan ve bozuk ışıkların **karışımından** gelir.
-Alarm lambaları havuza girmez, kendi tipi vardır (`ALARM`).
+⛔ **Do not make them all flicker.** If some do not stay `CONSTANT`, the place becomes a disco;
+the feel of a broken facility comes from the **mix** of working and broken lights.
+Alarm lamps do not go into the pool; they have their own type (`ALARM`).
 
-Betik depoda yok.
+The script is not in the repository.
 
-**İki PowerShell tuzağı burada da çıktı:**
-- `(,19) * 30` ile ağırlıklı havuz kurulmaz — beklenen tekrarı üretmiyor
-  (ölçüldü: ELECTRIC %30 yerine %0.9). Açık döngü kullan.
-- `-bxor`/`-band` işaretsiz tipleri korumaz; ara sonuç Int64'e düşüp
-  negatif olur ve `[uint64]`'e geri atarken patlar. Bit işlemi yerine
+**Two PowerShell pitfalls showed up here too:**
+- `(,19) * 30` does not build a weighted pool — it does not produce the expected repetition
+  (measured: ELECTRIC 0.9% instead of 30%). Use an explicit loop.
+- `-bxor`/`-band` do not keep unsigned types; the intermediate result falls to Int64, turns
+  negative and blows up when cast back to `[uint64]`. Instead of bit operations use
   djb2 + modulo.
 
-## ⛔ "Flicker çalışmıyor" — önce `Intensity`'ye bak, `Flashiness`'e değil
+## ⛔ "Flicker does not work" — look at `Intensity` first, not `Flashiness`
 
-Ölçüldü (morg): dağıtılmış **232 ışığın tamamı `Intensity = 0`**. Aynı
-modellerin vanilla kopyalarında değerler **0.58 – 32** arasında. Yani
-haritadaki bütün ışıklar ölüydü ve görünen aydınlık **tamamen emissive
-materyalden** geliyordu.
+Measured (morgue): **all 232 deployed lights had `Intensity = 0`**. In the vanilla copies of the
+same models the values are between **0.58 and 32**. So every light on the
+map was dead and the visible brightness came **entirely from the emissive
+material**.
 
-Bu, `Flashiness`'in neden hiçbir şey yapmadığını tek başına açıklar:
-**kırpışacak ışık yok.** Ve emissive geometri titreyemez — flicker bir
-ışık özelliğidir. `Flashiness`'i ELECTRIC yapmak, sonra çeşitlendirmek,
-ikisi de sonuçsuz kaldı çünkü sorun hiç orada değildi.
+That alone explains why `Flashiness` did nothing:
+**there was no light to flicker.** And emissive geometry cannot flicker — flicker is a
+light property. Setting `Flashiness` to ELECTRIC, then varying it:
+both led nowhere, because the problem was never there.
 
-**Teşhis sırası şu olmalı:**
+**The diagnosis order should be:**
 
-1. `Intensity` > 0 mı? Sıfırsa ışık yoktur, gerisi anlamsızdır.
-2. `TimeFlags` o saati kapsıyor mu? (`14680095` = 21:00–05:00)
-3. `Flashiness` doğru tip mi?
-4. Görünen parlaklık ışıktan mı **emissive'den mi** geliyor?
+1. Is `Intensity` > 0? If it is zero there is no light, and the rest is meaningless.
+2. Do the `TimeFlags` cover that hour? (`14680095` = 21:00–05:00)
+3. Is `Flashiness` the right type?
+4. Does the visible brightness come from the light or **from the emissive**?
 
-Dördüncüsü sinsi: emissive'li bir tavan paneli ışık olmadan da parlar,
-yani "ışıklar yanıyor" görünür. Ayırt etmenin ucuz yolu, aynı modelin
-vanilla kopyasıyla `Intensity` karşılaştırmasıdır.
+The fourth is sneaky: an emissive ceiling panel glows without a light too,
+so "the lights are on" seems true. The cheap way to tell them apart is to compare
+`Intensity` with the vanilla copy of the same model.
 
-### Karartılmış haritada ışığı geri getirirken
+### When bringing lights back on a darkened map
 
-Vanilla yoğunluğunu **birebir** geri koyma — harita bilerek karartıldıysa
-vanilla parlaklığına döner. Oran korunarak ölçekle (morgda **0.30×**;
-232 ışık, sonuç 0.12–9.6, ort 6.0).
+Do not put the vanilla intensity back **one to one** — if the map was darkened on purpose,
+it returns to vanilla brightness. Scale while keeping the ratio (in the morgue **0.30×**;
+232 lights, result 0.12–9.6, mean 6.0).
 
-Ve **aynı turda emissive'i kıs**, yoksa toplam parlaklık artar: ışık
-eklerken panelin kendi parlaklığı düşürülür, net aydınlık aynı kalır ama
-artık gerçek ışık havuzu ve kırpışma vardır. Morgda uygulanan:
-`mh_v_downlight01_d` **8 → 3** (tavan spotu) · `my_flo_calisan_d`
-**3 → 1.6** (çalışan floresan) · kırık olanlar zaten 0.
+And **turn the emissive down in the same round**, otherwise the total brightness goes up: while
+adding light, lower the panel's own brightness; the net illumination stays the same, but
+now there is a real light pool and flicker. Applied in the morgue:
+`mh_v_downlight01_d` **8 → 3** (ceiling spot) · `my_flo_working_d`
+**3 → 1.6** (working fluorescent) · the broken ones are already 0.
 
-## Projeksiyonlu ışık (gobo) — Sollumz ile üretim
+## Projected light (gobo) — built with Sollumz
 
-Bir desenin yere düşmesi materyalden gelmez; ışığın **projected
-texture** alanından gelir. 36 ışıklık bir sette uçtan uca ölçüldü;
-altısı da **hata vermeden** yanlış sonuç üretti.
+A pattern falling on the floor does not come from the material; it comes from the light's
+**projected texture** field. Measured end to end on a set of 36 lights;
+all six issues produced a wrong result **without an error**.
 
-### `Tangent` = projeksiyonun YUKARI ekseni, `Direction` değil
+### `Tangent` = the projection's UP axis, not `Direction`
 
-⛔ Motor `Tangent`'ı projeksiyonun *up* ekseni sayar; **Sollumz oraya ışık
-objesinin yerel X'ini (SAĞ eksen) yazar.** Arada tam 90° vardır ve doku
-ışın ekseni etrafında yan yatar — uzun kemer pencerelerin lekesi zeminde
-yana uzar.
+⛔ The engine takes `Tangent` as the projection's *up* axis; **Sollumz writes the light
+object's local X (the RIGHT axis) there.** They are exactly 90° apart, and the texture
+lies on its side around the beam axis — the patch of tall arched windows stretches
+sideways on the floor.
 
-Düzeltme: ışığı kendi ışın ekseni etrafında **−90°** döndür. Blender euler'i
-XYZ (`Rz@Ry@Rx`) olduğu için bu roll euler ile yazılamaz, matristen türetilir:
+Fix: rotate the light **−90°** around its own beam axis. Blender's euler is
+XYZ (`Rz@Ry@Rx`), so this roll cannot be written as an euler; derive it from a matrix:
 
 ```python
+# egim = tilt angle in degrees
 lo.rotation_euler = (Matrix.Rotation(radians(-(90 - egim)), 3, 'X')
                      @ Matrix.Rotation(radians(-90.0), 3, 'Z')).to_euler()
 ```
 
-`+90` da doğru ekseni verir ama **ters işaretle** — desen 180° dönük olur.
-Ölçüt: `dot(Direction, Tangent) == 0` **ve** `Tangent.z > 0`.
+`+90` also gives the right axis, but **with the opposite sign** — the pattern ends up rotated 180°.
+Criterion: `dot(Direction, Tangent) == 0` **and** `Tangent.z > 0`.
 
-### Işığın transformu, mesh transformu sıfırlanırken siliniyor
+### The light's transform gets wiped while the mesh transforms are reset
 
-⛔ Drawable üretiminde transform geometriye piştiği için mesh'ler orijine
-çekilir. Işık aynı koleksiyondaysa **o da sıfırlanır** ve `.ydr`'ye
-`Position (0,0,0)`, `Direction (0,0,-1)` yazılır: ışın pencerenin dibinde
-dimdik aşağı bakar. Eğim/koni ayarları Blender'da doğru görünür,
-**export'ta yok olur** — yani ayar değiştirmek oyunda hiçbir şeyi
-değiştirmez.
+⛔ In drawable generation the transform is baked into the geometry, so the meshes are pulled
+to the origin. If the light is in the same collection **it is reset too**, and the `.ydr`
+gets `Position (0,0,0)`, `Direction (0,0,-1)`: the beam points straight down at the foot of
+the window. Tilt/cone settings look right in Blender,
+**and vanish on export** — so changing a setting changes nothing
+in game.
 
-Işığı sıfırlama döngüsünün dışında tut, konumunu açıklığa göre yeniden kur.
+Keep the light out of the reset loop, and rebuild its position relative to the opening.
 
-### Ölçüt hesap değil, GERİ OKUMADIR
+### The criterion is the READ-BACK, not a calculation
 
-Mesafeyi sahneden hesaplamak yanıltır: sahnedeki değer doğru, dosyadaki
-yanlış olabilir. `assetdb.py light <ydr>` ile dağıtılmış dosyayı oku.
+Calculating the distance from the scene misleads: the value in the scene can be right and the one
+in the file wrong. Read the deployed file with `assetdb.py light <ydr>`.
 
 ```
-yon        (0.000, 0.000, -1.000)   ← bozuk (dik aşağı)
-konum      (0.000, 0.000,  0.000)   ← bozuk (orijinde)
+direction  (0.000, 0.000, -1.000)   ← broken (straight down)
+position   (0.000, 0.000,  0.000)   ← broken (at the origin)
 ```
 
-### Gobo dokusunun kendisi
+### The gobo texture itself
 
-- ⛔ **En-boy oranı korunmalı.** İçeriği kareye sıkıştırmak siluetı yok eder:
-  uzun kemer bodurlaşıp yuvarlağa benzer, yuvarlak pencere aynı kalır —
-  oyunda "yuvarlaklar sivri, sivriler yuvarlak" olarak görülür. Ölçüt:
-  gobo'nun en/boy oranı pencerenin oranını izlemeli (gotik ≈ 0.49,
-  gül = 1.00). Hepsi 1.00 ise siluet gitmiştir.
-- ⛔ **Spot konisi dairesel, doku kare.** Dokunun boş köşeleri projeksiyonda
-  sivri çıkıntı olur (gül penceresi zeminde sekizgen düşer). Dairesel vinyet
-  şart; ölçüt köşe parlaklığı **0**.
-- İçerik koninin **iç dairesine** sığmalı (≈ %80), yoksa kemerin ucu kırpılır.
-- Gobo camın keskin kopyası **değildir**: vanilla `os_stainglasswindow1_light.dds`
-  ağır bulanık, parlayan, düşük kontrastlı bir glow; kurşun çizgileri yok.
-  Keskin mozaik kopyası projekte edilince desen okunmaz.
-- Doku **DXT1 + mip** olmalı. PIL yoksa numpy ile DXT1 yazmak 60 satır:
-  4×4 blok, ana eksenin uçlarından iki RGB565 endpoint, 2 bitlik indeks.
+- ⛔ **Keep the aspect ratio.** Squeezing the content into a square destroys the silhouette:
+  the tall arch gets squat and looks round, the round window stays the same —
+  in game it is seen as "the round ones pointed, the pointed ones round". Criterion:
+  the gobo's width/height ratio must follow the window's ratio (gothic ≈ 0.49,
+  rose = 1.00). If all of them are 1.00, the silhouette is gone.
+- ⛔ **The spot cone is circular, the texture is square.** The texture's empty corners become
+  pointed spikes in the projection (the rose window lands on the floor as an octagon). A circular vignette
+  is required; criterion: corner brightness **0**.
+- The content must fit in the cone's **inner circle** (≈ 80%), otherwise the tip of the arch is clipped.
+- A gobo is **not** a sharp copy of the glass: vanilla `os_stainglasswindow1_light.dds`
+  is a heavily blurred, glowing, low-contrast glow; no lead lines.
+  A sharp mosaic copy, once projected, makes the pattern unreadable.
+- The texture must be **DXT1 + mip**. Without PIL, writing DXT1 with numpy is 60 lines:
+  4×4 blocks, two RGB565 endpoints from the ends of the principal axis, 2-bit indices.
 
-### Işık görünmüyorsa sırayla bak
+### If the light does not show, check in order
 
-1. **`time_flags`** — varsayılan `total = 0`, yani **hiçbir saat açık değil**
-   ve ışık günün hiçbir vaktinde yanmaz. 24/24 = **16777215**
-   (72.539 vanilla ışığın 45.770'i bu). *Işık yanmıyor şikâyetinde ilk
-   bakılacak yer burasıdır, ışığın kendisi değil.*
-2. **Arketip `<textureDictionary>`** — projeksiyon dokusu drawable'la aynı
-   adlı `.ytd` içinde gider; arketip onu referans etmezse oyun o sözlüğü
-   **hiç yüklemez**. Işık "çalışıyor" görünür, desen yoktur. (Bir kez bu
-   güç sorunu sanılıp `intensity` 6 → 15 yapıldı; sebep güç değildi.)
-3. **Koni açıları RADYAN** — `cone_outer_angle = 45` yazmak 45 radyan
-   demektir, π/2'ye kırpılır; `40` ise **0** olur.
-4. **`static_shadows`** — ışık camın arkasındaysa ve gölge açıksa
-   çerçeve+cam kendi ışınını engeller, lekenin ortasına pencerenin koyu
-   silueti düşer. Vanilla'da projeksiyonlu ışıkların %53'ünde gölge bayrağı
-   yoktur; kapatmak meşrudur.
+1. **`time_flags`** — the default is `total = 0`, i.e. **no hour is on**
+   and the light never comes on at any time of day. 24/24 = **16777215**
+   (45,770 of the 72,539 vanilla lights use this). *For a light-does-not-come-on complaint
+   this is the first place to look, not the light itself.*
+2. **Archetype `<textureDictionary>`** — the projection texture ships in a `.ytd` with the same
+   name as the drawable; if the archetype does not reference it, the game **never loads**
+   that dictionary. The light "works", there is no pattern. (Once this was taken for a
+   power problem and `intensity` went 6 → 15; power was not the cause.)
+3. **Cone angles are RADIANS** — writing `cone_outer_angle = 45` means 45 radians,
+   clamped to π/2; `40` becomes **0**.
+4. **`static_shadows`** — if the light is behind the glass and shadows are on,
+   frame + glass block their own beam, and a dark silhouette of the window falls in the middle
+   of the patch. In vanilla 53% of projected lights have no shadow flag;
+   turning it off is legitimate.
 
-### Yerleşim geometrisi
+### Placement geometry
 
-Işın yatay giderse zemine hiç düşmez. Eğim küçüldükçe leke uzaklaşır **ve**
-uzar; büyüdükçe yaklaşır ve siluet korunur.
+If the beam goes horizontal it never hits the floor. As the tilt gets smaller the patch moves away **and**
+stretches; as it gets larger it comes closer and the silhouette is kept.
 
-| eğim | leke merkezi | uzunluk | okunurluk |
+| tilt | patch center | length | readability |
 |---|---|---|---|
-| 30° | 4.0 m | ~12 m | siluet dağılır |
-| 48° | 2.0 m | 1.9 m | **dengeli** |
-| 61° | 1.2 m | 2.3 m | neredeyse dibinde |
+| 30° | 4.0 m | ~12 m | silhouette falls apart |
+| 48° | 2.0 m | 1.9 m | **balanced** |
+| 61° | 1.2 m | 2.3 m | almost at the foot |
 
-Eğim, içeriğin yarı açısından **büyük** olmalı; değilse koninin üst kenarı
-yukarı bakar ve o kısım zemine hiç değmez.
+The tilt must be **larger** than the content's half-angle; otherwise the top edge of the cone
+points upward and that part never touches the floor.
 
 ---
 
-## Blender'dan ışık export'u — ölçülmüş üç bağ
+## Light export from Blender — three measured bindings
 
-Kaynak: Sollumz 5.2, `ydr/lights.py`, `ydr/properties.py`. Üçü de sessizdir.
+Source: Sollumz 5.2, `ydr/lights.py`, `ydr/properties.py`. All three are silent.
 
-### ⛔ 1. Gizli ışık export'tan DÜŞMEZ, konumu bozulur
+### ⛔ 1. A hidden light is NOT DROPPED from export; its position breaks
 
-`export_lights()` **`parent_obj.children_recursive`** gezer — görünürlüğe hiç
-bakmaz. Ama konumu şu satır hesaplar (`lights.py:159`):
+`export_lights()` walks **`parent_obj.children_recursive`** — it never looks at
+visibility. But the position is computed by this line (`lights.py:159`):
 
 ```python
 mat = root_mat.inverted() @ light_obj.matrix_world
 ```
 
-Blender bir objenin `hide_viewport`'u `True` ise onu depsgraph'tan çıkarır ve
-**`matrix_world` sıfır kalır** — `view_layer.update()` ve
-`evaluated_depsgraph_get()` de düzeltmez, çünkü obje hiç değerlendirilmez.
-Sıfır girince sonuç her ışık için aynı olur: **`−kök`**.
+If an object's `hide_viewport` is `True`, Blender takes it out of the depsgraph and
+**`matrix_world` stays zero** — `view_layer.update()` and
+`evaluated_depsgraph_get()` do not fix it either, because the object is never evaluated.
+With zero going in, the result is the same for every light: **`−root`**.
 
-Belirti bu yüzden "ışık kayboldu" değil, **"bütün ışıklar tek noktada
-toplandı"**dır. Ölçüldü: `v_2_cor1_mesh_delta2`'nin 4 ışığı
-`(0.056, −11.953, 7.958)`'e çöktü; drawable kökü `(−0.056, 11.953, −7.958)` —
-tam negatifi. Bu, teşhisin **imzasıdır**: çökme noktası kökün negatifiyse sebep
-kesin olarak budur.
+So the symptom is not "the light disappeared" but **"all the lights gathered at one
+point"**. Measured: the 4 lights of `v_2_cor1_mesh_delta2` collapsed to
+`(0.056, −11.953, 7.958)`; the drawable root is `(−0.056, 11.953, −7.958)` —
+exactly the negative. This is the **signature** of the diagnosis: if the collapse point is
+the negative of the root, this is certainly the cause.
 
-- **Işığı söndürmek için GİZLEME.** `intensity = 0` + `flashiness = OFF` yaz.
-- Kapı: bir dosyadaki ışıkların hepsi tek noktadaysa dağıtımı durduran bir
-  denetim adımı (betiği depoda yok). Negatif testle doğrulandı.
+- **Do NOT HIDE a light to switch it off.** Write `intensity = 0` + `flashiness = OFF`.
+- Gate: a check step that stops deployment when all the lights in a file sit at one point
+  (script not in the repository). Verified with a negative test.
 
-### ⛔ 2. `light_properties.intensity` saklanan bir alan DEĞİL — `energy` proxy'si
+### ⛔ 2. `light_properties.intensity` is NOT a stored field — it is a proxy of `energy`
 
 `properties.py:346`:
 
@@ -416,86 +416,85 @@ def get(self): return self.id_data.energy / LIGHT_INTENSITY_SCALE_FACTOR   # 500
 def set(self, v):     self.id_data.energy = v * LIGHT_INTENSITY_SCALE_FACTOR
 ```
 
-Yani `energy = intensity × 500`. Önizleme için `light.data.energy` yazmak
-**intensity'yi 500'e böler** ve export o bölünmüş değeri taşır. Bu yaşandı:
-232 ışığın yoğunluğu 1.6 → 0.0032 oldu, hiçbir hata çıkmadı.
-**Yalnız `intensity` yaz, `energy`'ye elle dokunma.**
+So `energy = intensity × 500`. Writing `light.data.energy` for a preview
+**divides intensity by 500**, and export carries that divided value. This happened:
+the intensity of 232 lights went 1.6 → 0.0032, with no error at all.
+**Write only `intensity`; do not touch `energy` by hand.**
 
-### ⛔ 3. Kemiğe bağlı ışığın konumu KEMİK uzayındadır
+### ⛔ 3. A bone-bound light's position is in BONE space
 
-`lights.py:151-159` — ışıkta bir bone bağı varsa:
+`lights.py:151-159` — if the light has a bone binding:
 
 ```python
 root_mat = parent.matrix_world @ bone.matrix_local
 bone_id  = bone.bone_properties.tag
 ```
 
-Konumu drawable uzayında karşılaştırmak kemik ofseti kadar sahte sapma verir.
-Ölçüldü: `v_med_cor_alarmlight`'ın dönen `V_Med_Cor_alarmLightSpin` kemiği
-(tag **36848**) yerel `(0.0007, 0.0006, −0.0438)`; ışığın drawable uzayındaki
-yeri sunucu değerinden tam **4.4 cm** sapık göründü, oysa doğruydu. Sahte
-sapmaya bakıp ışığı "düzeltmeye" kalkmak gerçek hatayı üretir.
+Comparing the position in drawable space gives a fake deviation as large as the bone offset.
+Measured: the rotating `V_Med_Cor_alarmLightSpin` bone of `v_med_cor_alarmlight`
+(tag **36848**) is local `(0.0007, 0.0006, −0.0438)`; the light's position in drawable space
+looked exactly **4.4 cm** off the server value, yet it was right. Trying to
+"fix" the light from the fake deviation produces the real error.
 
-⚠️ **Bağ `COPY_TRANSFORMS`'tur, `CHILD_OF` DEĞİL.** Sollumz 4.2'den sonra
-değiştirdi (`blenderhelper.py:297`, gerekçesi kodda yazılı). `CHILD_OF`
-arayan bir tarama "kemik bağı yok" der ve **yanlış negatif** üretir — bu da
-yaşandı. Constraint `owner_space=LOCAL` olduğu için ışığın `location` alanı
-**zaten kemik uzayındadır**; import da oraya ham `light.position`'ı yazar.
+⚠️ **The binding is `COPY_TRANSFORMS`, NOT `CHILD_OF`.** Sollumz changed it after 4.2
+(`blenderhelper.py:297`, the reason is written in the code). A scan looking for `CHILD_OF`
+says "no bone binding" and produces a **false negative** — this also
+happened. Because the constraint is `owner_space=LOCAL`, the light's `location` field
+**is already in bone space**; the import also writes the raw `light.position` there.
 
-### Doğrulama: dosyaya bakma, export formülünü taklit et
+### Verification: do not look at the file, imitate the export formula
 
-Blender'ın dağıtılmış dosyayı üretip üretmediğini anlamanın tek yolu, o üç
-kuralı da uygulayan formülü Blender içinde çalıştırıp `.ydr`'den okunan
-değerlerle karşılaştırmaktır. Ölçüt: konum sapması < 1 mm, `bone_id` birebir,
-`intensity`/`falloff`/renk/`flashiness`/`time_flags` sapması 0.
-(Morg'da 225 ışıkta maksimum sapma **0.00008 m** ölçüldü — kalan tamamen
-dökümdeki 4 hane yuvarlamadır.)
+The only way to know whether Blender produced the deployed file is to run a formula that applies
+all three rules inside Blender and compare it with the values read from the `.ydr`.
+Criterion: position deviation < 1 mm, `bone_id` identical,
+`intensity`/`falloff`/color/`flashiness`/`time_flags` deviation 0.
+(In the morgue the maximum deviation over 225 lights was measured at **0.00008 m** — what is left
+is entirely 4-digit rounding in the dump.)
 
-### Işığı gizlemenin güvenli yolu — üç ikon, biri güvenli
+### The safe way to hide a light — three icons, one is safe
 
-Işıkları düzenlerken "gerisi görünmesin" istemek doğal. Ama gizleme yöntemi
-seçimi §1'deki çökmeyi geri getirebilir. Ölçüldü (kaydet → `revert_mainfile`
-→ konumları karşılaştır, 8 örnek, 5'i gizli):
+Wanting "the rest out of sight" while editing lights is natural. But the choice of hiding method
+can bring back the collapse from §1. Measured (save → `revert_mainfile`
+→ compare positions, 8 samples, 5 of them hidden):
 
-| yöntem | Blender'da | güvenli mi |
+| method | in Blender | safe? |
 |---|---|---|
-| `layer_collection.hide_viewport` | koleksiyonun **göz** ikonu | ✅ **evet** — reload sonrası 8/8 ışık konumunu birebir korudu |
-| `collection.hide_viewport` | koleksiyonun **monitör** ikonu | ⛔ kullanma — objeyi depsgraph'tan çıkarma sınıfı |
-| `layer_collection.exclude` | koleksiyonun **onay kutusu** | ⛔ kullanma — aynı sınıf |
-| `object.hide_viewport` | objenin **monitör** ikonu | ⛔ **çökmenin sebebi budur** |
+| `layer_collection.hide_viewport` | the collection's **eye** icon | ✅ **yes** — after reload, 8/8 lights kept their position exactly |
+| `collection.hide_viewport` | the collection's **monitor** icon | ⛔ do not use — the class that takes the object out of the depsgraph |
+| `layer_collection.exclude` | the collection's **checkbox** | ⛔ do not use — same class |
+| `object.hide_viewport` | the object's **monitor** icon | ⛔ **this is the cause of the collapse** |
 
-⚠️ **Oturum içi geçiş bu hatayı ÜRETMEZ** — `matrix_world` bir kez
-hesaplandıktan sonra önbellekte kalır, ikonu kapatıp açmak onu sıfırlamaz.
-Çökme yalnız dosya **gizli ışıkla kaydedilip yeniden açıldığında** doğar
-(matris hiç hesaplanmaz). Bu yüzden "denedim, bozulmadı" bir kanıt değildir;
-ölçüm **kaydet + reload** turuyla yapılır.
+⚠️ **Toggling within a session does NOT PRODUCE this error** — once `matrix_world` has been
+computed it stays in the cache; switching the icon off and on does not reset it.
+The collapse appears only when the file is **saved with a hidden light and reopened**
+(the matrix is never computed). So "I tried it, it did not break" is not proof;
+the measurement is done with a **save + reload** round.
 
-**Koleksiyon taşımak export'u etkilemez.** Sollumz drawable'ı obje
-hiyerarşisinden (`children_recursive`) toplar, koleksiyondan değil — ışıkları
-kendi kategorine taşımak parent bağını bozmaz (ölçüldü: 140 ışık taşındı,
-hiyerarşiden kopan 0). Ama ışık **hiçbir** görünür koleksiyonda kalmazsa
-view layer'dan düşer, o zaman §1'e geri dönersin.
+**Moving collections does not affect export.** Sollumz collects the drawable from the object
+hierarchy (`children_recursive`), not from collections — moving lights into
+your own category does not break the parent link (measured: 140 lights moved,
+0 detached from the hierarchy). But if a light stays in **no** visible collection,
+it drops out of the view layer, and then you are back at §1.
 
 ---
 
-## 9. ARAÇ HATALARI — DÜZELTİLDİ
+## 9. TOOL BUGS — FIXED
 
-### `light_scene.oku` iskeletsiz drawable'da çöküyordu
-`bones is None` durumunda `return [], {}` dönüyordu ama çağıranlar
-`kmap["tag"]` / `kmap["idx"]` bekliyor → `KeyError: 'idx'`, ve hata
-*"IC HATA"* diye çıkıp sebebini gizliyordu. **Statik prop'ların çoğunda
-iskelet yoktur** — yani ışık düzenleme o dosyalarda hiç çalışmıyordu.
+### `light_scene.read_scene` crashed on a drawable without a skeleton
+In the `bones is None` case it returned `return [], {}`, but the callers
+expect `kmap["tag"]` / `kmap["idx"]` → `KeyError: 'idx'`, and the error surfaced as
+*"INTERNAL ERROR"*, hiding its cause. **Most static props have no
+skeleton** — so light editing never worked on those files.
 → `return [], {"tag": {}, "idx": {}}`
 
-### Void Tools Shadow Map, Blender 5.x'te post-process yapamıyordu
-Üç ayrı API kırılması (bkz. §3e), hepsi tek `try/except`'e düşüp tek satır
-uyarıyla yutuluyordu; kullanıcı **ham bake** alıyordu.
-→ `_make_compositor_tree`, `_link_compositor_output`, `_set_node_option`
-yardımcıları eklendi; 4.x ve 5.x'te birden çalışır.
+### Void Tools Shadow Map could not post-process in Blender 5.x
+Three separate API breaks (see §3e), all falling into one `try/except` and swallowed with a
+single-line warning; the user got the **raw bake**.
+→ The helpers `_make_compositor_tree`, `_link_compositor_output`, `_set_node_option`
+were added; it works on 4.x and 5.x alike.
 
-## Shadowmap (topluluk)
+## Shadowmap (community)
 
-- ⚠️ **Shadowmap: iki ayrı yöntem, karıştırma.** Eski yöntem Blender'ın
-  **Shadow *render pass*'ini** kullanır ve o kaldırıldığı için **Blender 3.3**
-  gerektirir; yeni yöntem **bake type = Shadow** kullandığı için güncel Blender'da
-  çalışır.
+- ⚠️ **Shadowmap: two separate methods, do not mix them.** The old method uses Blender's
+  **Shadow *render pass*** and, because that was removed, needs **Blender 3.3**;
+  the new method uses **bake type = Shadow**, so it works in current Blender.

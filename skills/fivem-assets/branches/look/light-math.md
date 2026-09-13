@@ -1,194 +1,193 @@
-# Işık matematiği ve Blender önizlemesi — motorun dört formülü, gölge bias, sessiz hata kataloğu
+# Light math and Blender preview — the engine's four formulas, shadow bias, silent failure catalog
 
-**Ne zaman okunur:** Blender'da başka oyunda başka görünüyor; kendi ışık önizlemeni kuracaksın; düşüş/koni/ambient/tone mapping formülü.
-**When to read:** what the engine's light formulas actually do, and previewing a light in Blender before it goes in game.
-**Kaynak:** `lights.md` §1-8, 'Blender önizlemesi', 'Sessiz hata kataloğu', 'Veri kurulumu' (2026-08) · **Ölçüm:** motorun shader kaynağı (`lighting_common.fxh`) port edildi; `pow()` sapması %17,3
-**Önce:** `_branch.md` · gövde › `trunk/tool-pitfalls.md` §1-2 · araç `scripts/blender_light_preview.py`
-
----
-
-
-Bir prop'un ışığının Blender'da bir türlü, oyunda başka türlü görünmesinin
-sebebi neredeyse hiç "ayarı tutturamadım" değildir. Motorun kullandığı dört
-formül, Blender'ın (ve çoğu önizleme aracının) kullandığından **yapısal olarak
-farklıdır**. Bu dosya o dördünü ve etrafındaki sessiz hataları toplar.
-
-Sorgular:
-```
-python assetdb.py light <ydr|yft>          # gömülü ışıkları çöz
-python assetdb.py cycle w_clear --hour 20  # hava cycle'ı: ortam + güneş
-python assetdb.py timecycle <modifier>     # odanın ezmesi
-```
+**When to read:** it looks one way in Blender and another in game; you are building your own light preview; what the engine's light formulas (falloff/cone/ambient/tone mapping) actually do; previewing a light in Blender before it goes in game.
+**Source:** `lights.md` §1-8, 'Blender preview', 'Silent failure catalog', 'Data setup' (2026-08) · **Measured:** the engine's shader source (`lighting_common.fxh`) ported; `pow()` deviation 17.3%
+**Read first:** `_branch.md` · trunk › `trunk/tool-pitfalls.md` §1-2 · tool `scripts/blender_light_preview.py`
 
 ---
 
-## 1. Düşüş eğrisi `pow()` DEĞİLDİR
 
-Motor rasyonel bir yaklaşım kullanır:
+When a prop's light looks one way in Blender and another in game, the cause
+is almost never "I could not get the settings right". The four formulas the
+engine uses are **structurally different** from the ones Blender (and most
+preview tools) use. This file collects those four and the silent failures around them.
+
+Queries:
+```
+python assetdb.py light <ydr|yft>          # decode the embedded lights
+python assetdb.py cycle w_clear --hour 20  # weather cycle: ambient + sun
+python assetdb.py timecycle <modifier>     # the room's override
+```
+
+---
+
+## 1. The falloff curve is NOT `pow()`
+
+The engine uses a rational approximation:
 
 ```
 powApprox(a, b) = a / ((1 - b) * a + b)
 ```
 
-0 ve 1'de tamdır, arada `pow(a,b)`'ye **yaklaşır**. Aynı eğriyi `pow()` ile
-çizmenin ölçülen bedeli: **%17.3 sapma** (falloff 90 m, üs 8).
+It is exact at 0 and 1 and **approximates** `pow(a,b)` in between. The measured cost of
+drawing the same curve with `pow()`: **17.3% deviation** (falloff 90 m, exponent 8).
 
-İki ek ayrıntı, ikisi de atlanınca sessizce yanlış eğri verir:
+Two more details; skipping either one silently gives the wrong curve:
 
-- Fonksiyon **kare mesafe** üzerinde çalışır: `distanceFalloff(d², 1/max², üs)`
-- Işığın yarıçapında **kesilir** — ters kare değil, sınırlı bir eğri
+- The function works on **squared distance**: `distanceFalloff(d², 1/max², exponent)`
+- It is **cut off** at the light's radius — not inverse square, a bounded curve
 
-## 2. Spot konisi açıda değil, KOSİNÜSTE lineerdir
+## 2. The spot cone is linear in COSINE, not in angle
 
 ```
-cosDış = cos(dışAçı);  cosİç = cos(içAçı)
-ölçek  = 1 / max(cosİç - cosDış, 1e-4)
-sonuç  = saturate(cosAçı * ölçek - cosDış * ölçek)
+cosOuter = cos(outerAngle);  cosInner = cos(innerAngle)
+scale    = 1 / max(cosInner - cosOuter, 1e-4)
+result   = saturate(cosAngle * scale - cosOuter * scale)
 ```
 
-Açıda lineer bir geçiş (Blender'ın `spot_blend`'i dahil) kenarı yanlış yerde
-yumuşatır. Koni açıları Sollumz'da **radyan** tutulur (`subtype=ANGLE`,
-0–π/2) — dereceyle yazmak koniyi tamamen açar.
+A transition that is linear in angle (Blender's `spot_blend` included) softens the edge in
+the wrong place. Sollumz keeps cone angles in **radians** (`subtype=ANGLE`,
+0–π/2) — writing them in degrees opens the cone completely.
 
-## 3. Capsule ışık = doğru parçasına en yakın nokta
+## 3. Capsule light = closest point on a line segment
 
-Uzantı `yön * (extent.x * 0.5)` ile ±ekseni verir; ışığa uzaklık o parçaya
-olan en kısa mesafedir, merkeze değil. Sonrası nokta ışıkla aynıdır.
+The extent gives the ±axis as `direction * (extent.x * 0.5)`; the distance to the light is
+the shortest distance to that segment, not to the centre. After that it is the same as a point light.
 
-## 4. Ortam ışığı yarım küre lerp'i DEĞİLDİR
+## 4. Ambient light is NOT a hemisphere lerp
 
 ```
 downMult = max(0, (n.z + wrap) / (1 + wrap))
-ortam    = ÜstRenk * downMult + AltRenk
+ambient  = UpColor * downMult + DownColor
 ```
 
-`wrap` = `light_amb_down_wrap`, timecycle'dan gelir (**varsayılanı 1.0**).
-İç mekânların "düz" görünmesinin sebebi çoğu zaman bunun yerine hemisphere
-lerp kullanılmasıdır.
+`wrap` = `light_amb_down_wrap`, it comes from the timecycle (**default 1.0**).
+Interiors often look "flat" because a hemisphere lerp is used
+instead of this.
 
-Ayrıca ortam **iki ayrı katmandır** ve ikisi farklı maskelerle kapılır:
+Ambient is also **two separate layers**, each gated by a different mask:
 
-| katman | kaynak | kapı |
+| layer | source | gate |
 |---|---|---|
-| natural (gökyüzü) | `light_natural_amb_*` | vertex color 0 **.r** |
-| artificial (iç mekân) | `light_artificial_ext_*` | vertex color 0 **.g** |
+| natural (sky) | `light_natural_amb_*` | vertex color 0 **.r** |
+| artificial (interior) | `light_artificial_ext_*` | vertex color 0 **.g** |
 
-Bunlar **bake edilmiş maskelerdir**. Sollumz onları `"Color 1"` adıyla,
-CORNER domain'de, BYTE_COLOR olarak taşır.
+These are **baked masks**. Sollumz carries them under the name `"Color 1"`,
+in the CORNER domain, as BYTE_COLOR.
 
-> ⛔ **Blender BYTE_COLOR tuzağı:** `.color` gamma çözer, `.color_srgb` ham
-> bayt/255 verir. Motor ham değeri çarpan olarak kullanır — `.color` okumak
-> her maskeyi sessizce koyultur, hata da vermez.
+> ⛔ **Blender BYTE_COLOR pitfall:** `.color` decodes gamma, `.color_srgb` gives the raw
+> byte/255. The engine uses the raw value as a multiplier — reading `.color`
+> silently darkens every mask, with no error.
 
 ## 5. Tone mapping: Hable filmic
 
 ```
-A=0.22 B=0.30 C=0.10 D=0.20 E=0.01 F=0.30,  beyaz nokta 11.2
+A=0.22 B=0.30 C=0.10 D=0.20 E=0.01 F=0.30,  white point 11.2
 f(x) = ((x(Ax+CB)+DE) / (x(Ax+B)+DF)) - E/F
-sonuç = saturate(f(renk) / f(11.2))
+result = saturate(f(color) / f(11.2))
 ```
 
-Kendi uydurduğun highlight rolloff'u gündüzü beyaza kırpar. Bu eğri kırpmaz.
+A highlight rolloff you make up yourself clips the daytime to white. This curve does not clip.
 
-## 6. Specular — üç ayrı sessiz hata
+## 6. Specular — three separate silent failures
 
-- **Spec map'i olmayan materyal mat değildir.** Motor sabit **0.1** besler.
-  Sıfırlamak her yüzeyi matlaştırır; "specular tutmuyor" şikâyetinin en sık
-  sebebi budur.
-- **Kanallar ayrı okunur, dot'lanmaz:** `x` = yoğunluk, `y` = üs.
-- **Fresnel MAP'ten değil MATERYALDEN gelir** (`specularFresnel`, preset
-  vermezse 0.97). Mavi kanaldan almak, spec map'i olan her materyalde fresnel
-  kontrolünü işlevsiz bırakır.
-- Üs yeniden eşlenir: `0..500 → 0..1500`, `501..512 → 1500..8192`
-  → `(ham - taşan) * 3 + taşan * 558`
+- **A material without a spec map is not matte.** The engine feeds a constant **0.1**.
+  Zeroing it makes every surface matte; this is the most common cause of the
+  "specular does not show" complaint.
+- **The channels are read separately, not dotted:** `x` = intensity, `y` = exponent.
+- **Fresnel comes from the MATERIAL, not from the MAP** (`specularFresnel`, 0.97 when the
+  preset does not set it). Taking it from the blue channel leaves the fresnel
+  control useless on every material that has a spec map.
+- The exponent is remapped: `0..500 → 0..1500`, `501..512 → 1500..8192`
+  → `(raw - overflow) * 3 + overflow * 558`
 
-## 7. Detail map iki iş birden yapar
+## 7. The detail map does two jobs at once
 
-Tek doku hem normali büker (XY) hem diffuse'u karartır (X). Fade **spec
-map'in alpha kanalından** gelir. PC'de tile ikinci kez **3.17×** ölçekte
-örneklenip ortalanır — o tuhaf oran tiling'in ızgara gibi okunmasını
-engeller.
+One texture both bends the normal (XY) and darkens the diffuse (X). The fade comes
+**from the spec map's alpha channel**. On PC the tile is sampled a second time at **3.17×**
+scale and averaged — that odd ratio keeps the tiling from reading as a
+grid.
 
-## 8. Diğer sabitler
+## 8. Other constants
 
-- Renk CPU'da önçarpılır: `rgb * (2 * yoğunluk / 255)` — baştaki **2** atlanır
-- UV dönüşümü **bir kez** uygulanır, tüm sampler'lar sonucu kullanır; ayrılırsa
-  kayan tabelanın normal map'i diffuse'unun altından kayar
-- Canlı çalışan bayrak bitleri: **6** cast shadows · **13** no specular ·
-  **23** don't light alpha (alpha geometriyi tamamen atlar)
-- Projeksiyon dokusu oyunda **aynı adlı bir `.ytd` içinde** gitmek zorundadır
-- Işıklar `.ydr`/`.yft` içine RSC7 / gen8 olarak yazılır
+- Color is premultiplied on the CPU: `rgb * (2 * intensity / 255)` — the leading **2** gets dropped
+- The UV transform is applied **once** and every sampler uses the result; if they are split,
+  a scrolling sign's normal map slides out from under its diffuse
+- Flag bits that work live: **6** cast shadows · **13** no specular ·
+  **23** don't light alpha (skips alpha geometry completely)
+- In game the projection texture must ship **inside a `.ytd` of the same name**
+- Lights are written into the `.ydr`/`.yft` as RSC7 / gen8
 
 ---
 
-## Blender önizlemesi
+## Blender preview
 
-Blender'ın kendi ışıkları bu matematiği **ifade edemez** (ters kare + açıda
-lineer koni). O yüzden önizleme kendi geçişini çizer, Sollumz ışıklarını
-doğrudan okuyarak.
+Blender's own lights **cannot express** this math (inverse square + cone linear in
+angle). So the preview draws its own pass, reading the Sollumz lights
+directly.
 
 ```python
 import sys; sys.path.append(r"${CLAUDE_PLUGIN_ROOT}/scripts")
 import blender_light_preview as lp
 lp.enable()
 lp.load_timecycle("w_clear", hour=19)
-lp.cfg(albedo=0.35, exposure=1.6)      # gerçek asfalt ~0.2-0.35
+lp.cfg(albedo=0.35, exposure=1.6)      # real asphalt ~0.2-0.35
 lp.load_timecycle("w_clear", 2, modifier="v_dark", strength=1.0)
-lp.cfg(mode=3)                          # gölge faktörü görselleştirme
+lp.cfg(mode=3)                          # shadow factor visualization
 lp.report(); lp.disable()
 ```
 
-Modlar: `0` lit · `1` sadece ışık · `2` normal · `3` gölge faktörü.
+Modes: `0` lit · `1` light only · `2` normal · `3` shadow factor.
 
-**Blender 5.x notları:** `GPUShader(vs, fs)` kaldırıldı, `create_from_info`
-zorunlu. `GPUStorageBuf` yok — ışıklar UBO'dan geçer (64 tavanı buradan gelir).
-Overlay Blender'ın solid geçişiyle aynı derinlikte çizerse tüm sahne z-fight
-eder; kendi geçişinden önce depth buffer temizlenir.
+**Blender 5.x notes:** `GPUShader(vs, fs)` was removed, `create_from_info` is
+required. There is no `GPUStorageBuf` — lights go through a UBO (that is where the cap of 64 comes from).
+If the overlay draws at the same depth as Blender's solid pass, the whole scene
+z-fights; the depth buffer is cleared before its own pass.
 
-### Gölge bias'ı texel biriminde olmalı
+### Shadow bias must be in texel units
 
-⛔ Bir aracın gölge bias sabitini kopyalama. Sabit metre cinsinden bias sadece
-ayarlandığı ölçekte doğrudur: prop için doğru olan 0.15 m, 660 m'lik bir
-sahnede (texel 0.44 m) düz zeminin **%72'sini** gölgeli işaretledi. Bias texel
-boyutuyla ölçeklenir ve normal-offset ile birlikte kullanılır.
+⛔ Do not copy a tool's shadow bias constant. A constant bias in metres is right only at
+the scale it was tuned for: the 0.15 m that is right for a prop marked **72%** of the flat
+ground as shadowed in a 660 m scene (texel 0.44 m). Bias scales with the texel
+size and is used together with normal offset.
 
-**Akne ile gerçek gölgeyi oran değil derinlik dağılımı ayırır.** Akne bias'ın
-hemen üstünde toplanır. Ölçülen düzeltilmiş durumda: 1 m altında kapanma
-**%0**, medyan derinlik **7.3 m** → bunlar gerçek gölgedir.
+**Depth distribution, not a ratio, separates acne from real shadow.** Acne gathers just
+above the bias. In the measured, corrected case: occlusion under 1 m
+**0%**, median depth **7.3 m** → these are real shadows.
 
 ---
 
-## Sessiz hata kataloğu
+## Silent failure catalog
 
-| belirti | gerçek sebep |
+| symptom | real cause |
 |---|---|
-| düşüş eğrisi oyunla tutmuyor | `pow()` kullanılmış, rasyonel yaklaşım değil |
-| koni kenarı yanlış yerde yumuşuyor | açıda lerp; kosinüste olmalı |
-| koni tamamen açık | açı dereceyle yazılmış, radyan olmalı |
-| iç mekân düz görünüyor | hemisphere lerp; `downMult` formülü olmalı |
-| maskeler koyu | `.color` okunmuş, `.color_srgb` olmalı |
-| her yüzey mat | spec map yok diye 0 beslenmiş, 0.1 olmalı |
-| fresnel kontrolü hiçbir şey yapmıyor | fresnel map'ten okunmuş, materyalden olmalı |
-| gündüz beyaza patlıyor | filmic yerine ad-hoc rolloff |
-| timecycle bir saat kaymış | `time.xml`'de `name` okunmuş, `hour` olmalı |
-| yanlış timecycle yüklenmiş | 4 sample'lik `data/time.xml` alınmış |
-| düz zemin gölgeli | gölge bias'ı sahne ölçeğine göre normalize edilmemiş |
-| projeksiyon dokusu oyunda yok | aynı adlı `.ytd` ile gönderilmemiş |
-| ışık günün hiçbir saatinde yanmıyor | `time_flags.total = 0` |
-| projeksiyon yan yatmış | `Tangent` = *up*; Sollumz oraya yerel X yazıyor |
-| eğim/koni ayarı oyunda hiçbir şeyi değiştirmiyor | ışığın transformu mesh sıfırlamasıyla birlikte silinmiş |
-| yuvarlak pencere sivri, sivri pencere yuvarlak düşüyor | gobo kareye sıkıştırılmış, en-boy oranı kaybolmuş |
-| yer lekesinin köşeleri sivri | kare dokunun boş köşeleri; vinyet yok |
-| lekenin ortasında koyu elips | `static_shadows` açık, pencere kendi ışınını engelliyor |
+| falloff curve does not match the game | `pow()` used, not the rational approximation |
+| cone edge softens in the wrong place | lerp in angle; should be in cosine |
+| cone fully open | angle written in degrees, should be radians |
+| interior looks flat | hemisphere lerp; should be the `downMult` formula |
+| masks too dark | `.color` read, should be `.color_srgb` |
+| every surface matte | 0 fed because there is no spec map, should be 0.1 |
+| fresnel control does nothing | fresnel read from the map, should come from the material |
+| daytime blows out to white | ad-hoc rolloff instead of filmic |
+| timecycle off by one hour | `name` read in `time.xml`, should be `hour` |
+| wrong timecycle loaded | the 4-sample `data/time.xml` used |
+| flat ground shadowed | shadow bias not normalized to the scene scale |
+| projection texture missing in game | not shipped with a `.ytd` of the same name |
+| light never on at any hour of the day | `time_flags.total = 0` |
+| projection lies on its side | `Tangent` = *up*; Sollumz writes local X there |
+| tilt/cone setting changes nothing in game | the light's transform was wiped together with the mesh reset |
+| round window lands pointed, pointed window lands round | gobo squeezed into a square, aspect ratio lost |
+| corners of the floor patch are pointed | empty corners of a square texture; no vignette |
+| dark ellipse in the middle of the patch | `static_shadows` on, the window blocks its own beam |
 
 ---
 
-## Veri kurulumu
+## Data setup
 
-Hava cycle'ları oyunun arşivindedir ve **katmana gömülmez** — kullanıcının
-kendi kurulumundan üretilir:
+Weather cycles live in the game archive and **are not embedded in the layer** — they are
+generated from the user's own install:
 
 ```
 powershell -File build_cycle.ps1
-python assetdb.py cycle --liste
+python assetdb.py cycle --list
 ```

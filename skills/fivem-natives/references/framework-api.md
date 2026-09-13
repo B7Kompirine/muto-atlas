@@ -1,112 +1,110 @@
 # Framework API — QBCore / Qbox / ESX / ox
 
-Sorgu: `assetdb.py framework <ad>` · Denetim: `assetdb.py framework --denetle`
-Üretim: `python scripts/build_framework.py --resources <sunucu resources>`
+Query: `assetdb.py framework <name>` · Audit: `assetdb.py framework --check`
+Build: `python scripts/build_framework.py --resources <server resources>`
 
-## Neden ayrı bir katman
+## Why a separate layer
 
-`lint_lua.py` yalnız **GTA native**'lerini doğrular. Ama bir QBCore/ox
-kaynağındaki hataların çoğu native'de değil, **framework çağrısındadır** — ve
-hiçbiri hata fırlatmaz:
+`lint_lua.py` verifies only **GTA natives**. But most bugs in a QBCore/ox resource are not in a
+native, they are **in a framework call** — and none of them throws an error:
 
-| hata | belirti |
+| bug | symptom |
 |---|---|
-| olmayan event tetiklenir | tetikleme hiçbir yere gitmez, log yok |
-| olmayan export çağrılır | `nil value` **ancak o satır çalışınca** — belki ayda bir |
-| `lib.showTextUi` (küçük i) | modül yok, nil, sessiz |
+| a non-existent event is triggered | the trigger goes nowhere, no log |
+| a non-existent export is called | `nil value` **only when that line runs** — maybe once a month |
+| `lib.showTextUi` (lowercase i) | no module, nil, silent |
 
-## ⛔ Otorite kurulu sunucudur, upstream GitHub DEĞİL
+## ⛔ The authority is the installed server, NOT upstream GitHub
 
-İndeks `github.com/qbcore-framework` ya da `overextended` master'ından değil,
-**sunucuda kurulu kaynaklardan** üretilir. Sebep: bir export upstream'de eklenmiş
-ama senin `qb-core`'unda yoksa, "geçerli" demek yanıltır. `fxmanifest`'teki
-`version` alanı da her satıra yazılır.
+The index is built **from the resources installed on the server**, not from the
+`github.com/qbcore-framework` or `overextended` master. Reason: if an export was added upstream but
+does not exist in your `qb-core`, calling it "valid" misleads. The `version` field from
+`fxmanifest` is also written on every row.
 
-Örnek ölçüm (bir QBCore sunucusu): **173 kaynak, 12.713 satır** —
-2.569 event tanımı · 1.002 export · 501 komut · 321 callback · 115 ox_lib modülü.
+Sample measurement (one QBCore server): **173 resources, 12,713 rows** —
+2,569 event definitions · 1,002 exports · 501 commands · 321 callbacks · 115 ox_lib modules.
 
-## Ekosistem — hangisi neyin yerine geçiyor
+## Ecosystem — what replaces what
 
-| framework | çekirdek | durum |
+| framework | core | status |
 |---|---|---|
 | **QBCore** | `qb-core` | `exports['qb-core']:GetCoreObject()` |
-| **Qbox** | `qbx_core` | QBCore forku; kod kalitesi/güvenlik/performans için yeniden yazıldı, ox kaynaklarıyla tümleşik |
-| **ESX** | `es_extended` | ayrı ekosistem; `esx:playerLoaded` gibi kendi olayları |
-| **ox_core** | `ox_core` | Overextended'in kendi çekirdeği |
+| **Qbox** | `qbx_core` | QBCore fork; rewritten for code quality/security/performance, integrated with the ox resources |
+| **ESX** | `es_extended` | separate ecosystem; its own events such as `esx:playerLoaded` |
+| **ox_core** | `ox_core` | Overextended's own core |
 
-**Qbox'ta `GetCoreObject` yerel olarak yoktur** — köprü katmanı QBCore biçimli
-çağrıyı uyumluluk için kabul eder. Qbox belgesi der ki: doğrudan veritabanı
-tablosuna dokunan, `qb-core`'un belgelenmemiş içine giren ya da geçersiz
-kullanım yapan kaynaklar dışında çoğu QBCore scripti değişmeden çalışır.
+**Qbox has no native `GetCoreObject`** — a bridge layer accepts the QBCore-style call for
+compatibility. The Qbox docs say: most QBCore scripts run unchanged, except resources that touch a
+database table directly, reach into undocumented `qb-core` internals or use it in invalid ways.
 
-Bu yüzden doğru kalıp tek çekirdeğe sabitlemek değil, **köprü**:
+So the right pattern is not to pin one core but a **bridge**:
 
 ```lua
 local core = exports['qb-core'] and exports['qb-core']:GetCoreObject()
           or exports.qbx_core and exports.qbx_core:GetCoreObject()
 ```
 
-## Kurulu olmayan kaynağa çağrı — en yüksek sinyal
+## Calls to a resource that is not installed — the strongest signal
 
-`framework --denetle` çıktısının **A** bölümü. Ölçüldü: **345 çağrı / 58 kaynak**
-sunucuda kurulu olmayan bir kaynağa gidiyor — `ox_inventory` 57, `qbx_core` 44,
-`es_extended` 27. Hepsi çalışma anında sessizce başarısız olur.
+Section **A** of the `framework --check` output. Measured: **345 calls / 58 resources** go to a
+resource that is not installed on the server — `ox_inventory` 57, `qbx_core` 44,
+`es_extended` 27. All of them fail silently at run time.
 
-## ox_lib — ölçülmüş iki tuzak
+## ox_lib — two measured pitfalls
 
-**1. Modül listesini `imports/` klasöründen çıkarma.** `imports/` 59 klasör verir
-ama gerçek API yüzeyi **115**'tir; `lib.notify` `resource/interface/client/notify.lua`
-altında tanımlıdır. Yalnız `imports/`'a bakan ilk sürüm 2.216 `lib.*` çağrısının
-**%46,8'ini** "olmayan modül" diye işaretledi — `lib.notify` tek başına 380 kez
-kullanılıyor. Düzeltince yanlış pozitif **%0,8**'e düştü.
+**1. Do not derive the module list from the `imports/` folder.** `imports/` gives 59 folders, but the
+real API surface is **115**; `lib.notify` is defined under `resource/interface/client/notify.lua`.
+The first version, which looked only at `imports/`, flagged **46.8%** of 2,216 `lib.*` calls as
+"non-existent module" — `lib.notify` alone is used 380 times. After the fix the false positives
+fell to **0.8%**.
 
-**2. Belge listesi kurulu sürümü göstermez.** `overextended.dev` modül listesi ile
-dosya sistemi aynı değildir. Dosya sistemi otoritedir.
+**2. The docs list does not show the installed version.** The `overextended.dev` module list and the
+file system are not the same. The file system is the authority.
 
-## Dinamik export döngüsü — literal ad aramak yetmez
+## Dynamic export loop — searching for the literal name is not enough
 
-`ox_target` export'larını şöyle verir:
+`ox_target` exposes its exports like this:
 
 ```lua
 for index, value in pairs(api) do exports(index, value) end
 ```
 
-Yani `addBoxZone`, `addLocalEntity`, `removeZone` gibi **30+ gerçek export**
-kaynakta tırnak içinde hiç geçmez; yalnız `function api.X(` olarak tanımlıdır.
-Bu kalıbı tanımayan bir denetim onları "tanımsız export" sayar. Tanıyınca yazım
-hatası adayı **69 → 29** çağrıya düştü.
+So **30+ real exports** such as `addBoxZone`, `addLocalEntity`, `removeZone` never appear in quotes
+in the resource; they are only defined as `function api.X(`. An audit that does not recognise this
+pattern counts them as "undefined export". Once it recognised it, typo candidates fell from
+**69 → 29** calls.
 
-## Bu denetim neden ERROR değil UYARI
+## Why this audit is a WARNING, not an ERROR
 
-Kalan 29 adayın çoğu **JS/C# ile yazılmış kaynakların export'ları** —
-`screenshot-basic:requestScreenshotUpload`, `oxmysql:execute`. Lua taramasında
-görünmezler. Aynı şekilde `chat:addMessage` (79 kullanım) FXServer'ın yerleşik
-`chat` kaynağındandır ve sunucunun `resources/` ağacında klasörü yoktur.
+Most of the remaining 29 candidates are **exports of resources written in JS/C#** —
+`screenshot-basic:requestScreenshotUpload`, `oxmysql:execute`. They are invisible to a Lua scan.
+Likewise `chat:addMessage` (79 uses) comes from FXServer's built-in `chat` resource and has no
+folder in the server's `resources/` tree.
 
-Bir linter her şeye kızarsa kullanılmaz hale gelir ve **gerçek hataları da
-kaçırırsın**. Bu yüzden A bölümü güçlü sinyal, B/C/D uyarıdır.
+A linter that complains about everything stops being used, and then **you miss the real bugs too**.
+So section A is a strong signal, B/C/D are warnings.
 
-## ⛔ Satır yokluğu kaynak yokluğu değildir
+## ⛔ No rows does not mean no resource
 
-İlk sürümde "kurulu kaynak" kümesi üretilen satırlardan türetildi. Hiç export/event
-tanımlamayan bir kaynak sıfır satır üretir ve **"kurulu değil" görünür** — bu
-yaşandı. Çözüm: her taranan kaynak için ayrı bir `kind=resource`
-satırı yazılır. Kurulu küme oradan okunur.
+In the first version the "installed resource" set was derived from the rows produced. A resource
+that defines no export/event produces zero rows and **looks "not installed"** — this happened.
+Fix: a separate `kind=resource` row is written for every scanned resource. The installed set is
+read from there.
 
-## Sorgular
+## Queries
 
 ```bash
-assetdb.py framework GetCoreObject              # kim nerede çağırıyor
-assetdb.py framework qb-core --tanim            # qb-core'un SAĞLADIKLARI
-assetdb.py framework --kind lib_module          # ox_lib'in 115 modülü
-assetdb.py framework --kind command             # kayıtlı 501 komut
-assetdb.py framework --denetle                  # A/B/C/D çapraz denetim
+assetdb.py framework GetCoreObject              # who calls it, where
+assetdb.py framework qb-core --defs             # what qb-core PROVIDES
+assetdb.py framework --kind lib_module          # the 115 ox_lib modules
+assetdb.py framework --kind command             # the 501 registered commands
+assetdb.py framework --check                    # A/B/C/D cross-check
 ```
 
-## Kaynaklar
+## Sources
 
 `docs.fivem.net/natives` · `docs.qbcore.org` · `docs.qbox.re` ·
 `docs.esx-framework.org` · `overextended.dev/docs/ox_lib` ·
 `github.com/{overextended,qbcore-framework,qbox-project,esx-framework}`
 
-Not: `docs.qbcore.org` üzerindeki JetBrains sayfası sponsor bilgisidir, API değil.
+Note: the JetBrains page on `docs.qbcore.org` is sponsor information, not API.

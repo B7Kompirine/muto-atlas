@@ -1,149 +1,148 @@
-# MLO içindeki objeyi kendi modelimle değiştir (entity swap)
+# Replace an object inside an MLO with my own model (entity swap)
 
-**Ne zaman okunur:** iç mekândaki kapı/obje yanlış tanımlı (`specialAttribute=0`), animasyon oynuyor ama çarpışma kalıyor, ya da modelin kendisi değişecek.
-**When to read:** replacing an object that is already inside an MLO with your own model (entity swap).
-**Kaynak:** `mlo-obje-degistirme.md` (tamamı) · eski SKILL 'HARİTADAKİ BİR OBJEYİ DÜZELTMEK' (2026-07/08) · **Ölçüm:** Fleeca vezne + kasa kapısı oyunda; elenen 4 yol oyunda çöktü
-**Önce:** `branches/map/_branch.md` · gövde › `trunk/flags.md`, `trunk/tool-pitfalls.md`
-
----
-
-
-Fleeca vezne kapısı (`v_ilev_gb_teldr`) ve kasa kapısı (`v_ilev_gb_vauldr`)
-bu yolla çalışır hale getirildi. Aşağıdaki her madde oyun içi ölçümle
-doğrulandı; "muhtemelen" yok.
+**When to read:** replacing an object that is already inside an MLO with your own model (entity swap): a door/object in the interior is defined wrong (`specialAttribute=0`), the animation plays but the collision stays, or the model itself has to change.
+**Source:** former MLO object swap reference (2.5.0, in full) · old SKILL section 'FIXING AN OBJECT ON THE MAP' (2026-07/08) · **Measured:** Fleeca teller + vault door in game; the 4 rejected ways failed in game
+**Read first:** `branches/map/_branch.md` · trunk › `trunk/flags.md`, `trunk/tool-pitfalls.md`
 
 ---
 
-## 1. BU REÇETE NE ZAMAN KULLANILIR
 
-Haritada duran bir obje istediğin gibi davranmıyorsa:
-
-- kapı olması gerekiyor ama itilmiyor (`specialAttribute = 0`)
-- animasyon oynuyor ama çarpışma yerinde kalıyor (drawable, fragment değil)
-- modelin kendisi yanlış / eksik ve kendi modelini koymak istiyorsun
+The Fleeca teller door (`v_ilev_gb_teldr`) and vault door (`v_ilev_gb_vauldr`)
+were made to work this way. Every item below was verified by in-game
+measurement; no "probably".
 
 ---
 
-## 2. ÖNCE BUNU BELİRLE — HER ŞEY BUNA BAĞLI
+## 1. WHEN TO USE THIS RECIPE
 
-**Obje MLO iç mekânında mı, dışında mı?**
+When an object on the map does not behave the way you want:
 
-Bu tek soru hangi yolun çalışacağını belirler ve atlanırsa günler kaybedilir.
+- it should be a door but cannot be pushed (`specialAttribute = 0`)
+- the animation plays but the collision stays in place (drawable, not fragment)
+- the model itself is wrong / incomplete and you want to put in your own model
 
-| | MLO **dışı** (sokak, açık alan) | MLO **içi** (banka, ev, dükkân) |
+---
+
+## 2. DECIDE THIS FIRST — EVERYTHING DEPENDS ON IT
+
+**Is the object inside an MLO interior or outside?**
+
+This one question decides which way works, and skipping it costs days.
+
+| | **outside** the MLO (street, open area) | **inside** the MLO (bank, house, shop) |
 |---|---|---|
-| Kendi ymap'inle yerleştirme | ✅ çalışır | ❌ **oda/portal sistemi eler, obje hiç gelmez** |
-| MLO entity listesini değiştirme | — | ✅ **tek çalışan yol** |
+| Placing with your own ymap | ✅ works | ❌ **the room/portal system culls it, the object never appears** |
+| Changing the MLO entity list | — | ✅ **the only way that works** |
 
-Başka bir resource'un ymap kullanıyor olması seni yanıltmasın. Önce onun
-prop'unun koordinatına bak: MLO'nun dışındaysa senin durumuna uymuyordur.
-
----
-
-## 3. ELENEN YOLLAR (tekrar deneme)
-
-Hepsi denendi ve oyun içi ölçümle çöktü:
-
-1. **`CreateObject` ile kendi kopyanı spawn edip vanilla'yı gizlemek**
-   Script'le üretilen obje **harita objesi değildir**.
-   - Kapı sistemi kapıyı model+konum ile *haritada* arar, bulamaz →
-     geriye serbest bir fizik prop'u kalır → **kapıya dokununca zeminin
-     içinden düştü.**
-   - Fragment'in per-bone çarpışması animasyonu **takip etmedi**.
-   - `FreezeEntityPosition` ile düşmeyi durdurursan bu sefer kapı sistemi
-     itemez.
-
-2. **Kendi ymap'inle yerleştirme (MLO içinde)**
-   Entity elenir. Vanilla da gizlendiği için ortada **boşluk** kalır.
-
-3. **Vanilla prop ytyp'sinde `specialAttribute` düzeltmek**
-   (`int_lev_des.ytyp` → `v_ilev_gb_teldr` 0→7). Dosya kusursuz üretildi
-   (348/348 archetype birebir) ama oyun içinde fizik yine yüklenmedi.
-
-4. **Vanilla adıyla yeni bir ytyp eklemek**
-   Oyun ilk tanımı zaten kaydetmiştir; çakışır.
+Do not let another resource's use of a ymap mislead you. First check the coordinate
+of its prop: if it is outside the MLO, it does not match your case.
 
 ---
 
-## 4. ÇALIŞAN REÇETE — ADIM ADIM
+## 3. REJECTED WAYS (do not try again)
 
-### Adım 1 — Objeyi ve archetype'ını tanı
+All were tried and failed by in-game measurement:
+
+1. **Spawning your own copy with `CreateObject` and hiding the vanilla one**
+   An object created by script **is not a map object**.
+   - The door system looks for the door by model+position *on the map*, cannot find it →
+     a loose physics prop is left → **when the door was touched it fell
+     through the floor.**
+   - The fragment's per-bone collision **did not follow** the animation.
+   - Stop the fall with `FreezeEntityPosition` and the door system
+     cannot push it.
+
+2. **Placing with your own ymap (inside the MLO)**
+   The entity is culled. The vanilla one is hidden too, so a **gap** is left.
+
+3. **Fixing `specialAttribute` in the vanilla prop ytyp**
+   (`int_lev_des.ytyp` → `v_ilev_gb_teldr` 0→7). The file was produced flawlessly
+   (348/348 archetypes identical) but physics still did not load in game.
+
+4. **Adding a new ytyp with the vanilla name**
+   The game has already registered the first definition; they conflict.
+
+---
+
+## 4. THE WORKING RECIPE — STEP BY STEP
+
+### Step 1 — Identify the object and its archetype
 
 ```
-assetdb.py near <model_adi>
+assetdb.py show <model_name>
 ```
 
-Not al: `specialAttribute`, `assetType`, `physicsDict`, `bbMin/bbMax`.
-`bbMin.x` / `bbMax.x` kapı için kritik: **pivot menteşede olmalı**
-(bbox ya `-W → 0` ya da `0 → +W` olmalı, menteşe X=0'da).
+Note down: `specialAttribute`, `assetType`, `physicsDict`, `bbMin/bbMax`.
+`bbMin.x` / `bbMax.x` is critical for a door: **the pivot must be at the hinge**
+(the bbox must be either `-W → 0` or `0 → +W`, hinge at X=0).
 
-### Adım 2 — Modeli RPF'ten çıkar
+### Step 2 — Extract the model from the RPF
 
 ```
-extract_asset.ps1 -Names <model>.ydr -Out <klasör>
+extract_asset.ps1 -Names <model>.ydr -Out <folder>
 ```
 
-Script RSC7 başlığını geri ekler ve deflate uygular — bunlar olmadan
-Sollumz "Unsupported file format" / "DECOMPRESS_FAILED" der.
+The script adds the RSC7 header back and applies deflate — without them
+Sollumz says "Unsupported file format" / "DECOMPRESS_FAILED".
 
-### Adım 3 — Blender'da KENDİ ADIMIZLA yeniden kur
+### Step 3 — Rebuild it in Blender UNDER OUR OWN NAME
 
-Sollumz ile import → adı `my_xxx` yap → export.
+Import with Sollumz → rename to `my_xxx` → export.
 
-- **Normal kapı** istiyorsan: drawable yeterli. Pivotun menteşede
-  olduğunu doğrula. Collision (BoundComposite) mesh'in içinde kalmalı.
-- **Çarpışması animasyonu takip etsin** istiyorsan: FRAGMENT üret.
-  Detay için SKILL.md → "COLLISION'IN ANIMASYONU TAKİP ETMESİ".
-  Özet, iki kural:
-  - Bound'u kemiğe bağlayan şey `COPY_TRANSFORMS` constraint'idir
-    (`parent_bone` değil, isim eşleşmesi değil).
-  - **En az iki grup gerekir.** `parentIdx=255` olan grup entity
-    gövdesidir ve kemiği TAKİP ETMEZ. Hareket eden parça çocuk grupta
-    olmalı:
+- For a **normal door**: a drawable is enough. Verify that the pivot is
+  at the hinge. The collision (BoundComposite) must stay inside the mesh.
+- For **collision that follows the animation**: build a FRAGMENT.
+  Details: `branches/prop/fragment.md`.
+  Summary, two rules:
+  - What binds the bound to the bone is the `COPY_TRANSFORMS` constraint
+    (not `parent_bone`, not name matching).
+  - **At least two groups are needed.** The group with `parentIdx=255` is the entity
+    body and does NOT FOLLOW the bone. The moving part must be in a child
+    group:
     ```
-    grup[0] kök kemik (tag 0)  parentIdx=255  -> SABİT menteşe
-    grup[1] hareketli kemik    parentIdx=0    -> DÖNEN kanat
+    group[0] root bone (tag 0)  parentIdx=255  -> FIXED hinge
+    group[1] moving bone        parentIdx=0    -> TURNING leaf
     ```
-  - Kemik tag'lerini **değiştirme** — vanilla klibin oynaması buna bağlı.
+  - **Do not change** the bone tags — the vanilla clip playing depends on them.
 
-### Adım 4 — Kendi archetype'ını üret
+### Step 4 — Generate your own archetype
 
 ```
-make_ytyp_override.ps1 -Models <vanilla> -RenameTo <bizim> `
+make_ytyp_override.ps1 -Models <vanilla> -RenameTo <ours> `
   -SpecialAttribute <7|0> -AssetType <ASSET_TYPE_DRAWABLE|ASSET_TYPE_FRAGMENT> `
   -ClearDicts -PhysicsDictSelf -Flags <...> -LodDist <...> `
-  -YtypName <bizim> -OutFile <...>\stream\<bizim>.ytyp
+  -YtypName <ours> -OutFile <...>\stream\<ours>.ytyp
 ```
 
-| | itilebilir kapı | animasyonlu fragment |
+| | pushable door | animated fragment |
 |---|---|---|
 | `assetType` | `ASSET_TYPE_DRAWABLE` | `ASSET_TYPE_FRAGMENT` |
-| `specialAttribute` | **7** (menteşeli) | **0** (animasyonu script oynatır) |
+| `specialAttribute` | **7** (hinged) | **0** (the script plays the animation) |
 
-- **`physicsDictionary` ASLA 0 bırakılmaz** → `-PhysicsDictSelf`.
-  0 verirsen model görünür ama **içinden geçilir**. Vanilla arşivinde tek
-  bir kapı prop'unda bile 0 yoktur.
-- `textureDictionary` 0 kalabilir (dokular dosyaya gömülüyse).
+- **`physicsDictionary` is NEVER left 0** → `-PhysicsDictSelf`.
+  Give it 0 and the model shows but **you walk through it**. Not a single
+  door prop in the vanilla archive has 0.
+- `textureDictionary` may stay 0 (if the textures are embedded in the file).
 
 fxmanifest:
 ```lua
-files { 'stream/<bizim>.ytyp' }
-data_file 'DLC_ITYP_REQUEST' 'stream/<bizim>.ytyp'
+files { 'stream/<ours>.ytyp' }
+data_file 'DLC_ITYP_REQUEST' 'stream/<ours>.ytyp'
 ```
 
-### Adım 5 — Objeyi hangi MLO tutuyor, bul
+### Step 5 — Find which MLO holds the object
 
-Tüm ytyp'leri tarayıp `MloArchetype.entities` içinde model hash'ini ara.
-Fleeca için sonuç:
+Scan all ytyps and look for the model hash in `MloArchetype.entities`.
+Result for Fleeca:
 
 ```
-v_int_10.ytyp            -> MLO v_genbank            (vezne + kasa)
-hei_dlc_generic_bank.ytyp -> MLO hei_generic_bank_dlc (vezne)
+v_int_10.ytyp            -> MLO v_genbank            (teller + vault)
+hei_dlc_generic_bank.ytyp -> MLO hei_generic_bank_dlc (teller)
 ```
 
-Aynı obje birden fazla MLO'da olabilir — **hepsini** değiştir.
+The same object can be in more than one MLO — change **all of them**.
 
-### Adım 6 — MLO entity listesinde adı değiştir
+### Step 6 — Change the name in the MLO entity list
 
 ```
 powershell -Command "& patch_vanilla_ytyp.ps1 -YtypName 'v_int_10.ytyp' `
@@ -151,60 +150,60 @@ powershell -Command "& patch_vanilla_ytyp.ps1 -YtypName 'v_int_10.ytyp' `
   -OutDir '<...>\stream'"
 ```
 
-- Bu dosyaya **`DLC_ITYP_REQUEST` EKLENMEZ** — vanilla dosya değişimidir.
-  `stream/` içindekiler zaten otomatik streamlenir.
-- Script yazdıktan sonra dosyayı geri okur; imza (`arch / mlo / rooms /
-  portals / entities`) kaynakla aynı değilse veya eski model kalmışsa
-  dosyayı **siler**. Bozuk ytyp streamlemek MLO'yu komple bozar.
+- This file **does NOT get `DLC_ITYP_REQUEST`** — it is a vanilla file replacement.
+  Everything in `stream/` is streamed automatically anyway.
+- After writing, the script reads the file back; if the signature (`arch / mlo / rooms /
+  portals / entities`) differs from the source, or the old model is still there, it
+  **deletes** the file. Streaming a broken ytyp breaks the whole MLO.
 
-Beklenen çıktı:
+Expected output:
 ```
-[*] imza  : arch=51 mlo=2 rooms=7 portals=7 entities=427
+[*] signature: arch=51 mlo=2 rooms=7 portals=7 entities=427
 [+] MLO v_genbank: entity v_ilev_gb_teldr -> my_teldr
-[*] yazilan imza: arch=51 mlo=2 rooms=7 portals=7 entities=427
-    dogrulama: yeni model 2 entity'de, eski model 0 entity'de kaldi
+[*] written signature: arch=51 mlo=2 rooms=7 portals=7 entities=427
+    verify: new model in 2 entities, old model left in 0 entities
 ```
 
-### Adım 7 — Runtime
+### Step 7 — Runtime
 
-Artık vanilla obje **hiç yerleştirilmiyor**. `CreateModelHide`,
-`RemoveModelHide`, spawn, ymap — hiçbiri gerekmez.
+The vanilla object is now **never placed at all**. `CreateModelHide`,
+`RemoveModelHide`, spawn, ymap — none of them are needed.
 
-**İtilebilir kapı:**
+**Pushable door:**
 ```lua
 AddDoorToSystem(h, model, x, y, z, false, false, false)
--- FİZİĞİN YÜKLENMESİNİ BEKLE, yoksa sonraki çağrı sessizce düşer
+-- WAIT FOR THE PHYSICS TO LOAD, otherwise the next call is silently dropped
 while not DoorSystemGetIsPhysicsLoaded(h) and GetGameTimer()-t < 3000 do Wait(50) end
-DoorSystemSetDoorState(h, 0, true, true)   -- 0 = kilitsiz
+DoorSystemSetDoorState(h, 0, true, true)   -- 0 = unlocked
 ```
 
-**Animasyonlu fragment:**
+**Animated fragment:**
 ```lua
 PlayEntityAnim(obj, clip, dict, 1000.0, false, true, false, 0.0, 0)
--- DONDURMA. Kök grup gövdeyi taşıdığı için devrilmez.
+-- DO NOT FREEZE. The root group carries the body, so it does not tip over.
 ```
 
-### Adım 8 — STREAMING: durumu bir kere uygulamak YETMEZ
+### Step 8 — STREAMING: applying the state once is NOT ENOUGH
 
-Oyuncu uzaklaşınca MLO boşalır; geri dönünce **entity yeniden yaratılır**.
-O anda:
+When the player moves away the MLO unloads; on return **the entity is created again**.
+At that moment:
 
-- kapı sistemi durumu **varsayılana (kilitli) döner**
-- fragment'te oynayan animasyon **kaybolur**
+- the door system state **goes back to the default (locked)**
+- an animation playing on the fragment **is lost**
 
-Belirti: "kapı bir süre sonra kendi kendine geri kilitleniyor". İlk
-sürümde `doorRegistered[hash] = true` diye önbellek tutup durumu bir daha
-uygulamamıştım — hata tam buydu. **Önbellek tutma, durumu periyodik olarak
-DOĞRULA:**
+Symptom: "after a while the door locks itself again". In the first
+version I kept a cache `doorRegistered[hash] = true` and never applied the state
+again — that was exactly the bug. **Do not cache, VERIFY the state
+periodically:**
 
 ```lua
 CreateThread(function()
   while true do
     local wait = 1500
     if nearest(DOOR) then
-      -- kayit yoksa ekle (idempotent)
+      -- register if not registered (idempotent)
       if not IsDoorRegisteredWithSystem(h) then AddDoorToSystem(h, model, x,y,z, false,false,false) end
-      -- fizik hazir degilse dokunma, sonraki turda tekrar bak
+      -- if physics is not ready do not touch it, check again on the next pass
       if DoorSystemGetIsPhysicsLoaded(h) and DoorSystemGetDoorState(h) ~= 0 then
         DoorSystemSetDoorState(h, 0, true, true)
       end
@@ -215,136 +214,136 @@ CreateThread(function()
 end)
 ```
 
-Fragment tarafında: **entity handle'ını sakla**. Handle değiştiyse iç mekân
-yeniden yüklenmiş demektir; istenen durumu geri uygula. Animasyonu
-`delta = 1.0` ile (klibin sonundan) başlat, yoksa oyuncu her dönüşünde
-kapının baştan açılmasını izler.
+On the fragment side: **keep the entity handle**. If the handle changed, the interior
+was reloaded; apply the wanted state again. Start the animation
+with `delta = 1.0` (from the end of the clip), otherwise on every return the player
+watches the door open from the start.
 
-### Adım 9 — ESKİ MODEL ADINI ARAYAN HER YERİ GÜNCELLE
+### Step 9 — UPDATE EVERY PLACE THAT LOOKS FOR THE OLD MODEL NAME
 
-Model adını değiştirdiğin an, o adı arayan **tüm** kod ve config kırılır —
-ama sessizce. Objeyi bulamaz, hiçbir hata vermez.
+The moment you change the model name, **all** code and config that look for that name break —
+but silently. They cannot find the object and give no error.
 
 ```
-grep -rn "<eski_model>" --include=*.lua config/ data/ modules/ core/
+grep -rn "<old_model>" --include=*.lua config/ data/ modules/ core/
 ```
 
-Gerçek örnek: `config/heists/fleeca.lua` hâlâ `v_ilev_gb_teldr` arıyordu.
-Sonuç: kapı modülü kapıyı tanıyamadı, kilit mantığı yanlış tarafa düştü ve
-oyuncu 60 m'ye her girdiğinde kapı yeniden kilitlendi.
+Real example: `config/heists/fleeca.lua` was still looking for `v_ilev_gb_teldr`.
+Result: the door module could not recognise the door, the lock logic fell to the wrong side and
+the door locked again every time the player came within 60 m.
 
-### Kilit/durum çakışması — tek otorite kuralı
+### Lock/state conflict — single authority rule
 
-Aynı objeye **iki modül** durum yazıyorsa son yazan kazanır ve davranış
-rastgele görünür. Belirti: teşhis `durum=0` (kilitsiz) diyor ama kapı
-açılmıyor.
+If **two modules** write state to the same object, the last writer wins and the behaviour
+looks random. Symptom: diagnostics say `state=0` (unlocked) but the door
+does not open.
 
-Sebebi genelde şu: kilit sadece kapı sistemiyle değil, **entity
-dondurularak** uygulanır —
-`FreezeEntityPosition(obj, isLocked and not isOpen)`. Donmuş entity kapı
-sisteminden etkilenmez, bu yüzden `DoorSystemGetDoorState` yanıltıcı olur.
+The cause is usually this: the lock is applied not only through the door system but also **by
+freezing the entity** —
+`FreezeEntityPosition(obj, isLocked and not isOpen)`. A frozen entity is not affected
+by the door system, so `DoorSystemGetDoorState` misleads.
 
-Kural: **kilidi tek bir modül yönetsin.** Yeni modülün onunla yarışmasın;
-onun config'ini yeni model adına yönlendir, yeter.
+Rule: **let a single module manage the lock.** Do not let your new module race it;
+point its config at the new model name, that is enough.
 
-### "Düzelttim, şimdi hiç açılmıyor" — sahte regresyon
+### "I fixed it, now it does not open at all" — false regression
 
-Config'i doğru model adına çevirdiğin an, o güne kadar **hiç çalışmamış**
-olan kilit mantığı ilk kez devreye girer. Kapı kilitli gelir ve bu bozulma
-gibi görünür — halbuki tasarım öyle (`Config.Doors.Types.teller.locked =
-true`, kapı bir soygun hedefi).
+The moment you point the config at the right model name, the lock logic that had **never
+worked** until then kicks in for the first time. The door comes locked and it looks like
+a breakage — while it is by design (`Config.Doors.Types.teller.locked =
+true`, the door is a robbery target).
 
-Öncesinde kapı "çalışıyor" görünüyorduysa sebebi, kilit modülünün objeyi
-hiç bulamamasıdır. Yani seçim: kilit hiç çalışmasın, ya da çalışsın ve kapı
-kapalı dursun.
+If the door "worked" before, the reason is that the lock module never
+found the object. So the choice is: the lock never works, or it works and the door
+stays closed.
 
-Fiziksel testi mümkün kılmak için **açık bir override komutu** koy —
-sessizce sürekli ezen bir döngü değil:
+To make a physical test possible, add **an explicit override command** —
+not a loop that silently overrides all the time:
 
 ```lua
--- Kilit IKI katmanli: kapi sistemi durumu + entity dondurma.
--- Sadece state 0 yazmak YETMEZ; donmus entity kimildamaz.
+-- The lock has TWO layers: door system state + entity freeze.
+-- Writing state 0 alone is NOT ENOUGH; a frozen entity does not move.
 FreezeEntityPosition(door, false)
 if DoorSystemGetDoorState(h) ~= 0 then DoorSystemSetDoorState(h, 0, true, true) end
 ```
 
-Override açıkken kısa aralıkla (~0.5 sn) tekrar uygula: oyuncu menzile
-girince kilit modülü kilidi geri koyar. Kapatınca otorite ona döner.
+While the override is on, reapply it at a short interval (~0.5 s): when the player
+comes in range the lock module puts the lock back. Turn it off and authority returns to that module.
 
 ---
 
-## 5. GENEL TUZAKLAR (bu işte yakalananlar)
+## 5. GENERAL PITFALLS (caught in this work)
 
-- `SetEntityCollision(mapObj, false, false)` harita objesinde **güvenilir
-  değil** — obje görünmez olur, çarpışma yerinde kalır. Gizlemek
-  gerekiyorsa `CreateModelHide(x,y,z,r,hash,true)`.
-- Sadece kök kemiği (tag 0) oynatan klip, objenin **kendisini** taşır.
-  `FreezeEntityPosition(true)` bunu tamamen engeller: klip oynar,
-  `PlayEntityAnim` true döner, ekranda hiçbir şey olmaz.
-- Bir prop'un iç parçasını oynatan klip **var mı** diye önce bak:
-  modelin kemik tag'lerini `skeletons.tsv.gz`'den al, `clips.tsv.gz`'nin
-  `bones` kolonunda ara. (Örnek: `hei_prop_heist_deposit_box`'ın
-  çekmecelerine dokunan klip 312.748 klip içinde YOK.)
-- `.yed` (expression) ile "collision animasyonu" diye bir şey **yok**.
-  Referans dosyada `.yed` açıldı: içinde **0 expression** var, 166 baytlık
-  boş kabuk, fxmanifest'te kaydı bile yok. İşi yapan fragment yapısıydı.
-
----
-
-## 6. BANA NE SÖYLEMEN GEREKİYOR
-
-Benzer bir iş için şu üçünü söylersen doğrudan bu reçeteye girerim:
-
-1. **Hangi obje** — model adı (`v_ilev_gb_teldr`) veya "oyunda ölçeyim"
-2. **Ne yapmasını istiyorsun** —
-   - "normal kapı gibi itilsin"
-   - "animasyonla açılsın ve çarpışması da onunla hareket etsin"
-   - "sadece modeli değişsin"
-3. **Nerede** — "Fleeca'nın içinde" gibi. İç mekân mı dışarısı mı,
-   ilk belirlenmesi gereken şey bu.
-
-Kısa hali, kopyalayıp kullanabilirsin:
-
-> `<model_adı>` objesini kendi modelimizle değiştirmek istiyorum.
-> `<MLO adı / mekân>` içinde. `<itilebilir kapı | animasyonlu + çarpışma
-> takipli | sadece model>` olsun.
-> `skills/fivem-assets/mlo-object-swap.md` reçetesini uygula.
-
+- `SetEntityCollision(mapObj, false, false)` is **not reliable** on a map object
+  — the object becomes invisible, the collision stays in place. If you need to hide it,
+  use `CreateModelHide(x,y,z,r,hash,true)`.
+- A clip that animates only the root bone (tag 0) moves the object **itself**.
+  `FreezeEntityPosition(true)` blocks this completely: the clip plays,
+  `PlayEntityAnim` returns true, nothing happens on screen.
+- First check whether a clip that animates an inner part of a prop **exists**:
+  take the model's bone tags from `skeletons.tsv.gz`, search the `bones` column of
+  `clips.tsv.gz`. (Example: a clip that touches the drawers of `hei_prop_heist_deposit_box`
+  does NOT exist among 312,748 clips.)
+- There is **no** such thing as "collision animation" with `.yed` (expression).
+  The `.yed` in the reference file was opened: it holds **0 expressions**, a 166-byte
+  empty shell, not even registered in the fxmanifest. What did the work was the fragment structure.
 
 ---
 
-## Eski gövde özeti — elenen yollar ve çalışan yol
+## 6. WHAT YOU NEED TO TELL ME
 
-## HARİTADAKİ BİR OBJEYİ DÜZELTMEK (spawn etme — ytyp'yi değiştir)
+For a similar job, tell me these three and I go straight into this recipe:
 
-Haritada duran bir prop yanlış tanımlıysa (kapı olması gereken obje
-`specialAttribute=0`), **onu gizleyip yerine kendi kopyanı spawn etme.**
-Bu yol test edildi ve çöktü:
+1. **Which object** — model name (`v_ilev_gb_teldr`) or "let me measure it in game"
+2. **What you want it to do** —
+   - "push like a normal door"
+   - "open with an animation, and its collision moves with it"
+   - "just change the model"
+3. **Where** — like "inside the Fleeca". Interior or outside is
+   the first thing to decide.
 
-- Script'le üretilen obje **harita objesi değildir**. Kapı sistemi kapıyı
-  model+konum ile haritada arar, script objesini bulamaz.
-- Geriye serbest bir fizik prop'u kalır: oyun içinde kapıya dokununca
-  zeminin içinden düştü.
-- `FreezeEntityPosition` ile düşmesini durdurursan bu sefer kapı sistemi
-  onu itemez — kazandığın bir şey olmaz.
+Short version, copy and use:
 
-Denenip **elenen** diğer yollar (hepsi oyun içi ölçümle):
+> I want to replace the `<model_name>` object with our own model.
+> It is inside `<MLO name / place>`. It should be `<pushable door | animated + collision
+> following | model only>`.
+> Apply the `skills/fivem-assets/branches/map/mlo-object-swap.md` recipe.
 
-- **Kendi ymap'inle yerleştirmek** — MLO İÇ MEKÂNINDA ÇALIŞMAZ. Oda/portal
-  sistemi dışarıdan konan entity'yi eler; obje hiç gelmez. Sadece MLO
-  dışındaki (sokak, açık alan) proplar için geçerlidir. Referans bir
-  resource'un ymap kullanması seni yanıltmasın — **önce o prop'un
-  koordinatı MLO içinde mi dışında mı ona bak.**
-- **Vanilla prop ytyp'sinde `specialAttribute` düzeltmek**
-  (`int_lev_des.ytyp` gibi) — dosya doğru üretildi (348/348 archetype
-  birebir) ama oyun içinde kapı fiziği yine yüklenmedi.
-- **Vanilla adıyla YENİ bir ytyp eklemek** — oyun ilk tanımı zaten
-  kaydettiği için çakışır, tutmaz.
 
-**ÇALIŞAN YOL: MLO'nun kendi entity listesinde model adını değiştirmek.**
+---
 
-Objeyi MLO'nun KENDİSİ yerleştirir: doğru odada, doğru konumda, gizleme /
-ymap / spawn olmadan, o MLO haritada kaç yerde varsa hepsinde birden.
+## Old trunk summary — rejected ways and the working way
+
+## FIXING AN OBJECT ON THE MAP (do not spawn — change the ytyp)
+
+If a prop standing on the map is defined wrong (an object that should be a door has
+`specialAttribute=0`), **do not hide it and spawn your own copy in its place.**
+This way was tested and failed:
+
+- An object created by script **is not a map object**. The door system looks for the door
+  by model+position on the map and cannot find the script object.
+- A loose physics prop is left: in game, when the door was touched it
+  fell through the floor.
+- Stop the fall with `FreezeEntityPosition` and the door system
+  cannot push it — you gain nothing.
+
+Other ways tried and **rejected** (all by in-game measurement):
+
+- **Placing with your own ymap** — DOES NOT WORK INSIDE AN MLO INTERIOR. The room/portal
+  system culls an entity placed from outside; the object never appears. It only applies
+  to props outside the MLO (street, open area). Do not let a reference
+  resource's use of a ymap mislead you — **first check whether that prop's
+  coordinate is inside the MLO or outside.**
+- **Fixing `specialAttribute` in the vanilla prop ytyp**
+  (like `int_lev_des.ytyp`) — the file was produced correctly (348/348 archetypes
+  identical) but door physics still did not load in game.
+- **Adding a NEW ytyp with the vanilla name** — the game has already registered
+  the first definition, so it conflicts and does not take.
+
+**THE WORKING WAY: change the model name in the MLO's own entity list.**
+
+The MLO ITSELF places the object: in the right room, at the right position, without hiding /
+ymap / spawn, in every place where that MLO exists on the map at once.
 
 ```
 patch_vanilla_ytyp.ps1 -YtypName v_int_10.ytyp `
@@ -352,21 +351,21 @@ patch_vanilla_ytyp.ps1 -YtypName v_int_10.ytyp `
   -OutDir <...>\stream
 ```
 
-- `data_file 'DLC_ITYP_REQUEST'` **EKLENMEZ** — bu bir dosya değişimidir,
-  yeni ityp kaydı değil. `stream/` zaten otomatik streamlenir.
-  (Kendi yeni ytyp'in için EKLENİR.)
-- Script yazdıktan sonra dosyayı geri okuyup imzayı (archetype / oda /
-  portal / entity sayıları) kaynakla karşılaştırır ve yeni modelin kaç
-  entity'de olduğunu sayar; tutmazsa dosyayı siler. Bozuk ytyp streamlemek
-  MLO'yu komple bozar.
+- `data_file 'DLC_ITYP_REQUEST'` is **NOT ADDED** — this is a file replacement,
+  not a new ityp registration. `stream/` is streamed automatically anyway.
+  (For your own new ytyp it IS ADDED.)
+- After writing, the script reads the file back, compares the signature (archetype / room /
+  portal / entity counts) with the source and counts how many entities the new model is in;
+  if it does not match, it deletes the file. Streaming a broken ytyp breaks the whole
+  MLO.
 
-Tam adım adım reçete: yukarısı
+Full step-by-step recipe: above
 
-### Harita objesinin çarpışmasını kaldırma
+### Removing a map object's collision
 
-`SetEntityCollision(mapObj, false, false)` **güvenilir değil** — obje
-görünmez olur ama çarpışma yerinde kalır. Belirti: takas ettiğin kapı
-açılmış görünür, yine de geçemezsin. Doğrusu `CreateModelHide(x,y,z,r,
-hash, true)`; geri almak için `RemoveModelHide` (unutulursa harita objesi
-bir daha gelmez). Hide çağrısı handle'ı geçersizleştirir, çarpışmayı
-**önce** kapat.
+`SetEntityCollision(mapObj, false, false)` is **not reliable** — the object
+becomes invisible but the collision stays in place. Symptom: the door you swapped
+looks open, yet you cannot pass. The right way is `CreateModelHide(x,y,z,r,
+hash, true)`; to undo, `RemoveModelHide` (forget it and the map object
+never comes back). The hide call invalidates the handle, so turn off the collision
+**first**.

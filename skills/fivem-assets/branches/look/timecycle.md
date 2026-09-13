@@ -1,63 +1,62 @@
-# Timecycle — oda karanlık/loş, hava cycle'ı, ıslak harita, MLO'ya güneş sızması
+# Timecycle — dark/gloomy room, weather cycle, wet map, sun leaking into an MLO
 
-**Ne zaman okunur:** "neden karanlık", "iç mekân aydınlık kalıyor", "zemin ıslak gibi parlıyor", mood için modifier, `TIMECYCLEMOD_FILE`.
-**When to read:** the room is dark or washed out, a weather cycle, a wet map, applying a timecycle modifier to an MLO.
-**Kaynak:** `lights.md` 'Timecycle katmanı', 'ıslak', 'MLO odası' · `decal.md` §5 · morg MLO notları (2026-08) · **Ölçüm:** 1.087 modifier + 17 hava cycle'ı (`timecycle.tsv.gz`); v_coroner oda bayrakları; casino vault / facility 111
-**Önce:** `_branch.md` · gövde › `trunk/tool-pitfalls.md` §1-2
+**When to read:** "why is it dark", "the interior stays bright", "the floor shines as if wet", the room is dark or washed out; a modifier for mood, applying a timecycle modifier to an MLO, `TIMECYCLEMOD_FILE`; a weather cycle; a wet map.
+**Source:** `lights.md` 'Timecycle layer', 'wet', 'MLO room' · `decal.md` §5 · morgue MLO notes (2026-08) · **Measured:** 1,087 modifiers + 17 weather cycles (`timecycle.tsv.gz`); v_coroner room flags; casino vault / facility 111
+**Read first:** `_branch.md` · trunk › `trunk/tool-pitfalls.md` §1-2
 
 ---
 
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" cycle w_clear --hour 20   # 1. taban hava cycle'ı
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" timecycle <modifier>     # 2. odanın modifier'ı
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" light <dosya>           # 3. prop'un ışığı
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" cycle w_clear --hour 20   # 1. base weather cycle
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" timecycle <modifier>     # 2. the room's modifier
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" light <file>           # 3. the prop's light
 ```
 
-Karanlık şikâyeti **üç katmanlıdır** ve sırayla bakılır: taban hava cycle'ı → odanın modifier'ı → prop'un ışığı. Cevap çoğu zaman üçüncüde değildir.
+A darkness complaint **has three layers** and they are checked in order: base weather cycle → the room's modifier → the prop's light. The answer is usually not in the third.
 
-## Timecycle katmanı
+## Timecycle layer
 
-Bir sahnenin görünümü üç katmandır ve sırası şudur:
-**taban hava cycle'ı → odanın modifier'ı → prop'un kendi ışığı.**
-"Işığı doğru kurdum ama hâlâ yanlış" diyorsan ilk ikisine bak.
+How a scene looks is three layers, in this order:
+**base weather cycle → the room's modifier → the prop's own light.**
+If you are saying "I set the light up right but it is still wrong", look at the first two.
 
-Ölçülmüş, tahmin edilmemesi gerekenler:
+Measured, not to be guessed:
 
-- Bir cycle dosyası `cycle > region > <değişken>metin</değişken>` yapısındadır
-  ve metin **keyframe başına** bir değer taşır. **13 keyframe vardır, 24 saat
-  değil.** "saat = indeks" varsayımı her şeyi kaydırır.
-- Saat çizelgesi ayrı dosyadadır ve **iki tane `time.xml` vardır**. Doğrusu
-  `common.rpf\data\levels\gta5\time.xml` (13 sample);
-  `common.rpf\data\time.xml` 4 sample'lik bambaşka bir dosyadır.
-  Saatler: `0 5 6 7 10 12 16 17 18 19 20 21 22`
-- ⛔ Bir sample `name="09:00"` yazar ama `hour="10"` taşır. **Ad yalan söyler,
-  `hour` niteliği esastır.** Ada bakan sonraki tüm keyframe'leri bir saat kaydırır.
-- Renkler zaten 0–1'dir (ölçülen maks 1.002), hiçbir yerde /255 yoktur
-- `light_dir_mult` HDR'dir, **54'e** kadar çıkar — kırpma opsiyonel değildir
-- Bölge katmanı vardır: `GLOBAL` ve `URBAN`
-- Modifier bir **değiştirme değil harmandır**: `taban + (mod − taban) × güç`,
-  ve param bazındadır (bir modifier natural'ı sıfırlarken artificial'a
-  dokunmayabilir). Modifier tablosunda param başına iki değer bulunur;
-  geçerli olan **birincisidir**.
+- A cycle file has the structure `cycle > region > <variable>text</variable>`
+  and the text carries one value **per keyframe**. **There are 13 keyframes, not 24
+  hours.** Assuming "hour = index" shifts everything.
+- The hour schedule is in a separate file and **there are two `time.xml` files**. The right one is
+  `common.rpf\data\levels\gta5\time.xml` (13 samples);
+  `common.rpf\data\time.xml` is a completely different file with 4 samples.
+  Hours: `0 5 6 7 10 12 16 17 18 19 20 21 22`
+- ⛔ A sample says `name="09:00"` but carries `hour="10"`. **The name lies,
+  the `hour` attribute is what counts.** Reading the name shifts every later keyframe by one hour.
+- Colors are already 0–1 (measured max 1.002); there is no /255 anywhere
+- `light_dir_mult` is HDR and goes up to **54** — clipping is not optional
+- There is a region layer: `GLOBAL` and `URBAN`
+- A modifier is **a blend, not a replacement**: `base + (mod − base) × strength`,
+  and it works per param (a modifier can zero natural while leaving artificial
+  untouched). The modifier table holds two values per param;
+  the **first** one is the one that applies.
 
-> **Kırpma tavanları kalibrasyondur, motor sabiti değil.** `cycle.py` içindeki
-> `TAVAN_ORTAM` / `TAVAN_GUNES` parametredir; vanilla görüntüyle
-> karşılaştırarak doğrula, gömülü sabit gibi davranma.
+> **The clip ceilings are calibration, not engine constants.** `AMBIENT_CAP` / `SUN_CAP`
+> in `cycle.py` are parameters; verify them against a vanilla
+> image, do not treat them as embedded constants.
 
 ---
 
 ## 5. TIMECYCLE
 
-Karanlık **üç katmanlıdır**, sırayla bakılır:
-**hava cycle'ı → odanın modifier'ı → prop ışıkları.** Cevap çoğu zaman
-üçüncüde değildir.
+Darkness **has three layers**, checked in order:
+**weather cycle → the room's modifier → prop lights.** The answer is usually
+not in the third.
 
-### Paylaşılan modifier'a DOKUNMA
-`morgue_dark` **6 DLC dosyasında** tanımlı ve tüm morg onu paylaşıyor.
-Hangisinin kazandığı DLC yükleme sırasına bağlı ve **veriden okunamaz.**
-→ Kendi modifier'ını yaz, odanın `timecycleName`'ini ytyp'de değiştir.
+### DO NOT TOUCH a shared modifier
+`morgue_dark` is defined in **6 DLC files** and the whole morgue shares it.
+Which one wins depends on the DLC load order and **cannot be read from the data.**
+→ Write your own modifier and change the room's `timecycleName` in the ytyp.
 
-### Şema (vanilla'dan kopyalandı, uydurulmadı)
+### Schema (copied from vanilla, not made up)
 ```xml
 <timecycle_modifier_data version="1.000000">
   <modifier name="my_mlo_dark" numMods="44" userFlags="0">
@@ -66,53 +65,53 @@ Hangisinin kazandığı DLC yükleme sırasına bağlı ve **veriden okunamaz.**
   </modifier>
 </timecycle_modifier_data>
 ```
-Eleman metni `"deger1 deger2"`. `numMods` gerçek eleman sayısıyla tutmalı.
+The element text is `"value1 value2"`. `numMods` must match the real element count.
 
-### FiveM kaydı ŞART
+### FiveM registration is REQUIRED
 ```lua
 files { 'data/timecycle_mods_custom.xml' }
 data_file 'TIMECYCLEMOD_FILE' 'data/timecycle_mods_custom.xml'
 ```
-Kaydedilmezse oyun modifier'ı **aramaz**, oda vanilla'da kalır.
+Without registration the game **does not look for** the modifier and the room stays vanilla.
 
-### Mood için en etkili dört parametre (ölçülen etki)
-| Parametre | vanilla morgue_dark | koyu |
+### The four most effective parameters for mood (measured effect)
+| Parameter | vanilla morgue_dark | dark |
 |---|---|---|
 | `natural_ambient_multiplier` | 0.154 | 0.045 |
 | `artificial_int_ambient_multiplier` | 0.632 | 0.300 |
 | `ssao_inten` | 6.300 | 9.500 |
-| `postfx_vignetting_intensity` | 0.000 | **0.550** ← en görünür fark |
+| `postfx_vignetting_intensity` | 0.000 | **0.550** ← most visible difference |
 
-`fog_start` **düşürme** (73 → 4 denendi, beğenilmedi — iç mekânda sis
-istenmiyorsa vanilla 73'te bırak).
+**Do not lower** `fog_start` (73 → 4 was tried and not liked — if you do not want fog
+in the interior, leave it at the vanilla 73).
 
 ---
 
-### ⛔ "Harita ıslak" ŞİKÂYETİNİN İKİ AYRI YOLU VAR — biri diğerini kapatmaz
+### ⛔ "THE MAP IS WET" HAS TWO SEPARATE PATHS — fixing one does not close the other
 
-Yukarıdaki vertex `R = 0` kuralı **doğal ambient sızmasını** kapatır. Yüzey
-ıslaklığı **ayrı bir global yoldur** ve R onu kapatmaz. İkisini birbirinin
-yerine koymak bir turu yakar: R'yi 228/228 modelde 0 yaptıktan sonra harita
-hâlâ ıslanıyordu, çünkü sebep hiç orada değildi.
+The vertex `R = 0` rule above closes **natural ambient leaking in**. Surface
+wetness is **a separate global path** and R does not close it. Putting one in place of
+the other burns a round: after R was set to 0 on 228/228 models the map
+was still getting wet, because the cause was never there.
 
-**Belirti zamana bağlıysa varlık tarafına bakma.** "İçeride 15 dakika
-çalışınca gene ıslak" — dosya değişmediğine göre kaynak çalışma anındadır.
+**If the symptom depends on time, do not look at the asset side.** "After working inside
+for 15 minutes it is wet again" — the file did not change, so the source is at runtime.
 
-### `SetRainLevel` ıslaklığı KALDIRMAZ
+### `SetRainLevel` does NOT REMOVE wetness
 
 `_SET_RAIN_LEVEL` (lua: `_SetRainLevel`, alias `SetRainLevel`,
-`0x643E26EA6E024D92`) yağmurun **yoğunluğudur**. Yüzey ıslaklığını **hava
-tipinin kendisi** sürer. Tip `RAIN` kaldığı sürece yağmur seviyesini
-sıfırlamak hiçbir şey değiştirmez.
+`0x643E26EA6E024D92`) is the rain **intensity**. Surface wetness is driven by the
+**weather type itself**. As long as the type stays `RAIN`, zeroing the rain level
+changes nothing.
 
-⚠️ Bir tur "bu native yok" diye yanlış teşhis kondu. İndekste lua adı
-`_SetRainLevel`, lua-defs'te `SetRainLevel` — **ikisi de FiveM'de vardır**.
-`GET_RAIN_LEVEL` ise `GetRainLevel`.
+⚠️ One round got the wrong diagnosis "this native does not exist". In the index the lua name is
+`_SetRainLevel`, in lua-defs it is `SetRainLevel` — **both exist in FiveM**.
+`GET_RAIN_LEVEL` is `GetRainLevel`.
 
-### qb-weathersync ile YARIŞ KAZANILMAZ — döngüsü durdurulur
+### You cannot WIN A RACE against qb-weathersync — stop its loop
 
-Ölçüldü (`qb-weathersync/client.lua`): ana döngü **`Wait(100)`** ile koşar ve
-**her turda** şunları yeniden yazar:
+Measured (`qb-weathersync/client.lua`): the main loop runs with **`Wait(100)`** and
+rewrites these **every iteration**:
 
 ```
 ClearOverrideWeather / ClearWeatherTypePersist
@@ -120,23 +119,23 @@ SetWeatherTypePersist(lastWeather) / SetWeatherTypeNow / SetWeatherTypeNowPersis
 RAIN -> SetRainLevel(0.3)   THUNDER -> SetRainLevel(0.5)
 ```
 
-500 ms'lik bir bastırma döngüsü buna **5'e 1 kaybeder**. Her karede yazmak da
-çözüm değil: qb'nin yazdığı karede tip yine `RAIN` olur.
+A 500 ms suppression loop **loses 5 to 1** against this. Writing every frame is not a fix
+either: in the frame qb writes, the type is `RAIN` again.
 
-**Doğrusu qb'yi durdurmaktır:**
+**The right way is to stop qb:**
 
 ```lua
 TriggerEvent('qb-weathersync:client:DisableSync')   -- disable = true
--- cikarken:
-TriggerEvent('qb-weathersync:client:EnableSync')    -- sunucudan durum ister
+-- on exit:
+TriggerEvent('qb-weathersync:client:EnableSync')    -- asks the server for the state
 ```
 
-`RegisterNetEvent` ile kayıtlı olduğu için `TriggerEvent` yerelde çalışır.
+It is registered with `RegisterNetEvent`, so `TriggerEvent` works locally.
 
-⛔ **`DisableSync` SAATİ 18:00'E SABİTLER** (`client.lua:25`,
-`NetworkOverrideClockTime(18,0,0)`). Tutturulmuş karanlık iç mekân tonu
-saatten beslendiği için bu tonu kaydırır. **Girmeden önce saati oku, sonra
-geri koy:**
+⛔ **`DisableSync` PINS THE CLOCK TO 18:00** (`client.lua:25`,
+`NetworkOverrideClockTime(18,0,0)`). A tuned dark interior tone is fed by the clock,
+so this shifts that tone. **Read the time before entering, then
+put it back:**
 
 ```lua
 local h,m,sn = GetClockHours(), GetClockMinutes(), GetClockSeconds()
@@ -144,26 +143,26 @@ TriggerEvent('qb-weathersync:client:DisableSync')
 NetworkOverrideClockTime(h, m, sn)
 ```
 
-⛔ **Kaynak durursa oyuncu "hava senkronu kapalı" kalır** — `onResourceStop`
-içinde `EnableSync` çağır.
+⛔ **If the resource stops, the player is left with "weather sync off"** — call `EnableSync`
+in `onResourceStop`.
 
-Mekanizma: `Config.DynamicWeather = true` → hava 10 dakikada bir değişir →
-döngü düzenli olarak `RAIN`/`THUNDER`'a girer. "15 dakikada bir geri geliyor"
-şikâyetinin süresi tam olarak budur.
+Mechanism: `Config.DynamicWeather = true` → the weather changes every 10 minutes →
+the loop regularly enters `RAIN`/`THUNDER`. That is exactly the period of the
+"it comes back every 15 minutes" complaint.
 
 
-## MLO odasına dışarıdan ışık girmesi = ODA BAYRAĞI, geometri değil
+## Outside light entering an MLO room = ROOM FLAG, not geometry
 
-⛔ **Karanlık bir iç mekâna güneş sızıyorsa ilk bakılacak yer kabuk/küp
-değil, odanın kendi `flags` alanıdır.** Directional light (güneş/ay) GTA'da
-geometriyle engellenmez; **oda bayrağıyla** kapatılır. Kabuk koymak yalnızca
-*gölge* yaratır, gölge haritasının çözünürlüğü de kenarda yetmez → kenar
-boyunca dizilmiş parlak noktalar (shadow acne) çıkar. Belirti "yırtılma"
-gibi görünür ve kişiyi geometriyi düzeltmeye iter; sebep orada değildir.
+⛔ **If the sun leaks into a dark interior, the first place to look is not the shell/cube
+but the room's own `flags` field.** Directional light (sun/moon) in GTA is
+not blocked by geometry; it is switched off **with the room flag**. A shell only
+creates a *shadow*, and the shadow map resolution is not enough at the edge → bright dots
+lined up along the edge (shadow acne). The symptom looks like "tearing"
+and pushes you to fix the geometry; the cause is not there.
 
-**Oda bayrağı bitleri — Sollumz `RoomFlags` enum'u (tahmin DEĞİL):**
+**Room flag bits — Sollumz `RoomFlags` enum (NOT a guess):**
 
-| bit | değer | ad | bit | değer | ad |
+| bit | value | name | bit | value | name |
 |---:|---:|---|---:|---:|---|
 | 0 | 1 | Freeze Vehicles | 5 | 32 | Reduce Cars |
 | 1 | 2 | Freeze Peds | 6 | 64 | Reduce Peds |
@@ -171,46 +170,45 @@ gibi görünür ve kişiyi geometriyi düzeltmeye iter; sebep orada değildir.
 | **3** | **8** | **No Exterior Lights** | 8 | 256 | Dont Render Exterior |
 | 4 | 16 | Force Freeze | 9 | 512 | Mirror Potentially Visible |
 
-Kaynak: `sollumz/ytyp/properties/flags.py` → `class RoomFlags`.
-Portal tablosu aynı dosyada `class PortalFlags` (1 One Way · 2 Link Interiors
+Source: `sollumz/ytyp/properties/flags.py` → `class RoomFlags`.
+The portal table is in the same file, `class PortalFlags` (1 One Way · 2 Link Interiors
 Together · 4 Mirror · 8 Disable Timecycle Modifier · 16 Mirror Using
 Expensive Shaders · 32 Low LOD Only · …).
 
-⛔ **`assetdb.py flags <n>` bu iş için YANLIŞ CEVAP VERİR** — o araç yalnız
-**archetype/entity** tablosunu bilir, oda/portal tablosu ayrıdır ve `--room`
-seçeneği yoktur. 111'i "Wet Road Reflection | Dont Fade | Draw Last |
-Climbable By AI | Static | Disable alpha sorting" diye çözer; hepsi
-alâkasızdır. Bu §2'nin bir başka yüzü: **araç sessizce başka bir tablodan
-cevap verebilir.** Bir alanın anlamını sormadan önce aracın o alanı
-hangi tabloyla eşlediğine bak.
+⛔ **`assetdb.py flags <n>` GIVES THE WRONG ANSWER for this job** — that tool knows only
+the **archetype/entity** table; the room/portal table is separate and there is no `--room`
+option. It decodes 111 as "Wet Road Reflection | Dont Fade | Draw Last |
+Climbable By AI | Static | Disable alpha sorting"; all of it is
+irrelevant. This is another face of §2: **a tool can silently answer from a different
+table.** Before asking what a field means, check which table the tool
+maps that field to.
 
-**Ölçülmüş vanilla ölçütü** (bu turda dört MLO açıldı):
+**Measured vanilla reference** (four MLOs opened this round):
 
-| MLO | oda | bayrak |
+| MLO | rooms | flag |
 |---|---|---|
-| `ch_dlc_int_09_ch` (casino vault, zifiri) | 5 | **5/5 → 111** |
-| `xm_x17dlc_int_facility` (tamamen gömülü) | 18 | **18/18 → 111** |
-| `dt1_02_carpark` (yeraltı otoparkı) | 2 | 108 · 104 |
-| `v_int_2` (v_coroner, **vanilla**) | 14 | 111 ağırlıklı, **ama** `MainStairs` 99 · `CorridorTop` 107 · `topoff_*` 99/99/**0** |
+| `ch_dlc_int_09_ch` (casino vault, pitch dark) | 5 | **5/5 → 111** |
+| `xm_x17dlc_int_facility` (fully buried) | 18 | **18/18 → 111** |
+| `dt1_02_carpark` (underground car park) | 2 | 108 · 104 |
+| `v_int_2` (v_coroner, **vanilla**) | 14 | mostly 111, **but** `MainStairs` 99 · `CorridorTop` 107 · `topoff_*` 99/99/**0** |
 
 **111 = Freeze×2 + Reduce×2 + No Directional Light + No Exterior Lights.**
-Karanlık iç mekânın imzası budur. Dikkat: hiçbiri **256 `Dont Render
-Exterior` KURMAZ** — o bit karanlık için gerekli değil, kurma.
+That is the signature of a dark interior. Note: none of them **SETS 256 `Dont Render
+Exterior`** — that bit is not needed for darkness, do not set it.
 
-**Rockstar'ın kendi mantığı:** yeraltı odaları 111, yer üstü odaları 99/107/0.
-Yani vanilla `v_coroner`'da merdiven boşluğuna (`MainStairs`, z uzanımı
-**18.6 m**) güneş **kasıtlı** giriyor. Apokaliptik/karanlık bir sürüm
-yapıyorsan bunlar tek tek 111'e çekilir; kusur senin değişikliğinde değil
-**vanilla'nın kendisindedir**, bu yüzden "vanilla ile diff al" denetimi bunu
-ASLA yakalamaz. Ölçüt vanilla'nın aynı dosyası değil, **aynı işi yapan başka
-bir vanilla MLO** olmalı.
+**Rockstar's own logic:** underground rooms 111, above-ground rooms 99/107/0.
+So in vanilla `v_coroner` the sun enters the stairwell (`MainStairs`, z extent
+**18.6 m**) **on purpose**. If you are making an apocalyptic/dark version, pull these
+to 111 one by one; the defect is not in your change but **in vanilla itself**,
+so a "diff against vanilla" check will NEVER catch it. The reference must not be
+the same vanilla file but **another vanilla MLO doing the same job**.
 
-Ped/araç popülasyon bitlerine karışma: yalnız `flags |= 4|8` uygula.
-`limbo` odasına dokunma (vanilla'da her zaman 96).
+Do not touch the ped/vehicle population bits: apply only `flags |= 4|8`.
+Do not touch the `limbo` room (always 96 in vanilla).
 
-**Yazma hattı:** `ytyp_to_xml.ps1` → XML'de `flags` yaması →
-`meta_xml_to_bin.ps1` (`.ytyp`/`.ymap` için; `xml_to_res.ps1` bu ikisini
-TANIMAZ) → geri oku. Tur kayıpsızlığı **düğüm bazında** doğrulanır:
-ölçüldü, 14.257 düğümde kaybolan 0 / eklenen 0 / değişen tam 5.
+**Write pipeline:** `ytyp_to_xml.ps1` (script not in the repository) → patch `flags` in the XML →
+`meta_xml_to_bin.ps1` (for `.ytyp`/`.ymap`; `xml_to_res.ps1` does NOT
+RECOGNIZE these two) → read back. Round-trip losslessness is verified **per node**:
+measured, of 14,257 nodes 0 lost / 0 added / exactly 5 changed.
 
 ---

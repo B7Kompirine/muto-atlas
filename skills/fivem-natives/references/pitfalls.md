@@ -1,11 +1,11 @@
-# Sık yapılan native hataları
+# Common native mistakes
 
-Bu dosyadaki her iddia `data/natives.merged.json` üzerinden doğrulanmıştır.
-Şüphelendiğinde `nativedb.py check` ile teyit et.
+Every claim in this file is verified against `data/natives.merged.json`.
+When in doubt, confirm with `nativedb.py check`.
 
-## 1. Namespace'e göre taraf
+## 1. Side by namespace
 
-Sunucudan **hiçbir** nativei çağrılamayan namespace'ler (34 adet):
+Namespaces with **no** native callable from the server (34 of them):
 
 ```
 APP AUDIO BRAIN CAM CLOCK CUTSCENE DATAFILE DECORATOR DLC EVENT FILES FIRE
@@ -14,12 +14,12 @@ PAD PATHFIND PHYSICS RECORDING REPLAY SAVEMIGRATION SCRIPT SHAPETEST SOCIALCLUB
 STATS STREAMING SYSTEM WATER ZONE
 ```
 
-Bu namespace'lerden bir native `server.lua` içinde görürsen bu bir hatadır.
-`CLOCK` özellikle tuzaktır: `GetClockHours()` sunucuda yoktur, `os.date` kullan.
+A native from one of these namespaces inside `server.lua` is a bug.
+`CLOCK` is a pitfall in particular: `GetClockHours()` does not exist on the server, use `os.date`.
 
-Sunucudan kısmen çağrılabilenler:
+Partly callable from the server:
 
-| namespace | toplam | sunucudan |
+| namespace | total | from server |
 |---|---:|---:|
 | CFX | 775 | 203 |
 | VEHICLE | 745 | 43 |
@@ -32,53 +32,52 @@ Sunucudan kısmen çağrılabilenler:
 | MISC | 323 | 2 |
 | NETWORK | 823 | 2 |
 
-Yani `VEHICLE` nativelerinin yalnızca %6'sı sunucudan çağrılabilir. "Entity nativesi
-sunucuda çalışır" genellemesi yanlıştır — tek tek `check` et.
+So only 6% of `VEHICLE` natives are callable from the server. The generalisation "entity natives
+work on the server" is wrong — `check` them one by one.
 
-## 2. Baştaki alt çizgi
+## 2. Leading underscore
 
-Cfx'te adı belgelenmemiş nativeler alt çizgiyle başlar ve Lua'da da alt çizgiyle
-çağrılır. Alt çizgiyi düşürmek `E001` üretir:
+In Cfx, natives with an undocumented name start with an underscore and are called with the
+underscore in Lua too. Dropping the underscore gives `E001`:
 
-| yanlış | doğru |
+| wrong | right |
 |---|---|
-| `AddTextComponentString(...)` | `AddTextComponentSubstringPlayerName(...)` veya `_AddTextComponentString(...)` |
+| `AddTextComponentString(...)` | `AddTextComponentSubstringPlayerName(...)` or `_AddTextComponentString(...)` |
 | `GetWeatherTypeTransition(...)` | `_GetWeatherTypeTransition(...)` |
 
-`check` her iki yazımı da tanır ve kanonik adı gösterir.
+`check` recognises both spellings and shows the canonical name.
 
-## 3. Var olmayan ama çok yazılan isimler
+## 3. Names that do not exist but are written often
 
-Bunlar native değildir — framework fonksiyonu ararken native sanılırlar:
+These are not natives — they get mistaken for natives while looking for a framework function:
 
-| yazılan | gerçekte |
+| written | actually |
 |---|---|
 | `GetPlayerMoney` | QBCore: `Player.PlayerData.money`, ESX: `xPlayer.getMoney()` |
 | `TriggerServerCallback` | QBCore: `QBCore.Functions.TriggerCallback`, ox_lib: `lib.callback` |
-| `GetWeaponName` | native yok; `WEAPON` hash → locale/config eşlemesi yap |
+| `GetWeaponName` | no native; map the `WEAPON` hash → locale/config |
 | `HasEntityBeenDamagedByAnyWeapon` | `HasEntityBeenDamagedByWeapon(entity, weaponHash, weaponType)` |
 | `GetVehicleFuel` | `GetVehicleFuelLevel(vehicle)` (Cfx, client) |
 
-Kullanıcı "şu nativei kullan" derse ve `check` bulamıyorsa, bunun bir native
-olmadığını ve hangi framework API'sinin karşılık geldiğini söyle.
+If the user says "use this native" and `check` cannot find it, say that it is not a native and
+which framework API corresponds to it.
 
-## 4. Argüman sayısı
+## 4. Argument count
 
-FiveM Lua'da eksik argüman hata vermez, `nil`/`0` olur. Bu yüzden yanlış parametre
-sayısı sessizce yanlış davranışa döner:
+In FiveM Lua a missing argument raises no error, it becomes `nil`/`0`. So a wrong parameter count
+silently turns into wrong behaviour:
 
 ```lua
--- GetEntityCoords(Entity entity, BOOL alive) — yaygın ve zararsız
+-- GetEntityCoords(Entity entity, BOOL alive) — common and harmless
 local c = GetEntityCoords(ped)
 
--- HATA: fazla argüman, imza tek parametre alır
+-- ERROR: extra argument, the signature takes one parameter
 local plate = GetVehicleNumberPlateText(veh, 5)
 ```
 
-Fazla argüman `E003` (hata), eksik argüman `W104` (uyarı) üretir.
+An extra argument gives `E003` (error), a missing argument `W104` (warning).
 
-## 5. Metot çağrısı native değildir
+## 5. A method call is not a native
 
-`Bridge.HasItem(...)`, `QBCore:GetCoreObject()`, `Player.Functions.AddItem(...)`
-noktalı/iki noktalı çağrılardır; linter bunları atlar. Sen de bunları native diye
-`check` etme — veritabanında yoktur.
+`Bridge.HasItem(...)`, `QBCore:GetCoreObject()`, `Player.Functions.AddItem(...)` are dot/colon
+calls; the linter skips them. Do not `check` them as natives either — they are not in the database.

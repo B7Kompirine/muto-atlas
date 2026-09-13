@@ -1,74 +1,74 @@
 ---
 description: Setup - asks for your paths, builds all data layers from your own install
-argument-hint: "[sunucu resources klasörü]"
+argument-hint: "[server resources folder]"
 allowed-tools: Bash(python:*), Bash(powershell.exe:*), Read, Glob, AskUserQuestion
 ---
 
-Argüman: `$ARGUMENTS`
+Argument: `$ARGUMENTS`
 
-Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içeren muto-atlas klasörü).
+Plugin root: `${CLAUDE_PLUGIN_ROOT}` (if it cannot be found, the muto-atlas folder that contains `scripts/assetdb.py`).
 
-## ADIM 1 — Durumu gör
+## STEP 1 — See the state
 
 ```bash
 python "${CLAUDE_PLUGIN_ROOT}/scripts/setup.py" --plan
 ```
 
-Çıktının başındaki üç satıra bak: `GTA V`, `CodeWalker`, `sunucu`.
-Üçü de doluysa ADIM 3'e geç.
+Look at the three lines at the top of the output: `GTA V`, `CodeWalker`, `server`.
+If all three are filled in, go to STEP 3.
 
-## ADIM 2 — Eksik yolu KULLANICIYA SOR
+## STEP 2 — ASK THE USER for the missing path
 
-⛔ **Tahmin etme, arama yapıp durma, "muhtemelen şuradadır" deme.**
-Bu aracı kullanan herkeste GTA V ve CodeWalker vardır; eksik olan veri değil
-**yol bilgisidir.** `AskUserQuestion` ile sor:
+⛔ **Do not guess, do not keep searching, do not say "it is probably there".**
+Everyone who uses this tool has GTA V and CodeWalker; what is missing is not data but
+**path information.** Ask with `AskUserQuestion`:
 
-- **GTA V klasörü** — `x64a.rpf`, `common.rpf` gibi dosyaların olduğu yer.
-  Yaygın: `C:\Program Files\Epic Games\GTAV`,
+- **GTA V folder** — where files such as `x64a.rpf` and `common.rpf` are.
+  Common: `C:\Program Files\Epic Games\GTAV`,
   `C:\Program Files\Rockstar Games\Grand Theft Auto V`,
   `...\Steam\steamapps\common\Grand Theft Auto V`
-- **CodeWalker.Core.dll** — CodeWalker'ı açtığın klasörde, `CodeWalker.exe`'nin
-  yanında durur. Sürüm klasörü olabilir (`CodeWalker30_dev46`).
-- **FiveM sunucu `resources` klasörü** *(isteğe bağlı ama çok değerli)* —
-  framework indeksi buradan üretilir; kurulu olmayan kaynağa giden
-  export/event çağrılarını yakalar.
+- **CodeWalker.Core.dll** — in the folder you open CodeWalker from, next to `CodeWalker.exe`.
+  It can be a version folder (`CodeWalker30_dev46`).
+- **FiveM server `resources` folder** *(optional but very valuable)* —
+  the framework index is built from it; it catches export/event calls to
+  resources that are not installed.
 
-## ADIM 3 — Kur
+## STEP 3 — Build
 
 ```bash
 python "${CLAUDE_PLUGIN_ROOT}/scripts/setup.py" --save \
-  --gta "<GTA V klasörü>" \
-  --codewalker "<yol>\CodeWalker.Core.dll" \
-  --resources "<sunucu>/resources"
+  --gta "<GTA V folder>" \
+  --codewalker "<path>\CodeWalker.Core.dll" \
+  --resources "<server>/resources"
 ```
 
-`--save` yolları `data/config.json`'a yazar; bir daha sorulmaz.
-(`data/` `.gitignore`'da — kişisel yol bilgisi repoya girmez.)
+`--save` writes the paths to `data/config.json`; they are not asked again.
+(`data/` is in `.gitignore` — personal path information never enters the repo.)
 
-Ağır katmanlar **varsayılan olarak** kurulur. Birkaç dakika sürer
-(klipler ~3 dk, iskeletler daha uzun). Atlamak için `--hafif-only`.
+The heavy layers are built **by default**. It takes a few minutes
+(clips ~3 min, skeletons longer). To skip them, `--light-only`.
 
-## ADIM 4 — Doğrula
+## STEP 4 — Verify
 
 ```bash
 python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" stats
 ```
 
-Her katmanın VAR/YOK durumunu, boyutunu ve dump sürümünü basar.
-`stats` **asla** EXIT 2 dönmez — eksik katman varken de çalışır, çünkü
-"ne kurulu?" sorusunun cevabı odur.
+It prints each layer's present/missing status, its size and the dump version.
+`stats` **never** returns EXIT 2 — it works even with missing layers, because it is
+the answer to "what is installed?".
 
-## ⛔ Kurulum sonrası kullanıcıya söyle
+## ⛔ After setup, tell the user
 
-Eksik kalan katman varsa **hangi sorguların çalışmayacağını** söyle.
-Çıkış kodları:
+If a layer is still missing, say **which queries will not work**.
+Exit codes:
 
-| kod | anlam |
+| code | meaning |
 |---:|---|
-| 0 | bulundu |
-| 1 | ad otoritede yok |
-| 2 | katman kurulu değil — sonuç hakkında hiçbir şey iddia edilemez |
-| 3 | iç hata (bozuk dosya) |
+| 0 | found |
+| 1 | name not in the authority |
+| 2 | layer not installed — nothing can be claimed about the result |
+| 3 | internal error (broken file) |
 
-`2`'yi `1` sanmak, veri eksikliğini varlık yokluğu sanmaktır — bu plugin
-tam olarak onu önlemek için var.
+Mistaking `2` for `1` is mistaking missing data for a missing asset — this plugin
+exists exactly to prevent that.

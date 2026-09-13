@@ -1,38 +1,38 @@
 ---
 description: Search a FiveM native, verify it exists, show its signature
-argument-hint: <native adı veya arama terimi> [--apiset server|client|shared]
+argument-hint: <native name or search term> [--apiset server|client|shared]
 allowed-tools: Bash(python:*), Read
 ---
 
-Kullanıcının sorgusu: `$ARGUMENTS`
+User query: `$ARGUMENTS`
 
-Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içeren muto-atlas klasörü).
+Plugin root: `${CLAUDE_PLUGIN_ROOT}` (if it cannot be found, the muto-atlas folder that contains `scripts/assetdb.py`).
 
-Sorguyu şu şekilde ele al:
+Handle the query like this:
 
-1. Sorgu bir native adına benziyorsa (`GetEntityCoords`, `GET_ENTITY_COORDS`,
-   `0x3FEF770D40960D5A`) önce doğrula:
-
-   ```bash
-   python "${CLAUDE_PLUGIN_ROOT}/scripts/nativedb.py" check <ad>
-   ```
-
-   Varsa `show` ile tam imzayı, parametre açıklamalarını, docs linkini ve Lua
-   örneğini getir. Yoksa önerilen yakın isimleri kullanıcıya sun ve **uydurma**.
-
-2. Sorgu serbest metinse (`araç yakıtı`, `plaka okuma`, `oyuncu kimliği`) arama yap:
+1. If the query looks like a native name (`GetEntityCoords`, `GET_ENTITY_COORDS`,
+   `0x3FEF770D40960D5A`), verify it first:
 
    ```bash
-   python "${CLAUDE_PLUGIN_ROOT}/scripts/nativedb.py" search <terimler> [--apiset ...]
+   python "${CLAUDE_PLUGIN_ROOT}/scripts/nativedb.py" check <name>
    ```
 
-   Arama İngilizce açıklamalar üzerinde çalışır; Türkçe sorguyu İngilizce terime
-   çevirerek ara (`yakıt` → `fuel`, `plaka` → `plate`, `kimlik` → `identifier`).
+   If it exists, fetch the full signature, parameter descriptions, docs link and Lua
+   example with `show`. If it does not, offer the user the suggested close names and **do not invent**.
 
-3. Sonucu sunarken **her zaman** şunları belirt:
-   - `client` / `server` / `shared` etiketi ve bunun hangi dosyaya yazılacağı
-   - tam imza (parametre tipleri ve sırası)
-   - docs.fivem.net linki
+2. If the query is free text (`vehicle fuel`, `reading the plate`, `player identifier`), search:
 
-Birden fazla aday varsa hepsini listele, sonra kullanıcının anlattığı işe en uygun
-olanı gerekçesiyle öner.
+   ```bash
+   python "${CLAUDE_PLUGIN_ROOT}/scripts/nativedb.py" search <terms> [--apiset ...]
+   ```
+
+   The search runs on the English descriptions; translate a Turkish query into English terms
+   before searching (`yakıt` → `fuel`, `plaka` → `plate`, `kimlik` → `identifier`).
+
+3. When presenting the result, **always** state:
+   - the `client` / `server` / `shared` label and which file it goes into
+   - the full signature (parameter types and order)
+   - the docs.fivem.net link
+
+If there are several candidates, list them all, then recommend the one that best fits the job
+the user described, with the reason.

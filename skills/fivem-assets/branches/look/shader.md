@@ -1,79 +1,78 @@
-# Shader seçimi — program + render kovası, doku sampler'ları, "dokusu yok"
+# Shader choice — program + render bucket, texture samplers, "no texture"
 
-**Ne zaman okunur:** hangi `.sps`, alfa/cutout neden çalışmıyor, `RenderBucket`, ydr'deki shader adı, PBR haritalarını GTA'ya çevirme, "bu yüzeyin dokusu yok".
-**When to read:** choosing the shader program and render bucket; texture samplers; "the texture is there but nothing shows".
-**Kaynak:** `sources/external-tools.md` §2 shader bölümü (Sollumz 2.9 ölçümü) · `lights.md` 'dokusu yok' · `bake_to_gta.py` docstring (249 shader, 1135 doku) · `sources/external-tools.md` §1e · **Ölçüm:** 249 shader tablosu (`shaders.tsv`), 24.000 model kullanım sayımı, 400+ vanilla `.ytd`
-**Önce:** `_branch.md` · gövde › `trunk/tool-pitfalls.md` §1-2
+**When to read:** which `.sps` (shader program and render bucket); why alpha/cutout does not work; `RenderBucket`; the shader name in a ydr; texture samplers; converting PBR maps to GTA; "this surface has no texture" / "the texture is there but nothing shows".
+**Source:** `sources/external-tools.md` §2 shader section (Sollumz 2.9 measurement) · `lights.md` 'no texture' · `bake_to_gta.py` docstring (249 shaders, 1135 textures) · `sources/external-tools.md` §1e · **Measured:** 249-shader table (`shaders.tsv`), 24,000-model usage count, 400+ vanilla `.ytd`
+**Read first:** `_branch.md` · trunk › `trunk/tool-pitfalls.md` §1-2
 
 ---
 
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" shader <tür>     # cam/emissive/terrain/kumaş/araç/su/decal/pxm — doku + parametre
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" shader <kind>     # glass/emissive/terrain/cloth/vehicle/water/decal/pxm — textures + parameters
 ```
 
-## Shader seçimi iki eksenlidir: program **ve** render kovası
+## Shader choice has two axes: program **and** render bucket
 
-⛔ **Bir `.sps` seçmek shader'ı seçmez, iki şeyi birden seçer:** GTA shader
-**programı** ve **render kovası**. İkisi Sollumz'da ayrı alanlardır ve kova
-**yazılabilir** — `.sps` ön ayarının getirdiği kovaya mahkûm değilsiniz.
+⛔ **Choosing a `.sps` does not choose a shader; it chooses two things at once:** the GTA shader
+**program** and the **render bucket**. They are separate fields in Sollumz, and the bucket is
+**writable** — you are not stuck with the bucket the `.sps` preset brings.
 
-Ölçüldü (Sollumz 2.9.0):
+Measured (Sollumz 2.9.0):
 
-| `.sps` | program | kova | emissive |
+| `.sps` | program | bucket | emissive |
 |---|---|---|---|
-| `cutout.sps` | `default` | CUTOUT | yok |
-| `emissive_alpha.sps` | `emissive` | ALPHA | var |
-| `emissive_clip.sps` | `emissive_clip` | **OPAQUE** | var |
+| `cutout.sps` | `default` | CUTOUT | no |
+| `emissive_alpha.sps` | `emissive` | ALPHA | yes |
+| `emissive_clip.sps` | `emissive_clip` | **OPAQUE** | yes |
 
-**Opak kova alfayı hiç okumaz.** Adında "clip"/"alpha" geçen bir `.sps`
-seçmek alfanın çalışacağını garanti etmez: `emissive_clip.sps` ile delikli
-bir prop üretildiğinde oyunda **bütün delikler kapandı**, doku saydam
-olduğu hâlde katı bir kutu çizildi.
+**The opaque bucket never reads alpha.** Choosing a `.sps` with "clip"/"alpha" in its name
+does not guarantee that alpha will work: when a prop with holes was built with
+`emissive_clip.sps`, **all the holes closed** in game — a solid box was drawn even though
+the texture was transparent.
 
-Kova değerleri: `OPAQUE / ALPHA / DECAL / CUTOUT / NO_SPLASH / NO_WATER /
-WATER / DISPLACEMENT_ALPHA`. Alfa + emissive birlikte isteniyorsa program
-emissive bırakılır, kova elle `CUTOUT`'a çekilir:
+Bucket values: `OPAQUE / ALPHA / DECAL / CUTOUT / NO_SPLASH / NO_WATER /
+WATER / DISPLACEMENT_ALPHA`. When alpha + emissive are wanted together, leave the program
+emissive and set the bucket to `CUTOUT` by hand:
 
 ```python
 m = create_shader("emissive_clip.sps")
-m.shader_properties.renderbucket = "CUTOUT"   # ydr'ye RenderBucket 3 yazar
+m.shader_properties.renderbucket = "CUTOUT"   # writes RenderBucket 3 to the ydr
 ```
 
-⚠️ **ydr'ye yazılan ad `.sps` DOSYA ADI DEĞİL, PROGRAM adıdır.**
-`emissive_alpha.sps` ydr'de `emissive` diye görünür. Hash'i
-`emissive_alpha` sanıp "yanlış shader yazılmış" demek yanlış teşhistir.
-Doğrulama yaparken `JenkHash.GenHash(<program adı>)` ile karşılaştırın.
+⚠️ **The name written to the ydr is the PROGRAM name, NOT the `.sps` FILE NAME.**
+`emissive_alpha.sps` shows up in the ydr as `emissive`. Expecting the hash of
+`emissive_alpha` and saying "the wrong shader was written" is a misdiagnosis.
+When verifying, compare against `JenkHash.GenHash(<program name>)`.
 
-**İki tarafı da ölçün:** `shader_properties.name` (program),
-`shader_properties.renderbucket` (kova). Sonra ydr'den geri okuyup
-`Shaders.data_items[i].Name` ve `.RenderBucket` ile doğrulayın.
+**Measure both sides:** `shader_properties.name` (program),
+`shader_properties.renderbucket` (bucket). Then read back from the ydr and verify with
+`Shaders.data_items[i].Name` and `.RenderBucket`.
 
 
 ---
 
-## PBR → GTA: hangi harita nereye (ölçüldü)
+## PBR → GTA: which map goes where (measured)
 
-GTA PBR değildir: 249 shader'da roughness/gloss/metallic/AO sampler'ı **0**; var olan `SpecSampler` (130). Roughness ters çevrilip **spec**'e, AO **diffuse'un içine**, metallic shader **skalerlerine** gider. Hat: `scripts/bake_to_gta.py`.
+GTA is not PBR: across 249 shaders there are **0** roughness/gloss/metallic/AO samplers; what exists is `SpecSampler` (130). Roughness goes inverted into **spec**, AO **into the diffuse**, metallic into shader **scalars**. Pipeline: `scripts/bake_to_gta.py`.
 
 
-## "Bu yüzeyin dokusu yok" ≠ doku eksik
+## "This surface has no texture" ≠ texture missing
 
-Ölçüldü: JS kapağının dokusu (`my_js_kapi_d`) **vardı ve doğruydu** —
-256×256, gerçek bir morg çekmecesi atlası (kapak yüzeyi + kilit/kulp).
-Kapının UV'si de doğru bölgeyi örnekliyordu. Kusur **kontrasttaydı**:
+Measured: the JS lid's texture (`my_js_door_d`) **was there and was correct** —
+256×256, a real morgue drawer atlas (lid surface + lock/handle).
+The door's UV also sampled the right region. The defect **was in the contrast**:
 
-| | ortalama | std |
+| | mean | std |
 |---|---|---|
-| kapı sütunu (önce) | **181** | **5.0** |
-| zemin (karşılaştırma) | 55–101 | — |
-| kapı sütunu (sonra) | 93 | 13.2 |
+| door column (before) | **181** | **5.0** |
+| floor (comparison) | 55–101 | — |
+| door column (after) | 93 | 13.2 |
 
-Ortalama 181 ve std 5 = zemine göre bembeyaz, dümdüz bir panel. Kullanıcı
-bunu **"doku yok"** diye okur. Karartma + kontrast açma yeter; yeni doku
-aramaya gerek yok.
+A mean of 181 and std 5 = a bright white, flat panel next to the floor. The user
+reads this as **"no texture"**. Darkening + raising the contrast is enough; there is no need
+to look for a new texture.
 
-⛔ **Sıra önemli: ÖNCE kontrast, SONRA ölçekleme.** Ters sırada ölçekleme
-std'yi de böldüğü için kontrast artışı boşa gider — ölçüldü: std 5.0 → 5.8,
-yani hiçbir şey değişmedi. Doğru sırada 5.0 → 20.1 (DXT1'den sonra 13.2).
+⛔ **Order matters: contrast FIRST, scaling SECOND.** In the reverse order the scaling
+also divides the std, so the contrast gain is lost — measured: std 5.0 → 5.8,
+i.e. nothing changed. In the right order 5.0 → 20.1 (13.2 after DXT1).
 
 ---

@@ -1,97 +1,96 @@
-# Kapı açılmıyor / obje kımıldamıyor / kilit / koordinat
+# Door won't open / object won't move / lock / coordinates
 
-**Ne zaman okunur:** harita objesi hareket etmiyor, `AddDoorToSystem` tutmuyor, obje donuyor, kapı yanlış tanımlı, konumu config'e yazacaksın.
-**When to read:** the door won't open, the object won't move, locking, coordinates, `specialAttribute` door table.
-**Kaynak:** eski SKILL 'specialAttribute — KAPI TABLOSU', 'OBJE HAREKET ETTİRMENİN KATMANLARI', 'ARCHETYPE YANLIŞ TANIMLIYSA', 'Kök-kemik klipleri', 'KOORDİNAT' (2026-07) · **Ölçüm:** 316.975 arketip dağılımı; Fleeca oyunda
-**Önce:** `_branch.md` · gövde › `trunk/flags.md` (`specialAttribute`), `trunk/tool-pitfalls.md` §1 · MLO içindeyse çözüm `branches/map/mlo-object-swap.md`
+**When to read:** the door won't open or a map object won't move, `AddDoorToSystem` does not hold, the object freezes, the door is defined wrong (`specialAttribute` door table), locking, or you are about to write a position into a config.
+**Source:** old SKILL 'specialAttribute — DOOR TABLE', 'LAYERS OF MOVING AN OBJECT', 'IF THE ARCHETYPE IS DEFINED WRONG', 'Root-bone clips', 'COORDINATES' (2026-07) · **Measured:** distribution over 316,975 archetypes; Fleeca in game
+**Read first:** `_branch.md` · trunk › `trunk/flags.md` (`specialAttribute`), `trunk/tool-pitfalls.md` §1 · if the object is inside an MLO, the fix is `branches/map/mlo-object-swap.md`
 
 ---
 
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" door  <ad>   # kapı gibi açılır mı
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" show  <ad>   # pivot, bbox, fizik, ytyp
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" where <ad>   # haritada kaç yerde
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" door  <name>   # does it open like a door
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" show  <name>   # pivot, bbox, physics, ytyp
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" where <name>   # in how many places on the map
 ```
 
-## specialAttribute — KAPI TABLOSU
+## specialAttribute — DOOR TABLE
 
-316k archetype'ın dağılımından doğrulandı, tahmin değil:
+Verified from the distribution of 316k archetypes, not a guess:
 
-| Değer | Anlam | Kapı sistemi çalışır mı |
+| Value | Meaning | Does the door system work |
 |---|---|---|
-| **7** | menteşeli kapı | ✅ evet — `AddDoorToSystem` + `DoorSystemSetDoorState` |
-| **8** | sürgülü kapı | ✅ evet |
-| **5** | garaj / rulo kapı | ✅ evet |
-| **10** | kepenk / asansör kapısı | ✅ evet |
-| **12** | demiryolu bariyeri | ✅ evet |
-| **0** | kapı DEĞİL | ❌ hayır — kayıt olsa bile obje kımıldamaz |
-| diğer | bitki, mobilya, trafik, SLOD... | ❌ hayır |
+| **7** | hinged door | ✅ yes — `AddDoorToSystem` + `DoorSystemSetDoorState` |
+| **8** | sliding door | ✅ yes |
+| **5** | garage / rolling door | ✅ yes |
+| **10** | roller shutter / elevator door | ✅ yes |
+| **12** | railway barrier | ✅ yes |
+| **0** | NOT a door | ❌ no — the object does not move even when registered |
+| other | plant, furniture, traffic, SLOD... | ❌ no |
 
-`specialAttribute = 0` ise:
-1. Kapı sistemi **hiçbir şey yapmaz** — denemeye değmez.
-2. Tek script-içi yol: `SetEntityHeading` ile transform'u yeniden yazmak.
-   Doğru görünmesi için pivot'un kenarda olması gerekir → `show` çıktısındaki
-   bbox yorumu bunu söyler.
-3. Kalıcı doğru çözüm: ytyp override ile `specialAttribute = 7` vermek.
+If `specialAttribute = 0`:
+1. The door system **does nothing** — not worth trying.
+2. The only in-script way: rewrite the transform with `SetEntityHeading`.
+   For that to look right the pivot has to be on the edge → the bbox
+   comment in the `show` output tells you.
+3. The permanent correct fix: give it `specialAttribute = 7` with a ytyp override.
 
-## OBJE HAREKET ETTİRMENİN KATMANLARI
+## LAYERS OF MOVING AN OBJECT
 
-Bir dünya objesini oynatmak isterken sırayla doğrula:
+When you want to move a world object, verify in this order:
 
-1. **Sahiplik** — `SetEntityAsMissionEntity` + `NetworkRequestControlOfEntity`.
-   Kontrol alınmadan `FreezeEntityPosition` / `SetEntityCoords` /
-   `SetEntityHeading` **sessizce yok sayılır**. En sık atlanan adım budur.
-2. **Fizik** — `FreezeEntityPosition(false)` tek başına yetmez; obje
-   "hareketsiz" işaretliyse `SetEntityDynamic(true)` + `ActivatePhysics()` gerekir.
-3. **Menteşe** — kapı sistemi ancak `specialAttribute` uygunsa devreye girer.
-4. **Senkron** — harita objeleri networked DEĞİLDİR. Durum server'da tutulup
-   her client kendi kopyasına uygular; yoksa sadece sende hareket eder.
+1. **Ownership** — `SetEntityAsMissionEntity` + `NetworkRequestControlOfEntity`.
+   Without control, `FreezeEntityPosition` / `SetEntityCoords` /
+   `SetEntityHeading` are **silently ignored**. This is the step skipped most often.
+2. **Physics** — `FreezeEntityPosition(false)` alone is not enough; if the object is
+   flagged "static", `SetEntityDynamic(true)` + `ActivatePhysics()` are needed.
+3. **Hinge** — the door system only kicks in when `specialAttribute` fits.
+4. **Sync** — map objects are NOT networked. Keep the state on the server and
+   let every client apply it to its own copy; otherwise it only moves for you.
 
-## ARCHETYPE YANLIŞ TANIMLIYSA — ytyp override
+## IF THE ARCHETYPE IS DEFINED WRONG — ytyp override
 
-Bir obje ytyp'te yanlış tanımlıysa (kapı olması gereken şey
-`specialAttribute=0`) doğru çözüm script değil, ytyp düzeltmesidir:
+If an object is defined wrong in its ytyp (something that should be a door has
+`specialAttribute=0`), the correct fix is not a script but a ytyp correction:
 
 ```bash
 powershell -File "${CLAUDE_PLUGIN_ROOT}/scripts/make_ytyp_override.ps1" `
     -Models v_ilev_gb_teldr -SpecialAttribute 7 `
-    -YtypName <benzersiz_ad> -OutFile "<resource>\stream\<ad>.ytyp"
+    -YtypName <unique_name> -OutFile "<resource>\stream\<name>.ytyp"
 ```
 
-Kaynak archetype'ı RPF'ten okur, **bütün alanları birebir kopyalar**, sadece
-istenen değeri değiştirir — uydurma alan olmaz. Çıktı `stream/` klasörüne
-konur ve fxmanifest'te `data_file 'DLC_ITYP_REQUEST'` ile bildirilir.
+It reads the source archetype from the RPF, **copies every field one to one** and changes only
+the requested value — no invented fields. The output goes into the `stream/` folder
+and is declared in fxmanifest with `data_file 'DLC_ITYP_REQUEST'`.
 
-Uyarı: aynı archetype'ı kullanan **her yer** etkilenir (Fleeca örneğinde 6
-şube). Etki alanını `assetdb.py where <model>` ile önceden gör.
+Warning: **every place** that uses the same archetype is affected (6 bank
+branches in the Fleeca example). See the scope first with `assetdb.py where <model>`.
 
-## Kök-kemik klipleri donmuş objede çalışmaz
+## Root-bone clips do not play on a frozen object
 
-Bir klip sadece tag 0'ı oynatıyorsa objenin **kendisini** taşır, iç
-parçasını değil. `FreezeEntityPosition(obj, true)` bunu tamamen engeller:
-klip oynar, `PlayEntityAnim` true döner, ekranda hiçbir şey olmaz.
-Kök hareketli klip oynatmadan önce dondurmayı kaldır.
+If a clip only animates tag 0, it moves the object **itself**, not an
+inner part. `FreezeEntityPosition(obj, true)` blocks this completely:
+the clip plays, `PlayEntityAnim` returns true, nothing happens on screen.
+Unfreeze the object before playing a clip with root motion.
 
 
 
-## KOORDİNAT — config'e sabit yazmadan önce
+## COORDINATES — before hard-coding them in a config
 
-Bir prop/kapı için koordinat gerekiyorsa **oyuncudan isteme, indeksten al**:
+If you need a coordinate for a prop/door, **do not ask the player; take it from the index**:
 
 ```bash
 python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" where v_ilev_gb_teldr
-# -> 6 benzersiz konum (6 Fleeca şubesi)
+# -> 6 unique locations (6 Fleeca bank branches)
 ```
 
-İki şeye dikkat:
+Watch two things:
 
-1. **Aynı prop haritada birden fazla yerde olabilir.** Fleeca vezne kapısı 6
-   şubede var. Config'i tek koordinata göre kurma; ya hepsini yaz ya da
-   oyuncunun etrafında ara.
-2. **`[mlo]` işaretli konumlar bir iç mekâna aittir** — o prop ancak o MLO
-   yüklüyken vardır. `near` çıktısındaki köşeli parantez hangi MLO olduğunu
-   söyler.
+1. **The same prop can be in more than one place on the map.** The Fleeca teller door exists in 6
+   bank branches. Do not build the config around one coordinate; either write all of them or
+   search around the player.
+2. **Locations marked `[mlo]` belong to an interior** — that prop only exists while that MLO
+   is loaded. The square brackets in the `near` output tell you which MLO it
+   is.
 
-## Harita objesinin çarpışmasını kaldırma
+## Removing a map object's collision
 
-`SetEntityCollision(mapObj, false, false)` **güvenilir değil** — obje görünmez olur ama çarpışma yerinde kalır. Doğrusu `CreateModelHide(x,y,z,r,hash,true)`; geri almak `RemoveModelHide` (unutulursa obje bir daha gelmez). Hide çağrısı handle'ı geçersizleştirir, çarpışmayı **önce** kapat.
+`SetEntityCollision(mapObj, false, false)` is **not reliable** — the object becomes invisible but the collision stays. The right way is `CreateModelHide(x,y,z,r,hash,true)`; undo it with `RemoveModelHide` (if you forget, the object never comes back). The hide call invalidates the handle, so turn the collision off **first**.

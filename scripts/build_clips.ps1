@@ -1,17 +1,17 @@
-﻿# build_clips.ps1 — .ycd (clip dictionary) dosyalarindan DETAYLI animasyon indeksi.
+﻿# build_clips.ps1 - DETAILED animation index from .ycd (clip dictionary) files.
 #
-# Isim listesi (build_anims.py) "hangi animasyonlar var" sorusunu cevaplar.
-# Bu script "hangisi TAM OLARAK dogru" sorusunu cevaplar:
-#   • sure (saniye)          -> zamanlamayi tahmin etmeye gerek kalmaz
-#   • tur (anim / animlist)  -> AnimationList = cok izli klip; prop + ped
-#                               birlikte animasyonlu (senkron sahne) demek
-#   • iz sayisi              -> kac ayri sey animasyonlaniyor
-#   • root motion            -> karakter yer degistiriyor mu
+# The name list (build_anims.py) answers "which animations exist".
+# This script answers "which one is EXACTLY right":
+#   - duration (seconds)       -> no need to guess the timing
+#   - type (anim / animlist)   -> AnimationList = multi-track clip; means prop + ped
+#                                 animated together (synced scene)
+#   - track count              -> how many separate things are animated
+#   - root motion              -> does the character change position
 #
-# Kullanim:
+# Usage:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File build_clips.ps1 [-GtaFolder x] [-CodeWalker y] [-Out z]
 #
-# Cikti: data/clips.tsv.gz
+# Output: data/clips.tsv.gz
 
 param(
     [string] $GtaFolder,
@@ -26,21 +26,21 @@ if (-not (Test-Path $Out)) { New-Item -ItemType Directory -Path $Out -Force | Ou
 
 $CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
 if (-not $CodeWalker) {
-    # Son care: diskte ara. YAVAS (C:\ altini tarar). Kalicisi icin:
-    #   python assetdb.py yol codewalker "<yol>"
+    # Last resort: search the disk. SLOW (scans under C:\). To make it permanent:
+    #   python assetdb.py path codewalker "<path>"
     $CodeWalker = Get-ChildItem -Path "$env:USERPROFILE\Desktop","C:\" -Filter 'CodeWalker.Core.dll' `
                     -Recurse -Depth 4 -ErrorAction SilentlyContinue |
                   Select-Object -First 1 -ExpandProperty FullName
 }
-if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll bulunamadi. -CodeWalker <yol> ile ver." }
+if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll not found. Pass it with -CodeWalker <path>." }
 
 $GtaFolder = & "$PSScriptRoot\paths.ps1" gta $GtaFolder
-if (-not $GtaFolder) { throw "GTA V klasoru bulunamadi. -GtaFolder <yol> ile ver." }
+if (-not $GtaFolder) { throw "GTA V folder not found. Pass it with -GtaFolder <path>." }
 
 $cwDir = Split-Path $CodeWalker -Parent
 Write-Output "CodeWalker : $CodeWalker"
 Write-Output "GTA V      : $GtaFolder"
-Write-Output "Cikti      : $Out"
+Write-Output "Output     : $Out"
 
 $script:cwDir = $cwDir
 [System.AppDomain]::CurrentDomain.add_AssemblyResolve([System.ResolveEventHandler]{
@@ -63,10 +63,10 @@ public static class ClipIndexer
 {
     static string F(float v) { return v.ToString("0.###", CultureInfo.InvariantCulture); }
 
-    // Klip suresi ve iz sayisi: ClipAnimation tek animasyon, ClipAnimationList
-    // birden fazla (ped + prop gibi) animasyonu bir arada tutar.
-    // Kemik sayisi, ped animasyonu ile prop animasyonunu KESIN ayirir:
-    // ped iskeleti ~30-90 kemik, prop tek kok kemik (1).
+    // Clip duration and track count: ClipAnimation holds a single animation, ClipAnimationList
+    // holds several animations together (e.g. ped + prop).
+    // The bone count tells a ped animation from a prop animation WITHOUT DOUBT:
+    // a ped skeleton has ~30-90 bones, a prop a single root bone (1).
     static int Bones(Animation a)
     {
         if (a == null) return -1;
@@ -113,7 +113,7 @@ public static class ClipIndexer
         var man = new RpfManager();
         var t0 = DateTime.Now;
         man.Init(gtaFolder, s => { }, s => { }, false, true);
-        Console.WriteLine("[*] RPF taramasi: {0:0.0} sn", (DateTime.Now - t0).TotalSeconds);
+        Console.WriteLine("[*] RPF scan: {0:0.0} s", (DateTime.Now - t0).TotalSeconds);
 
         var ycds = new List<RpfFileEntry>();
         foreach (var rpf in man.AllRpfs)
@@ -122,7 +122,7 @@ public static class ClipIndexer
                 var fe = e as RpfFileEntry;
                 if (fe != null && fe.NameLower.EndsWith(".ycd")) ycds.Add(fe);
             }
-        Console.WriteLine("[*] ycd girdisi: {0}", ycds.Count);
+        Console.WriteLine("[*] ycd entries: {0}", ycds.Count);
 
         var outPath = Path.Combine(outFolder, "clips.tsv.gz");
         long clips = 0, lists = 0;
@@ -161,7 +161,7 @@ public static class ClipIndexer
                         if (string.IsNullOrEmpty(clipName)) { try { clipName = cme.Clip.Name; } catch { } }
                         if (string.IsNullOrEmpty(clipName)) clipName = cme.Hash.ToString();
 
-                        // PlayTime bazen suresi ezilmis klipler icin daha dogru
+                        // PlayTime is sometimes more accurate for clips whose duration was overridden
                         float pt = 0f;
                         try { if (cme.OverridePlayTime) pt = cme.PlayTime; } catch { }
                         if (pt > 0f) dur = pt;
@@ -184,18 +184,18 @@ public static class ClipIndexer
         }
 
         var mb = new FileInfo(outPath).Length / 1024.0 / 1024.0;
-        Console.WriteLine("[*] ycd OK={0} hata={1}", ok, err);
+        Console.WriteLine("[*] ycd OK={0} errors={1}", ok, err);
         Console.WriteLine("[+] {0}  ({1:0.00} MB)", outPath, mb);
-        Console.WriteLine("[+] klip={0}  cok-izli(animlist)={1}  sure={2:0.0} sn",
+        Console.WriteLine("[+] clips={0}  multi-track(animlist)={1}  time={2:0.0} s",
             clips, lists, (DateTime.Now - t1).TotalSeconds);
     }
 }
 '@
 
-# 'System.Collections'/'System.Runtime'/'System.Console' SART: PowerShell 7 (.NET 8+)
-# altinda bu tipler netstandard'dan FORWARD edilmis durumda; referans verilmezse
-# Add-Type "CS1069: type has been forwarded" / "CS0103: Console does not exist"
-# ile coker. Windows PowerShell 5.1'de sorun cikmaz, PS7'de her seferinde cikar.
+# 'System.Collections'/'System.Runtime'/'System.Console' are REQUIRED: under PowerShell 7 (.NET 8+)
+# these types are FORWARDED from netstandard; without a reference
+# Add-Type crashes with "CS1069: type has been forwarded" / "CS0103: Console does not exist".
+# Windows PowerShell 5.1 has no problem with it; PS7 fails every time.
 $refs = @($CodeWalker, (Join-Path $cwDir 'SharpDX.dll'), (Join-Path $cwDir 'SharpDX.Mathematics.dll'), 'netstandard',
           'System.Collections', 'System.Runtime', 'System.Linq', 'System.Console', 'System.IO.Compression', 'System.Text.RegularExpressions')
 Add-Type -TypeDefinition $src -ReferencedAssemblies $refs -Language CSharp

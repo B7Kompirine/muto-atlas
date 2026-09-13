@@ -1,490 +1,492 @@
 #!/usr/bin/env python3
-"""doctor_checks.py — format basina denetimler (.ycd, .ytyp / MLO).
+"""doctor_checks.py — per-format checks (.ycd, .ytyp / MLO).
 
-Her denetim GERCEK dosya uzerinde olculmus bir kurala dayanir; olcumun ne
-oldugu ilgili kuralin yaninda yazilidir. Olcumsuz kural EKLENMEZ -- yanlis
-pozitif ureten bir kapi, kapisiz olmaktan kotudur.
+Every check rests on a rule measured on REAL files; what the measurement was is
+written next to the rule. A rule without a measurement is NOT ADDED -- a gate
+that produces false positives is worse than no gate.
 """
 from __future__ import annotations
 
-from doctor_common import (FATAL, SILENT, WARN, KARE, Rapor, _hash_bos,  # noqa: F401
-                          _oznitelik, _tr)
+from doctor_common import (FATAL, SILENT, WARN, FRAME_SECONDS, Report, _hash_empty,  # noqa: F401
+                          _attr_float, _localize)
 
 # =============================================================================
-# .ycd  — klip sozlugu
+# .ycd  — clip dictionary
 # =============================================================================
-# Yapi (vanilla mp_safehousewine@.ycd / move_m@brave.ycd uzerinde dogrulandi):
+# Structure (verified on vanilla mp_safehousewine@.ycd / move_m@brave.ycd):
 #   ClipDictionary
 #     Clips/Item      : Hash, Name, Type(value=Animation|AnimationList),
 #                       AnimationHash          (Type=Animation)
 #                       Animations/Item/AnimationHash  (Type=AnimationList)
 #     Animations/Item : Hash, Unknown10, FrameCount, BoneIds, Sequences
 
-def _klip_anim_hashleri(klip):
-    """Bir klibin refere ettigi TUM animasyon hash'leri (iki tip de)."""
-    tek = klip.findtext("AnimationHash")
-    if tek and tek.strip():
-        yield tek.strip()
-    liste = klip.find("Animations")
-    if liste is not None:
-        for it in liste:
+def _clip_anim_hashes(clip):
+    """ALL animation hashes a clip references (both types)."""
+    single = clip.findtext("AnimationHash")
+    if single and single.strip():
+        yield single.strip()
+    anim_list = clip.find("Animations")
+    if anim_list is not None:
+        for it in anim_list:
             h = it.findtext("AnimationHash")
             if h and h.strip():
                 yield h.strip()
 
 
-def denetle_ycd(kok, yol, rap, derlenmis=False):
-    klipler = kok.findall("./Clips/Item")
-    animler = kok.findall("./Animations/Item")
+def check_ycd(root, path, report, compiled=False):
+    clips = root.findall("./Clips/Item")
+    anims = root.findall("./Animations/Item")
 
-    if not klipler:
-        rap.ekle(SILENT, "YCD000", yol, _tr({
+    if not clips:
+        report.add(SILENT, "YCD000", path, _localize({
             "tr": "Sozlukte hic klip yok.",
             "en": "Dictionary contains no clips."}))
         return
 
-    anim_hashleri = set()
-    anim_sure = {}
-    gorulen_anim = {}
-    for i, a in enumerate(animler):
+    anim_hashes = set()
+    anim_duration = {}
+    seen_anim = {}
+    for i, a in enumerate(anims):
         h = (a.findtext("Hash") or "").strip()
-        if _hash_bos(h):
-            rap.ekle(SILENT, "YCD002", yol, _tr({
+        if _hash_empty(h):
+            report.add(SILENT, "YCD002", path, _localize({
                 "tr": f"Animasyon #{i} <Hash> bos -> hash 0. Ayni anahtara "
                       f"dusen animasyonlar birbirini EZER.",
                 "en": f"Animation #{i} has empty <Hash> -> hash 0. Animations "
                       f"colliding on one key OVERWRITE each other."}), "Sollumz Clip panel -> Hash")
             continue
-        if h in gorulen_anim:
-            rap.ekle(SILENT, "YCD004", yol, _tr({
-                "tr": f"Animasyon hash tekrari: {h} (#{gorulen_anim[h]} ve #{i}). "
+        if h in seen_anim:
+            report.add(SILENT, "YCD004", path, _localize({
+                "tr": f"Animasyon hash tekrari: {h} (#{seen_anim[h]} ve #{i}). "
                       f"Sonuncusu oncekini ezer.",
-                "en": f"Duplicate animation hash: {h} (#{gorulen_anim[h]} and #{i}). "
+                "en": f"Duplicate animation hash: {h} (#{seen_anim[h]} and #{i}). "
                       f"The last one overwrites the earlier."}))
-        gorulen_anim[h] = i
-        anim_hashleri.add(h)
-        anim_sure[h] = _oznitelik(a.find("Duration"))
+        seen_anim[h] = i
+        anim_hashes.add(h)
+        anim_duration[h] = _attr_float(a.find("Duration"))
 
-        # 0 kanal tuzagi: Sollumz'a Object verilirse dosya olusur, kare/sure
-        # dogrudur, KEMIK VERISI YOKTUR (724 bayt vs 59 KB).
-        kemik = a.find("BoneIds")
-        diziler = a.find("Sequences")
-        if kemik is not None and len(kemik) == 0:
-            rap.ekle(SILENT, "YCD006", yol, _tr({
+        # 0-channel pitfall: if Sollumz is given the Object, the file is built,
+        # frames/duration are right, there is NO BONE DATA (724 bytes vs 59 KB).
+        bone_ids = a.find("BoneIds")
+        sequences = a.find("Sequences")
+        if bone_ids is not None and len(bone_ids) == 0:
+            report.add(SILENT, "YCD006", path, _localize({
                 "tr": f"Animasyon {h}: BoneIds BOS -> 0 kemik kanali. Dosya "
                       f"olusur, sure dogrudur, poz hic degismez.",
                 "en": f"Animation {h}: BoneIds is EMPTY -> 0 bone channels. The "
                       f"file builds, duration looks right, the pose never moves."}),
-                _tr({"tr": "Sollumz Animation.target_id ARMATURE DATA olmali (arm.data), Object degil.",
-                     "en": "Sollumz Animation.target_id must be the ARMATURE DATA-BLOCK (arm.data), not the Object."}))
-        elif diziler is not None and len(diziler) == 0:
-            rap.ekle(SILENT, "YCD006", yol, _tr({
+                _localize({"tr": "Sollumz Animation.target_id ARMATURE DATA olmali (arm.data), Object degil.", "en": "Sollumz Animation.target_id must be the ARMATURE DATA-BLOCK (arm.data), not the Object."}))
+        elif sequences is not None and len(sequences) == 0:
+            report.add(SILENT, "YCD006", path, _localize({
                 "tr": f"Animasyon {h}: Sequences BOS -> veri yok.",
                 "en": f"Animation {h}: Sequences is EMPTY -> no data."}))
 
         fc = a.find("FrameCount")
         if fc is not None and (fc.get("value") or "0").strip() in ("0", "0.0"):
-            rap.ekle(SILENT, "YCD007", yol, _tr({
+            report.add(SILENT, "YCD007", path, _localize({
                 "tr": f"Animasyon {h}: FrameCount 0.",
                 "en": f"Animation {h}: FrameCount is 0."}))
 
-    gorulen_klip = {}
-    kullanilan = set()
-    cozulmeyen = []   # (klip, cozulmeyen_anim_hash)
-    tasma = []        # (klip, saniye cinsinden asim)
-    refsiz = 0        # AnimationHash tasimayan klip sayisi
-    for i, c in enumerate(klipler):
+    seen_clip = {}
+    used = set()
+    unresolved = []   # (clip, unresolved_anim_hash)
+    overrun = []      # (clip, overrun in seconds)
+    no_ref = 0        # number of clips that carry no AnimationHash
+    for i, c in enumerate(clips):
         h = (c.findtext("Hash") or "").strip()
-        ad = (c.findtext("Name") or "").strip()
-        etiket = h or ad or f"#{i}"
+        name = (c.findtext("Name") or "").strip()
+        label = h or name or f"#{i}"
 
-        if _hash_bos(h):
-            rap.ekle(SILENT, "YCD001", yol, _tr({
-                "tr": f"Klip '{ad or i}' <Hash> bos -> klibin ADI YOK. "
+        if _hash_empty(h):
+            report.add(SILENT, "YCD001", path, _localize({
+                "tr": f"Klip '{name or i}' <Hash> bos -> klibin ADI YOK. "
                       f"TaskPlayAnim/PlayEntityAnim onu BULAMAZ. Cok klipli "
                       f"sozlukte klipler ayrica birbirini ezer.",
-                "en": f"Clip '{ad or i}' has empty <Hash> -> the clip HAS NO NAME. "
+                "en": f"Clip '{name or i}' has empty <Hash> -> the clip HAS NO NAME. "
                       f"TaskPlayAnim/PlayEntityAnim CANNOT find it. In a multi-clip "
                       f"dictionary the clips also overwrite each other."}), "Sollumz Clip panel -> Hash")
         else:
-            if h in gorulen_klip:
-                rap.ekle(SILENT, "YCD003", yol, _tr({
-                    "tr": f"Klip hash tekrari: {h} (#{gorulen_klip[h]} ve #{i}).",
-                    "en": f"Duplicate clip hash: {h} (#{gorulen_klip[h]} and #{i})."}))
-            gorulen_klip[h] = i
+            if h in seen_clip:
+                report.add(SILENT, "YCD003", path, _localize({
+                    "tr": f"Klip hash tekrari: {h} (#{seen_clip[h]} ve #{i}).",
+                    "en": f"Duplicate clip hash: {h} (#{seen_clip[h]} and #{i})."}))
+            seen_clip[h] = i
 
-        refler = list(_klip_anim_hashleri(c))
-        if not refler:
-            refsiz += 1
+        refs = list(_clip_anim_hashes(c))
+        if not refs:
+            no_ref += 1
             continue
-        for r in refler:
-            kullanilan.add(r)
-            if anim_hashleri and r not in anim_hashleri:
-                cozulmeyen.append((etiket, r))
+        for r in refs:
+            used.add(r)
+            if anim_hashes and r not in anim_hashes:
+                unresolved.append((label, r))
                 continue
-            son = _oznitelik(c.find("EndTime"))
-            if son is None:
-                son = _oznitelik(c.find("Duration"))
-            sure = anim_sure.get(r)
-            if son is not None and sure:
-                fazla = son - sure
-                if fazla > 1e-4:
-                    tasma.append((etiket, fazla))
+            end = _attr_float(c.find("EndTime"))
+            if end is None:
+                end = _attr_float(c.find("Duration"))
+            duration = anim_duration.get(r)
+            if end is not None and duration:
+                excess = end - duration
+                if excess > 1e-4:
+                    overrun.append((label, excess))
 
-    # --- cozulmeyen referans: klip oynar, hicbir sey hareket etmez ---
-    for etiket, r in cozulmeyen[:8]:
-        rap.ekle(SILENT, "YCD005", yol, _tr({
-            "tr": f"Klip '{etiket}' -> {r} animasyonu sozlukte YOK. "
+    # --- unresolved reference: the clip plays, nothing moves ---
+    for label, r in unresolved[:8]:
+        report.add(SILENT, "YCD005", path, _localize({
+            "tr": f"Klip '{label}' -> {r} animasyonu sozlukte YOK. "
                   f"Klip oynar, hicbir sey hareket etmez.",
-            "en": f"Clip '{etiket}' -> animation {r} is NOT in the dictionary. "
+            "en": f"Clip '{label}' -> animation {r} is NOT in the dictionary. "
                   f"The clip plays, nothing moves."}))
-    if len(cozulmeyen) > 8:
-        rap.ekle(SILENT, "YCD005", yol, _tr({
-            "tr": f"...ve {len(cozulmeyen) - 8} klip daha cozulmeyen referans tasiyor.",
-            "en": f"...and {len(cozulmeyen) - 8} more clips carry unresolved references."}))
+    if len(unresolved) > 8:
+        report.add(SILENT, "YCD005", path, _localize({
+            "tr": f"...ve {len(unresolved) - 8} klip daha cozulmeyen referans tasiyor.",
+            "en": f"...and {len(unresolved) - 8} more clips carry unresolved references."}))
 
-    # --- konumsal eslesme (Sollumz formu) ---
-    # Sollumz Type=Animation klibine AnimationHash YAZMAZ; derleyici klip[i] ile
-    # animasyon[i]'yi konumsal eslestirir. Kendi basina hata degildir -- ama
-    # Sollumz kliplerle animasyonlari OBJE ADINA GORE ALFABETIK dizer, olusturma
-    # sirasina gore degil. Sayilar tutmuyorsa eslesme kesinlikle yanlistir.
-    if refsiz:
-        if derlenmis:
-            # DERLENMIS dosyada bag artik cozulmus olmali. Bos AnimationHash
-            # burada hash 0 demektir: klip calisir, hicbir animasyon bulunmaz.
-            # (Olculdu: ayni sozlugun 2 Agustos derlemesinde 63/63 hash dolu,
-            #  3 Agustos derlemesinde 63/63 BOS -- ayni donusturucu, ayni okuyucu.)
-            rap.ekle(SILENT, "YCD009", yol, _tr({
-                "tr": f"DERLENMIS dosyada {refsiz}/{len(klipler)} klibin AnimationHash'i "
+    # --- positional matching (Sollumz form) ---
+    # Sollumz does NOT WRITE an AnimationHash into a Type=Animation clip; the
+    # compiler pairs clip[i] with animation[i] by position. That alone is not an
+    # error -- but Sollumz sorts clips and animations ALPHABETICALLY BY OBJECT
+    # NAME, not by creation order. If the counts disagree, the pairing is
+    # certainly wrong.
+    if no_ref:
+        if compiled:
+            # In a COMPILED file the link must already be resolved. An empty
+            # AnimationHash here means hash 0: the clip runs, no animation is found.
+            # (Measured: the same dictionary's 2 August build had 63/63 hashes
+            #  filled, its 3 August build 63/63 EMPTY -- same converter, same reader.)
+            report.add(SILENT, "YCD009", path, _localize({
+                "tr": f"DERLENMIS dosyada {no_ref}/{len(clips)} klibin AnimationHash'i "
                       f"BOS -> hash 0. Klip cagrilir, hicbir animasyon bulunmaz. "
                       f"Kaynak XML'de konumsal eslesme normaldir; derlenmis dosyada "
                       f"bagin COZULMUS olmasi gerekir.",
-                "en": f"In this COMPILED file {refsiz}/{len(klipler)} clips have an EMPTY "
+                "en": f"In this COMPILED file {no_ref}/{len(clips)} clips have an EMPTY "
                       f"AnimationHash -> hash 0. The clip is invoked, no animation is "
                       f"found. Positional matching is normal in the source XML; in a "
                       f"compiled file the link must already be RESOLVED."}),
                 "res_to_xml.ps1 + Sollumz Clip panel -> Hash")
-        elif refsiz == len(klipler) and len(klipler) == len(animler):
-            rap.ekle(WARN, "YCD009", yol, _tr({
-                "tr": f"Hicbir klip AnimationHash tasimiyor ({refsiz} klip) -> eslesme "
-                      f"KONUMSAL. Sayilar tutuyor ({len(klipler)}={len(animler)}), ama "
+        elif no_ref == len(clips) and len(clips) == len(anims):
+            report.add(WARN, "YCD009", path, _localize({
+                "tr": f"Hicbir klip AnimationHash tasimiyor ({no_ref} klip) -> eslesme "
+                      f"KONUMSAL. Sayilar tutuyor ({len(clips)}={len(anims)}), ama "
                       f"Sollumz alfabetik dizer: hangi klibin hangi animasyona "
                       f"dustugunu FrameCount ile dogrula.",
-                "en": f"No clip carries an AnimationHash ({refsiz} clips) -> matching is "
-                      f"POSITIONAL. Counts agree ({len(klipler)}={len(animler)}), but "
+                "en": f"No clip carries an AnimationHash ({no_ref} clips) -> matching is "
+                      f"POSITIONAL. Counts agree ({len(clips)}={len(anims)}), but "
                       f"Sollumz sorts alphabetically: verify which clip landed on which "
                       f"animation via FrameCount."}))
         else:
-            rap.ekle(SILENT, "YCD009", yol, _tr({
-                "tr": f"{refsiz} klip AnimationHash tasimiyor ve sayilar tutmuyor "
-                      f"(klip={len(klipler)}, animasyon={len(animler)}) -> konumsal "
+            report.add(SILENT, "YCD009", path, _localize({
+                "tr": f"{no_ref} klip AnimationHash tasimiyor ve sayilar tutmuyor "
+                      f"(klip={len(clips)}, animasyon={len(anims)}) -> konumsal "
                       f"eslesme YANLIS baglanir.",
-                "en": f"{refsiz} clips carry no AnimationHash and the counts disagree "
-                      f"(clips={len(klipler)}, animations={len(animler)}) -> positional "
+                "en": f"{no_ref} clips carry no AnimationHash and the counts disagree "
+                      f"(clips={len(clips)}, animations={len(anims)}) -> positional "
                       f"matching WILL bind the wrong pairs."}))
 
-    # --- klip penceresi animasyonu asiyor ---
-    if tasma:
-        enfazla = max(f for _, f in tasma)
-        kare = enfazla / KARE
-        seviye = WARN if kare <= 1.5 else SILENT
-        rap.ekle(seviye, "YCD010", yol, _tr({
-            "tr": f"{len(tasma)} klibin EndTime'i bagli animasyonun Duration'ini asiyor "
-                  f"(en fazla {enfazla:.4f} s = {kare:.2f} kare). Vanilla'da bu fark hic "
+    # --- clip window exceeds the animation ---
+    if overrun:
+        worst = max(f for _, f in overrun)
+        frames = worst / FRAME_SECONDS
+        level = WARN if frames <= 1.5 else SILENT
+        report.add(level, "YCD010", path, _localize({
+            "tr": f"{len(overrun)} klibin EndTime'i bagli animasyonun Duration'ini asiyor "
+                  f"(en fazla {worst:.4f} s = {frames:.2f} kare). Vanilla'da bu fark hic "
                   f"pozitif olmaz; klip animasyonda OLMAYAN bir kareyi istiyor."
-                  + ("" if seviye == WARN else " 1 kareyi astigi icin eslesme de supheli."),
-            "en": f"{len(tasma)} clip(s) have an EndTime beyond the linked animation's "
-                  f"Duration (worst {enfazla:.4f} s = {kare:.2f} frames). In vanilla this "
+                  + ("" if level == WARN else " 1 kareyi astigi icin eslesme de supheli."),
+            "en": f"{len(overrun)} clip(s) have an EndTime beyond the linked animation's "
+                  f"Duration (worst {worst:.4f} s = {frames:.2f} frames). In vanilla this "
                   f"difference is never positive; the clip asks for a frame the animation "
                   f"DOES NOT have."
-                  + ("" if seviye == WARN else " Beyond one frame, the pairing is suspect too.")}),
+                  + ("" if level == WARN else " Beyond one frame, the pairing is suspect too.")}),
             f"Duration == (FrameCount-1)/30")
 
-    # Konumsal formda hicbir klip referans tasimaz -> sahipsizlik anlamsiz.
-    if not refsiz:
-        sahipsiz = sorted(anim_hashleri - kullanilan)
-        for h in sahipsiz[:5]:
-            rap.ekle(WARN, "YCD008", yol, _tr({
+    # In the positional form no clip carries a reference -> orphan detection is meaningless.
+    if not no_ref:
+        orphans = sorted(anim_hashes - used)
+        for h in orphans[:5]:
+            report.add(WARN, "YCD008", path, _localize({
                 "tr": f"Animasyon {h} sahipsiz: hicbir klip kullanmiyor.",
                 "en": f"Animation {h} is orphaned: no clip references it."}))
-        if len(sahipsiz) > 5:
-            rap.ekle(WARN, "YCD008", yol, _tr({
-                "tr": f"...ve {len(sahipsiz) - 5} sahipsiz animasyon daha.",
-                "en": f"...and {len(sahipsiz) - 5} more orphaned animations."}))
+        if len(orphans) > 5:
+            report.add(WARN, "YCD008", path, _localize({
+                "tr": f"...ve {len(orphans) - 5} sahipsiz animasyon daha.",
+                "en": f"...and {len(orphans) - 5} more orphaned animations."}))
 
 
 # =============================================================================
-# .ytyp — archetype tanimlari
+# .ytyp — archetype definitions
 # =============================================================================
-# Yapi (bir custom prop .ytyp.xml uzerinde dogrulandi):
+# Structure (verified on a custom prop .ytyp.xml):
 #   CMapTypes/archetypes/Item[@type=CBaseArchetypeDef|CTimeArchetypeDef|
 #                             CMloArchetypeDef]
 #     lodDist, flags, bbMin, bbMax, name, assetName, extensions
 #     (MLO) entities/Item[@type=CEntityDef]/flags, rooms/Item/attachedObjects
 
-# MLO entity bayragi. ymap degeri (1572872) MLO icinde kullanilirsa obje
-# SESSIZCE hic olusmaz: bit 8 = "LOD in Parented YMAP", ust harita yok.
-YMAP_BAYRAK = 1572872
-BIT_LOD_UST_HARITA = 8
+# MLO entity flag. If the ymap value (1572872) is used inside an MLO the object
+# SILENTLY never spawns: bit 8 = "LOD in Parented YMAP", there is no parent map.
+YMAP_FLAG = 1572872
+BIT_LOD_PARENT_MAP = 8
 
-# OLCULDU: 79 vanilla interior ytyp'i -> 118 MLO, 18.799 entity.
-#   * 1572872                : 0 kez
-#   * 8. biti set eden HERHANGI bir bayrak : 0 kez  (tek bir entity bile yok)
-#   * ayni degerin bitsiz hali 1572864     : 2272 kez (cok yaygin)
-#   * en yaygin degerler: 18350082 (7578), 18350080 (3860), 1572864 (2272)
-# Bu yuzden denetim tek bir sayiya degil BITE bakar: vanilla MLO icinde 8. bit
-# hic kullanilmaz, dolayisiyla biti set eden her deger olagandisidir.
-# Tek bir "dogru sayi" YOKTUR -> yaygin deger referans olarak verilir, recete
-# olarak degil.
-MLO_BAYRAK_YAYGIN = 18350082
+# MEASURED: 79 vanilla interior ytyps -> 118 MLOs, 18,799 entities.
+#   * 1572872                               : 0 times
+#   * ANY flag that sets bit 8              : 0 times  (not a single entity)
+#   * the same value without the bit 1572864: 2272 times (very common)
+#   * most common values: 18350082 (7578), 18350080 (3860), 1572864 (2272)
+# So the check looks at the BIT, not at one number: inside vanilla MLOs bit 8 is
+# never used, so every value that sets it is unusual.
+# There is NO single "right number" -> the common value is given as a reference,
+# not as a recipe.
+MLO_FLAG_COMMON = 18350082
 
 
-def denetle_ytyp(kok, yol, rap, derlenmis=False):
-    arketipler = kok.findall("./archetypes/Item")
-    if not arketipler:
-        rap.ekle(SILENT, "YTY000", yol, _tr({
+def check_ytyp(root, path, report, compiled=False):
+    archetypes = root.findall("./archetypes/Item")
+    if not archetypes:
+        report.add(SILENT, "YTY000", path, _localize({
             "tr": "ytyp'de hic archetype yok.",
             "en": "The ytyp contains no archetypes."}))
         return
 
-    ad_farki, adsiz, lodsuz, dejenere = [], [], [], []
-    for a in arketipler:
-        tip = a.get("type") or "?"
-        ad = (a.findtext("name") or "").strip()
-        etiket = ad or "<adsiz>"
+    name_mismatch, unnamed, no_lod, degenerate = [], [], [], []
+    for a in archetypes:
+        arch_type = a.get("type") or "?"
+        name = (a.findtext("name") or "").strip()
+        label = name or "<unnamed>"
 
-        if not ad:
-            adsiz.append(tip)
+        if not name:
+            unnamed.append(arch_type)
 
         lod = a.find("lodDist")
-        if lod is None or (_oznitelik(lod) or 0) <= 0:
-            lodsuz.append(etiket)
+        if lod is None or (_attr_float(lod) or 0) <= 0:
+            no_lod.append(label)
 
-        # MLO archetype'in bbox'i vanilla'da 0,0,0'dir (olculdu: v_int_10'un
-        # her iki MLO'su da). Ic mekanin siniri odalardan gelir, archetype
-        # kutusundan degil -> dejenere kutu denetimi MLO'ya UYGULANMAZ.
+        # An MLO archetype's bbox is 0,0,0 in vanilla (measured: both MLOs of
+        # v_int_10). The interior's bounds come from the rooms, not from the
+        # archetype box -> the degenerate box check does NOT APPLY to MLOs.
         bmin, bmax = a.find("bbMin"), a.find("bbMax")
-        if tip != "CMloArchetypeDef" and bmin is not None and bmax is not None:
+        if arch_type != "CMloArchetypeDef" and bmin is not None and bmax is not None:
             try:
                 mn = [float(bmin.get(k) or 0) for k in "xyz"]
                 mx = [float(bmax.get(k) or 0) for k in "xyz"]
                 if mn == mx:
-                    dejenere.append(etiket)
+                    degenerate.append(label)
             except ValueError:
                 pass
 
-        varlik = (a.findtext("assetName") or "").strip()
-        if ad and varlik and ad != varlik and tip == "CBaseArchetypeDef":
-            ad_farki.append(etiket)
+        asset = (a.findtext("assetName") or "").strip()
+        if name and asset and name != asset and arch_type == "CBaseArchetypeDef":
+            name_mismatch.append(label)
 
-        _denetle_extensions(a, etiket, yol, rap)
+        _check_extensions(a, label, path, report)
 
-        if tip == "CMloArchetypeDef":
-            _denetle_mlo(a, etiket, yol, rap)
+        if arch_type == "CMloArchetypeDef":
+            _check_mlo(a, label, path, report)
 
-    n = len(arketipler)
-    if adsiz:
-        rap.ekle(SILENT, "YTY006", yol, _tr({
-            "tr": f"{len(adsiz)}/{n} archetype'in <name> alani bos -> adreslenemez.",
-            "en": f"{len(adsiz)}/{n} archetype(s) have an empty <name> -> unaddressable."}))
-    if lodsuz:
-        rap.ekle(SILENT, "YTY004", yol, _tr({
-            "tr": f"{len(lodsuz)}/{n} archetype'ta lodDist 0/eksik -> obje hicbir "
-                  f"mesafede cizilmez. {', '.join(lodsuz[:4])}"
-                  + (f" ve {len(lodsuz) - 4} tane daha." if len(lodsuz) > 4 else ""),
-            "en": f"{len(lodsuz)}/{n} archetype(s) have lodDist 0/missing -> the object "
-                  f"never draws. {', '.join(lodsuz[:4])}"
-                  + (f" and {len(lodsuz) - 4} more." if len(lodsuz) > 4 else "")}),
+    n = len(archetypes)
+    if unnamed:
+        report.add(SILENT, "YTY006", path, _localize({
+            "tr": f"{len(unnamed)}/{n} archetype'in <name> alani bos -> adreslenemez.",
+            "en": f"{len(unnamed)}/{n} archetype(s) have an empty <name> -> unaddressable."}))
+    if no_lod:
+        report.add(SILENT, "YTY004", path, _localize({
+            "tr": f"{len(no_lod)}/{n} archetype'ta lodDist 0/eksik -> obje hicbir "
+                  f"mesafede cizilmez. {', '.join(no_lod[:4])}"
+                  + (f" ve {len(no_lod) - 4} tane daha." if len(no_lod) > 4 else ""),
+            "en": f"{len(no_lod)}/{n} archetype(s) have lodDist 0/missing -> the object "
+                  f"never draws. {', '.join(no_lod[:4])}"
+                  + (f" and {len(no_lod) - 4} more." if len(no_lod) > 4 else "")}),
             "assetdb.py lod")
-    if dejenere:
-        rap.ekle(SILENT, "YTY003", yol, _tr({
-            "tr": f"{len(dejenere)}/{n} archetype'ta bbMin == bbMax (dejenere sinir "
+    if degenerate:
+        report.add(SILENT, "YTY003", path, _localize({
+            "tr": f"{len(degenerate)}/{n} archetype'ta bbMin == bbMax (dejenere sinir "
                   f"kutusu) -> obje uzakta titrer ve kaybolur. "
-                  f"{', '.join(dejenere[:4])}"
-                  + (f" ve {len(dejenere) - 4} tane daha." if len(dejenere) > 4 else ""),
-            "en": f"{len(dejenere)}/{n} archetype(s) have bbMin == bbMax (degenerate "
+                  f"{', '.join(degenerate[:4])}"
+                  + (f" ve {len(degenerate) - 4} tane daha." if len(degenerate) > 4 else ""),
+            "en": f"{len(degenerate)}/{n} archetype(s) have bbMin == bbMax (degenerate "
                   f"bounding box) -> the object flickers at distance and vanishes. "
-                  f"{', '.join(dejenere[:4])}"
-                  + (f" and {len(dejenere) - 4} more." if len(dejenere) > 4 else "")}))
+                  f"{', '.join(degenerate[:4])}"
+                  + (f" and {len(degenerate) - 4} more." if len(degenerate) > 4 else "")}))
 
-    # name != assetName: YASAK DEGIL (bir archetype baska bir drawable'i
-    # gosterebilir) ama OLAGANDISI -- olculdu: vanilla v_int_10 + v_int_47,
-    # 89 CBaseArchetypeDef'in 89'unda ikisi AYNI (%0 sapma). Bu yuzden WARN,
-    # ve dosya basina TEK satir: arketip basina yazmak 300+ satir uretiyordu.
-    if ad_farki:
-        rap.ekle(WARN, "YTY005", yol, _tr({
-            "tr": f"{len(ad_farki)} archetype'ta assetName, name'den farkli "
+    # name != assetName: NOT FORBIDDEN (an archetype may show another drawable)
+    # but UNUSUAL -- measured: vanilla v_int_10 + v_int_47, in 89 of 89
+    # CBaseArchetypeDefs the two are the SAME (0% deviation). Hence WARN, and a
+    # SINGLE line per file: one line per archetype produced 300+ lines.
+    if name_mismatch:
+        report.add(WARN, "YTY005", path, _localize({
+            "tr": f"{len(name_mismatch)} archetype'ta assetName, name'den farkli "
                   f"(vanilla olcumu: 89/89 ayni). Kasitliysa sorun yok; degilse "
                   f"archetype var olmayan bir drawable'i gosteriyor olabilir.",
-            "en": f"{len(ad_farki)} archetype(s) have assetName differing from name "
+            "en": f"{len(name_mismatch)} archetype(s) have assetName differing from name "
                   f"(vanilla measurement: 89/89 identical). Fine if deliberate; "
                   f"otherwise the archetype may point at a drawable that does not exist."}))
 
 
-def _denetle_extensions(arketip, etiket, yol, rap):
-    ext = arketip.find("extensions")
+def _check_extensions(archetype, label, path, report):
+    ext = archetype.find("extensions")
     if ext is None:
         return
     for it in ext:
-        etip = it.get("type") or ""
-        if "Expression" in etip:
-            deger = (it.findtext("expressionDictionaryName") or "") + " " + \
+        ext_type = it.get("type") or ""
+        if "Expression" in ext_type:
+            value = (it.findtext("expressionDictionaryName") or "") + " " + \
                     (it.findtext("expressionName") or "")
-            if "pack:/" in deger or ".expr" in deger:
-                rap.ekle(SILENT, "YTY002", yol, _tr({
-                    "tr": f"{etiket}: Expression extension 'pack:/...' formunda. "
+            if "pack:/" in value or ".expr" in value:
+                report.add(SILENT, "YTY002", path, _localize({
+                    "tr": f"{label}: Expression extension 'pack:/...' formunda. "
                           f"CIPLAK AD yazilmali, yoksa expression baglanmaz ve "
                           f"collision animasyonu takip etmez.",
-                    "en": f"{etiket}: Expression extension uses the 'pack:/...' form. "
+                    "en": f"{label}: Expression extension uses the 'pack:/...' form. "
                           f"It must be the BARE NAME, otherwise the expression never "
                           f"binds and collision will not follow the animation."}), "/yed")
 
 
-def _denetle_mlo(arketip, etiket, yol, rap):
-    varliklar = arketip.findall("./entities/Item")
-    odalar = arketip.findall("./rooms/Item")
+def _check_mlo(archetype, label, path, report):
+    entities = archetype.findall("./entities/Item")
+    rooms = archetype.findall("./rooms/Item")
 
-    # Entity'yi sahiplenen iki liste vardir: ODALAR *ve* PORTALLAR.
-    # Portallari saymamak yanlis pozitif uretir -- olculdu: vanilla v_int_10'un
-    # iki MLO'sunda da tam 2 entity portala baglidir, odaya degil. Sadece
-    # odalara bakinca "hicbir odada yok" diye rapor edilirler ve dogru dosya
-    # bozuk gorunur.
-    sahipli = set()
-    for kap in list(odalar) + arketip.findall("./portals/Item"):
-        ham = (kap.findtext("attachedObjects") or "").replace(",", " ").split()
-        for s in ham:
+    # Two lists own an entity: ROOMS *and* PORTALS.
+    # Not counting portals produces false positives -- measured: in both MLOs
+    # of vanilla v_int_10 exactly 2 entities are attached to a portal, not to a
+    # room. Looking only at rooms reports them as "in no room" and a correct
+    # file looks broken.
+    owned = set()
+    for container in list(rooms) + archetype.findall("./portals/Item"):
+        raw = (container.findtext("attachedObjects") or "").replace(",", " ").split()
+        for s in raw:
             try:
-                sahipli.add(int(s))
+                owned.add(int(s))
             except ValueError:
                 pass
 
-    sahipsiz = []
-    ymap_bayrakli = []
-    for i, e in enumerate(varliklar):
-        bayrak = e.find("flags")
-        if bayrak is not None:
+    orphans = []
+    ymap_flagged = []
+    for i, e in enumerate(entities):
+        flag = e.find("flags")
+        if flag is not None:
             try:
-                v = int(float(bayrak.get("value") or 0))
+                v = int(float(flag.get("value") or 0))
             except ValueError:
                 v = 0
-            if v & BIT_LOD_UST_HARITA:
-                ymap_bayrakli.append((i, v))
+            if v & BIT_LOD_PARENT_MAP:
+                ymap_flagged.append((i, v))
 
-        if sahipli and i not in sahipli:
-            sahipsiz.append((i, (e.findtext("archetypeName") or "?").strip()))
+        if owned and i not in owned:
+            orphans.append((i, (e.findtext("archetypeName") or "?").strip()))
 
-    if ymap_bayrakli:
-        degerler = sorted({v for _, v in ymap_bayrakli})
-        ilk = ", ".join(f"#{i}" for i, _ in ymap_bayrakli[:6])
-        kalan = len(ymap_bayrakli) - 6
-        rap.ekle(SILENT, "YTY001", yol, _tr({
-            "tr": f"{etiket}: {len(ymap_bayrakli)}/{len(varliklar)} entity 8. biti "
+    if ymap_flagged:
+        values = sorted({v for _, v in ymap_flagged})
+        first = ", ".join(f"#{i}" for i, _ in ymap_flagged[:6])
+        rest = len(ymap_flagged) - 6
+        report.add(SILENT, "YTY001", path, _localize({
+            "tr": f"{label}: {len(ymap_flagged)}/{len(entities)} entity 8. biti "
                   f"('LOD ust haritada') set eden bir bayrak tasiyor: "
-                  f"{', '.join(str(d) for d in degerler)}. OLCULDU: 118 vanilla MLO / "
+                  f"{', '.join(str(d) for d in values)}. OLCULDU: 118 vanilla MLO / "
                   f"18.799 entity icinde bu bit HIC kullanilmaz (0 kez); bitsiz hali "
                   f"1572864 ise 2272 kez gecer. Ust harita olmadigi icin entity "
-                  f"SESSIZCE dusurulur. Yaygin MLO degeri {MLO_BAYRAK_YAYGIN} -- "
-                  f"sayiyi kopyalama, coz. {ilk}"
-                  + (f" ve {kalan} tane daha." if kalan > 0 else ""),
-            "en": f"{etiket}: {len(ymap_bayrakli)}/{len(varliklar)} entities carry a flag "
+                  f"SESSIZCE dusurulur. Yaygin MLO degeri {MLO_FLAG_COMMON} -- "
+                  f"sayiyi kopyalama, coz. {first}"
+                  + (f" ve {rest} tane daha." if rest > 0 else ""),
+            "en": f"{label}: {len(ymap_flagged)}/{len(entities)} entities carry a flag "
                   f"with bit 8 ('LOD in parented ymap') set: "
-                  f"{', '.join(str(d) for d in degerler)}. MEASURED: across 118 vanilla "
+                  f"{', '.join(str(d) for d in values)}. MEASURED: across 118 vanilla "
                   f"MLOs / 18,799 entities this bit is NEVER used (0 occurrences), while "
                   f"the same value without it (1572864) appears 2272 times. With no "
                   f"parent map the entity is SILENTLY dropped. Common MLO value is "
-                  f"{MLO_BAYRAK_YAYGIN} -- decode it, do not copy it. {ilk}"
-                  + (f" and {kalan} more." if kalan > 0 else "")}),
-            f"assetdb.py flags {degerler[0]} --entity")
+                  f"{MLO_FLAG_COMMON} -- decode it, do not copy it. {first}"
+                  + (f" and {rest} more." if rest > 0 else "")}),
+            f"assetdb.py flags {values[0]} --entity")
 
-    if sahipsiz:
-        ornek = ", ".join(f"#{i} ({ad})" for i, ad in sahipsiz[:4])
-        kalan = len(sahipsiz) - 4
-        rap.ekle(SILENT, "YTY007", yol, _tr({
-            "tr": f"{etiket}: {len(sahipsiz)}/{len(varliklar)} entity hicbir odanin ya "
+    if orphans:
+        sample = ", ".join(f"#{i} ({name})" for i, name in orphans[:4])
+        rest = len(orphans) - 4
+        report.add(SILENT, "YTY007", path, _localize({
+            "tr": f"{label}: {len(orphans)}/{len(entities)} entity hicbir odanin ya "
                   f"da portalin attachedObjects listesinde YOK -> oyun onlari HIC "
-                  f"OLUSTURMAZ, hata da vermez. {ornek}"
-                  + (f" ve {kalan} tane daha." if kalan > 0 else ""),
-            "en": f"{etiket}: {len(sahipsiz)}/{len(varliklar)} entities are in NO room's "
+                  f"OLUSTURMAZ, hata da vermez. {sample}"
+                  + (f" ve {rest} tane daha." if rest > 0 else ""),
+            "en": f"{label}: {len(orphans)}/{len(entities)} entities are in NO room's "
                   f"or portal's attachedObjects list -> the game NEVER creates them and "
-                  f"reports no error. {ornek}"
-                  + (f" and {kalan} more." if kalan > 0 else "")}))
+                  f"reports no error. {sample}"
+                  + (f" and {rest} more." if rest > 0 else "")}))
 
 
 
 # =============================================================================
-# Drawable / Fragment — gomulu isiklar
+# Drawable / Fragment — embedded lights
 # =============================================================================
-# Isiklar <kok>/Lights altindadir; hem .ydr (Drawable) hem .yft (Fragment)
-# kokunde ayni yerde (olculdu: prop_worklight_01a.yft -> Fragment/Lights=1,
-# Fragment/Drawable/Lights YOK). Buradaki her kusur SESSIZDIR: dosya derlenir,
-# oyun hata vermez, isik sadece yanmaz.
+# Lights sit under <root>/Lights; in the same place for both a .ydr (Drawable)
+# and a .yft (Fragment) root (measured: prop_worklight_01a.yft ->
+# Fragment/Lights=1, Fragment/Drawable/Lights ABSENT). Every defect here is
+# SILENT: the file compiles, the game gives no error, the light simply does not
+# come on.
 
 
-def denetle_drawable(kok, yol, rap, derlenmis=False):
+def check_drawable(root, path, report, compiled=False):
     import light as _light
 
-    isiklar = _light.isiklari_oku(kok)
-    if not isiklar:
-        return  # isik yok -> bu modul icin denetlenecek bir sey de yok
+    lights = _light.read_lights(root)
+    if not lights:
+        return  # no lights -> nothing to check for this module either
 
-    yanmaz, sifir, menzilsiz, koni = [], [], [], []
-    for idx, i in enumerate(isiklar):
-        if not _light.aktif_saatler(i["TimeFlags"]):
-            yanmaz.append(idx)
+    never_on, zero, no_range, cone = [], [], [], []
+    for idx, i in enumerate(lights):
+        if not _light.active_hours(i["TimeFlags"]):
+            never_on.append(idx)
         if i["Intensity"] is not None and i["Intensity"] <= 0:
-            sifir.append(idx)
+            zero.append(idx)
         if i["Falloff"] is not None and i["Falloff"] <= 0:
-            menzilsiz.append(idx)
+            no_range.append(idx)
         if i["Type"] == "Spot":
-            ic, dis = i["ConeInnerAngle"], i["ConeOuterAngle"]
-            if dis is not None and dis <= 0:
-                koni.append(f"#{idx} disaci 0")
-            elif ic is not None and dis is not None and ic > dis:
-                koni.append(f"#{idx} ic{ic:g}>dis{dis:g}")
+            inner, outer = i["ConeInnerAngle"], i["ConeOuterAngle"]
+            if outer is not None and outer <= 0:
+                cone.append(f"#{idx} outer 0")
+            elif inner is not None and outer is not None and inner > outer:
+                cone.append(f"#{idx} inner{inner:g}>outer{outer:g}")
 
-    if yanmaz:
-        # SEVIYE WARN, SILENT DEGIL -- ve bu bilincli bir geri adim.
-        # Ilk surumde "isik HIC YANMAZ" diye SILENT raporlaniyordu; dayanak
-        # 53 isiklik bir orneklemde TimeFlags 0'in hic gorulmemesiydi. Tam
-        # korpus olculunce (72.539 isik) 0 degeri 8 kez cikti ve ciktigi
-        # yerler ic mekan lamba prop'lariydi. Yani "0 = hic yanmaz" ile
-        # "0 = saat kisiti yok" okumalarinin IKISI DE veriyle uyumlu.
-        # Veriden cozulemeyen bir seyi kesinmis gibi raporlamak, aracin
-        # onlemeye calistigi hatanin ta kendisi olurdu.
-        rap.ekle(WARN, "LGT001", yol, _tr({
-            "tr": f"{len(yanmaz)}/{len(isiklar)} isikta TimeFlags 0 (hicbir saat biti). "
+    if never_on:
+        # LEVEL WARN, NOT SILENT -- and this is a deliberate step back.
+        # The first version reported "the light NEVER comes on" as SILENT; the
+        # basis was that TimeFlags 0 never appeared in a 53-light sample. When
+        # the full corpus was measured (72,539 lights) the value 0 appeared
+        # 8 times, and where it appeared were interior lamp props. So BOTH
+        # readings, "0 = never on" and "0 = no time restriction", fit the data.
+        # Reporting something the data cannot resolve as if it were certain
+        # would be exactly the failure the tool tries to prevent.
+        report.add(WARN, "LGT001", path, _localize({
+            "tr": f"{len(never_on)}/{len(lights)} isikta TimeFlags 0 (hicbir saat biti). "
                   f"Vanilla'da cok nadir: 72539 isikta 8 kez (%0.011). '0 = hic "
                   f"yanmaz' mi '0 = saat kisiti yok' mu oldugu bu veriden "
-                  f"COZULEMEZ -- oyunda gece ve gunduz test et. Isik #{yanmaz[:5]}",
-            "en": f"{len(yanmaz)}/{len(isiklar)} light(s) have TimeFlags 0 (no hour bit). "
+                  f"COZULEMEZ -- oyunda gece ve gunduz test et. Isik #{never_on[:5]}",
+            "en": f"{len(never_on)}/{len(lights)} light(s) have TimeFlags 0 (no hour bit). "
                   f"Very rare in vanilla: 8 out of 72539 lights (0.011%). Whether 0 "
                   f"means 'never lights' or 'no time restriction' CANNOT be resolved "
                   f"from this data -- test in game at night and at noon. "
-                  f"Light #{yanmaz[:5]}"}),
-            "assetdb.py light --tablo")
-    if sifir:
-        rap.ekle(SILENT, "LGT002", yol, _tr({
-            "tr": f"{len(sifir)}/{len(isiklar)} isikta Intensity 0 -> isik yayilmaz. "
-                  f"Isik #{sifir[:5]}",
-            "en": f"{len(sifir)}/{len(isiklar)} light(s) have Intensity 0 -> no light is "
-                  f"emitted. Light #{sifir[:5]}"}))
-    if menzilsiz:
-        rap.ekle(SILENT, "LGT003", yol, _tr({
-            "tr": f"{len(menzilsiz)}/{len(isiklar)} isikta Falloff 0 -> menzil yok, isik "
-                  f"hicbir yuzeye ulasmaz. Isik #{menzilsiz[:5]}",
-            "en": f"{len(menzilsiz)}/{len(isiklar)} light(s) have Falloff 0 -> no range, "
-                  f"the light reaches no surface. Light #{menzilsiz[:5]}"}))
-    if koni:
-        rap.ekle(SILENT, "LGT004", yol, _tr({
-            "tr": f"{len(koni)} spot isikta koni gecersiz: {', '.join(koni[:4])}",
-            "en": f"{len(koni)} spot light(s) have an invalid cone: {', '.join(koni[:4])}"}))
+                  f"Light #{never_on[:5]}"}),
+            "assetdb.py light --table")
+    if zero:
+        report.add(SILENT, "LGT002", path, _localize({
+            "tr": f"{len(zero)}/{len(lights)} isikta Intensity 0 -> isik yayilmaz. "
+                  f"Isik #{zero[:5]}",
+            "en": f"{len(zero)}/{len(lights)} light(s) have Intensity 0 -> no light is "
+                  f"emitted. Light #{zero[:5]}"}))
+    if no_range:
+        report.add(SILENT, "LGT003", path, _localize({
+            "tr": f"{len(no_range)}/{len(lights)} isikta Falloff 0 -> menzil yok, isik "
+                  f"hicbir yuzeye ulasmaz. Isik #{no_range[:5]}",
+            "en": f"{len(no_range)}/{len(lights)} light(s) have Falloff 0 -> no range, "
+                  f"the light reaches no surface. Light #{no_range[:5]}"}))
+    if cone:
+        report.add(SILENT, "LGT004", path, _localize({
+            "tr": f"{len(cone)} spot isikta koni gecersiz: {', '.join(cone[:4])}",
+            "en": f"{len(cone)} spot light(s) have an invalid cone: {', '.join(cone[:4])}"}))
 
 
-DENETCI = {
-    "Drawable": denetle_drawable,
-    "Fragment": denetle_drawable,
-    "ClipDictionary": denetle_ycd,
-    "CMapTypes": denetle_ytyp,
+# Root tag -> check function (doctor.py imports it).
+CHECKERS = {
+    "Drawable": check_drawable,
+    "Fragment": check_drawable,
+    "ClipDictionary": check_ycd,
+    "CMapTypes": check_ytyp,
 }
 
-# XML yorumu icinde iki tire dosyayi ayristirilamaz yapar. Oyun HATA VERMEZ,
+# A double hyphen inside an XML comment makes the file unparseable. The game gives NO ERROR,

@@ -1,25 +1,25 @@
-﻿# extract_asset.ps1 — GTA V RPF arsivlerinden dosya cikarir.
+﻿# extract_asset.ps1 - extracts files from the GTA V RPF archives.
 #
-# NEDEN: bir vanilla prop'u temel alip kendi modelimizi yapmak icin once
-# .ydr/.yft/.ytd/.ycd dosyasini elde etmek gerekiyor. CodeWalker GUI'siyle
-# tek tek aramak yerine ad/desen ile toplu cikarma.
+# WHY: to build our own model on top of a vanilla prop we first need its
+# .ydr/.yft/.ytd/.ycd file. Bulk extraction by name/pattern instead of searching
+# one file at a time in the CodeWalker GUI.
 #
-# Kullanim:
-#   powershell -File extract_asset.ps1 -Pattern "v_ilev_gb_*" -Out <klasor>
-#   powershell -Command "& extract_asset.ps1 -Names @('a.ydr','b.yft') -Out <klasor>"
-#   powershell -Command "& extract_asset.ps1 -Pattern 'head_000_r.ydd' -PathFilter 'mp_m_freemode_01' -Out <k>"
+# Usage:
+#   powershell -File extract_asset.ps1 -Pattern "v_ilev_gb_*" -Out <folder>
+#   powershell -Command "& extract_asset.ps1 -Names @('a.ydr','b.yft') -Out <folder>"
+#   powershell -Command "& extract_asset.ps1 -Pattern 'head_000_r.ydd' -PathFilter 'mp_m_freemode_01' -Out <f>"
 #
-# -Names      : tam dosya adlari. DIKKAT: -File ile virgullu liste TEK STRING
-#               olur ve sessizce hicbir sey bulunmaz -> -Command "& ... @('a','b')"
-# -Pattern    : joker desen (ad uzerinde, uzanti dahil)
-# -PathFilter : dosyanin ICINDE bulundugu RPF yolunda bu metin gecmeli.
-#               NEDEN GEREKLI: ped bilesenleri her ped'de AYNI ADI tasir
-#               (head_000_r.ydd, uppr_000_u.ydd...). Filtresiz cikarmada
-#               onlarca ped ayni dosyaya yazar, sonuncusu kazanir ve hangi
-#               ped'in mesh'i oldugu bilinmez. mp_m_freemode_01 kafasini
-#               istiyorsan -PathFilter 'mp_m_freemode_01' sart.
-# -Flatten    : $false ise cikti <Out>\<rpf yolu>\<ad> olarak yazilir; ayni
-#               adli dosyalar birbirini EZMEZ.
+# -Names      : exact file names. CAREFUL: with -File a comma list becomes ONE STRING
+#               and silently nothing is found -> -Command "& ... @('a','b')"
+# -Pattern    : wildcard pattern (on the name, extension included)
+# -PathFilter : this text must appear in the path of the RPF the file is INSIDE.
+#               WHY IT IS NEEDED: ped components carry THE SAME NAME in every ped
+#               (head_000_r.ydd, uppr_000_u.ydd...). Without the filter dozens of
+#               peds write to the same file, the last one wins and you cannot tell
+#               which ped the mesh belongs to. If you want the mp_m_freemode_01 head,
+#               -PathFilter 'mp_m_freemode_01' is required.
+# -Flatten    : if $false the output is written as <Out>\<rpf path>\<name>; files with
+#               the same name do NOT overwrite each other.
 
 param(
     [string[]] $Names = @(),
@@ -34,10 +34,10 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
-if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll bulunamadi." }
+if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) { throw "CodeWalker.Core.dll not found." }
 
 $GtaFolder = & "$PSScriptRoot\paths.ps1" gta $GtaFolder
-if (-not $GtaFolder) { throw "GTA V klasoru bulunamadi." }
+if (-not $GtaFolder) { throw "GTA V folder not found." }
 
 if (-not (Test-Path $Out)) { New-Item -ItemType Directory -Path $Out -Force | Out-Null }
 
@@ -78,10 +78,10 @@ public static class AssetExtractor
 
         foreach (var rpf in man.AllRpfs)
         {
-            // Ped bilesenleri her ped'de ayni adi tasir; hangi ped'den geldigini
-            // bilmeden dogru mesh'i secmek imkansiz. Ped adi bazen RPF yolunda
-            // (nested .rpf), bazen SADECE girdinin arsiv-ici yolunda gecer
-            // (streamedpeds_mp.rpf icindeki klasor) -> IKISINE de bak.
+            // Ped components carry the same name in every ped; picking the right mesh without
+            // knowing which ped it came from is impossible. The ped name is sometimes in the RPF path
+            // (nested .rpf), sometimes ONLY in the entry's in-archive path
+            // (a folder inside streamedpeds_mp.rpf) -> check BOTH.
             var rpfPath = (rpf.Path ?? "").Replace('\\', '/').ToLowerInvariant();
             bool rpfHit = pf != null && rpfPath.IndexOf(pf, StringComparison.Ordinal) >= 0;
 
@@ -103,17 +103,17 @@ public static class AssetExtractor
                 byte[] data;
                 try { data = fe.File.ExtractFile(fe); }
                 catch (Exception ex) { Console.WriteLine("[!] {0}: {1}", fe.Name, ex.Message); continue; }
-                if (data == null || data.Length == 0) { Console.WriteLine("[!] {0}: bos", fe.Name); continue; }
+                if (data == null || data.Length == 0) { Console.WriteLine("[!] {0}: empty", fe.Name); continue; }
 
-                // RSC7 BASLIGINI GERI EKLE.
-                // ExtractFile kaynak dosyanin (ydr/yft/ytd/ycd...) ic verisini
-                // dondurur; 16 baytlik RSC7 basligi ayiklanmis olur. Sollumz /
-                // OpenIV gibi araclar basligi bekler — basliksiz dosyaya
-                // "Unsupported file format" der. CodeWalker'in kendi disa
-                // aktarmasi da bu adimi yapiyor.
-                // Diskteki gercek .ydr = RSC7 basligi + DEFLATE sikistirilmis govde.
-                // Sadece baslik eklemek yetmiyor; Sollumz "DECOMPRESS_FAILED" veriyor.
-                // Sira onemli: once sikistir, sonra basligi one ekle.
+                // ADD THE RSC7 HEADER BACK.
+                // ExtractFile returns the inner data of the resource file (ydr/yft/ytd/ycd...);
+                // the 16-byte RSC7 header is stripped. Tools such as Sollumz /
+                // OpenIV expect the header - on a headerless file they say
+                // "Unsupported file format". CodeWalker's own export
+                // does this step too.
+                // The real .ydr on disk = RSC7 header + DEFLATE-compressed body.
+                // Adding only the header is not enough; Sollumz gives "DECOMPRESS_FAILED".
+                // Order matters: compress first, then prepend the header.
                 var rrfe = fe as RpfResourceFileEntry;
                 if (rrfe != null)
                 {
@@ -122,7 +122,7 @@ public static class AssetExtractor
                         data = ResourceBuilder.Compress(data);
                         data = ResourceBuilder.AddResourceHeader(rrfe, data);
                     }
-                    catch (Exception ex) { Console.WriteLine("[!] {0}: baslik/sikistirma hatasi ({1})", fe.Name, ex.Message); }
+                    catch (Exception ex) { Console.WriteLine("[!] {0}: header/compression error ({1})", fe.Name, ex.Message); }
                 }
 
                 string dst;
@@ -132,7 +132,7 @@ public static class AssetExtractor
                 }
                 else
                 {
-                    // Ayni adli dosyalar birbirini ezmesin: RPF yolunu klasore cevir.
+                    // Keep same-named files from overwriting each other: turn the RPF path into a folder.
                     var sub = (rpf.Path ?? "").Replace(':', '_');
                     foreach (var c in Path.GetInvalidPathChars()) sub = sub.Replace(c, '_');
                     var dir = Path.Combine(outFolder, sub);
@@ -140,16 +140,16 @@ public static class AssetExtractor
                     dst = Path.Combine(dir, fe.Name);
                 }
                 File.WriteAllBytes(dst, data);
-                Console.WriteLine("[+] {0,-38} {1,9:N0} bayt   (rpf: {2})", fe.Name, data.Length, rpf.Path);
+                Console.WriteLine("[+] {0,-38} {1,9:N0} bytes   (rpf: {2})", fe.Name, data.Length, rpf.Path);
                 found++;
             }
         }
 
-        Console.WriteLine("[=] {0} dosya cikarildi -> {1}", found, outFolder);
-        if (found == 0) Console.WriteLine("[!] Hicbir sey bulunamadi. Ad/desen dogru mu?");
+        Console.WriteLine("[=] {0} files extracted -> {1}", found, outFolder);
+        if (found == 0) Console.WriteLine("[!] Nothing found. Is the name/pattern right?");
     }
 
-    // Basit joker eslesme (* ve ?)
+    // Simple wildcard match (* and ?)
     static bool Match(string s, string p)
     {
         int si = 0, pi = 0, star = -1, mark = 0;
@@ -166,9 +166,9 @@ public static class AssetExtractor
 }
 '@
 
-# 'System.Collections' + 'System.Runtime' SART: PowerShell 7 / .NET 8+ altinda
-# HashSet<> ve benzeri tipler netstandard'dan forward edilmis durumda ve
-# referans verilmezse Add-Type "CS1069: type has been forwarded" ile coker.
+# 'System.Collections' + 'System.Runtime' are REQUIRED: under PowerShell 7 / .NET 8+
+# HashSet<> and similar types are forwarded from netstandard, and
+# without a reference Add-Type crashes with "CS1069: type has been forwarded".
 $refs = @($CodeWalker, (Join-Path $cwDir 'SharpDX.dll'), (Join-Path $cwDir 'SharpDX.Mathematics.dll'),
           'netstandard', 'System.Collections', 'System.Runtime', 'System.Linq',
           'System.Console', 'System.IO.Compression', 'System.Text.RegularExpressions')

@@ -1,35 +1,35 @@
-# Bayraklar — ytyp / ymap / collision / specialAttribute / extension
+# Flags — ytyp / ymap / collision / specialAttribute / extension
 
-**Gövde dosyası.** Sihirli bir sayı görünce kopyalanmaz, çözülür:
-`python scripts/assetdb.py flags <sayı> [--entity]`. Bit tabloları ve
-`specialAttribute`'un 21 değeri burada; ölçüm 316.975 arketip + 3.145.882
-entity üzerinde. Kaynak: `trunk/flags.md` §1-6, §8, §11
-(2026-09-05'te gövdeye taşındı; §7 export formatı → `trunk/tool-pitfalls.md`
-Ayrıntı B, §7c-7d partikül → Partikül dalı, §8.5b-8.6 decal → Görünüm dalı,
-§9 LOD → Harita dalı, §10 animasyon → Animasyon dalı).
-
----
-
-## 1. ⛔ Bayrak numaralandırması: `flagN` bit `N-1`'dir
-
-Sollumz özellikleri `flag1 … flag32` diye adlandırır ama **`flag1` en düşük
-bittir**, yani değeri `1`. Formül:
-
-```
-deger(flagN) = 2^(N-1)
-```
-
-Doğrudan `1 << N` yazmak tüm tabloyu **bir bit kaydırır** ve sessizce yanlış
-isim üretir. Denetim: `flag16 = LOD Use Alt Fade → 2^15 = 32768`, CodeWalker'ın
-onay listesindeki değerle birebir aynı.
+**Trunk file.** A magic number you see is not copied, it is decoded:
+`python scripts/assetdb.py flags <number> [--entity]`. The bit tables and the 21 values of
+`specialAttribute` are here; measured on 316,975 archetypes + 3,145,882
+entities. Source: `trunk/flags.md` §1-6, §8, §11
+(moved into the trunk on 2026-09-05; §7 export format → `trunk/tool-pitfalls.md`
+Detail B, §7c-7d particle → Particle branch, §8.5b-8.6 decal → Look branch,
+§9 LOD → Map branch, §10 animation → Animation branch).
 
 ---
 
-## 2. ARCHETYPE bayrakları (`CBaseArchetypeDef.flags`)
+## 1. ⛔ Flag numbering: `flagN` is bit `N-1`
 
-| Değer | Bit | Ad |
+Sollumz names the properties `flag1 … flag32`, but **`flag1` is the lowest
+bit**, i.e. value `1`. Formula:
+
+```
+value(flagN) = 2^(N-1)
+```
+
+Writing `1 << N` directly **shifts the whole table by one bit** and silently produces the wrong
+name. Check: `flag16 = LOD Use Alt Fade → 2^15 = 32768`, exactly the value in CodeWalker's
+checkbox list.
+
+---
+
+## 2. ARCHETYPE flags (`CBaseArchetypeDef.flags`)
+
+| Value | Bit | Name |
 |---:|---:|---|
-| 1 | 0 | *(adsız)* |
+| 1 | 0 | *(unnamed)* |
 | 2 | 1 | Wet Road Reflection |
 | 4 | 2 | Dont Fade |
 | 8 | 3 | Draw Last |
@@ -62,119 +62,119 @@ onay listesindeki değerle birebir aynı.
 | 1073741824 | 30 | Is Debug |
 | 2147483648 | 31 | Has Alpha Shadow |
 
-### Pratikte hangi bayrak kombinasyonu — topluluk uygulaması
-Kaynak: `sources/external-tools.md` §2. Bunlar ölçüm değil, çalıştığı görülmüş
-kombinasyonlardır — ama üçü de birden fazla videoda tekrarlanıyor.
+### Which flag combination in practice — community usage
+Source: `sources/external-tools.md` §2. These are not measurements but combinations seen to
+work — though all three repeat in more than one video.
 
-| iş | bayraklar |
+| job | flags |
 |---|---|
-| animasyonlu prop (klip kendiliğinden oynasın) | **`Has Anim` (512) + `Auto Start Anim` (524288)** |
-| UV animasyonlu prop / silah kaplaması | **`UV anims` (1024) + `Auto Start Anim`** |
-| iskelet + UV animasyonu **birlikte** | **`Has Anim` + `UV anims`** — bu durumda `Auto Start Anim` **gerekmiyor** |
-| kırılabilir fragment | **`Dynamic` (131072)**; ops. `Does Not Provide AI/Player Cover` |
+| animated prop (clip plays by itself) | **`Has Anim` (512) + `Auto Start Anim` (524288)** |
+| UV-animated prop / weapon skin | **`UV anims` (1024) + `Auto Start Anim`** |
+| skeleton + UV animation **together** | **`Has Anim` + `UV anims`** — in this case `Auto Start Anim` is **not needed** |
+| breakable fragment | **`Dynamic` (131072)**; opt. `Does Not Provide AI/Player Cover` |
 | prop cloth | **`Has Cloth` (33554432) + `Dynamic` + `Double-sided rendering` (65536) + `Use Ambient Scale` (536870912)** |
-| bake edilmiş shadowmap düzlemi | **`Dont Cast Shadows` (8192)** |
-| yansıma proxy'si | archetype flags **0**; iş entity bayraklarında (`only render in reflections` + cast static/dynamic shadow) |
+| baked shadowmap plane | **`Dont Cast Shadows` (8192)** |
+| reflection proxy | archetype flags **0**; the work is in the entity flags (`only render in reflections` + cast static/dynamic shadow) |
 
-### ⭐ `Time` arketipi — `TimeFlags`'i elle yazmaya gerek yok
-Sollumz'da arketip **`Type` alanı `Base` yerine `Time`** seçilirse panelde
-**24 saatlik onay kutusu ızgarası** (`12:00 AM–1:00 AM` … `11:00 PM–12:00 AM`)
-ve **`Select from … to …`** aralık seçici açılıyor. Bu dosyadaki `TimeFlags`
-sihirli sayısı (ör. `14680095` = 21:00–05:00) oradan üretiliyor.
+### ⭐ `Time` archetype — no need to write `TimeFlags` by hand
+In Sollumz, if the archetype **`Type` field is set to `Time` instead of `Base`**, the panel opens a
+**24-hour checkbox grid** (`12:00 AM–1:00 AM` … `11:00 PM–12:00 AM`)
+and a **`Select from … to …`** range picker. The `TimeFlags` magic number in this file
+(e.g. `14680095` = 21:00–05:00) is produced there.
 
-Saate bağlı prop için tipik alanlar: `HD Texture Distance` **60**,
+Typical fields for a time-bound prop: `HD Texture Distance` **60**,
 `Lod Distance` **60**, ymap **Content Flags `HD (1)` + `Physics (64)` = `65`**.
-Doğrulama: CodeWalker → Lighting → **`Time of day`** kaydırıcısıyla saati değiştir,
-prop aralık içinde görünüp dışında kaybolmalı.
+Verification: CodeWalker → Lighting → change the hour with the **`Time of day`** slider;
+the prop must appear inside the range and disappear outside it.
 
-### Çapraz doğrulama (316.975 arketip)
+### Cross-check (316,975 archetypes)
 
-`clipDictionary` alanı dolu olan **1308** arketip:
+**1308** archetypes have the `clipDictionary` field filled:
 
-| Alt küme | Adet |
+| Subset | Count |
 |---|---:|
-| `Has Anim (YCD)` biti kurulu | 470 |
-| yalnız `UV anims (YCD)` biti kurulu | 838 |
-| **hiçbir anim biti kurulu olmayan** | **0** |
+| `Has Anim (YCD)` bit set | 470 |
+| only the `UV anims (YCD)` bit set | 838 |
+| **no anim bit set** | **0** |
 
-Ve `Has Anim` biti kurulu olup `clipDictionary`'si boş olan **0** arketip var.
-Yani eşleme tam örtüşüyor — bit tablosu doğru.
+And there are **0** archetypes with the `Has Anim` bit set and an empty `clipDictionary`.
+So the mapping overlaps completely — the bit table is right.
 
-Örnek çözüm — vanilla `prop_pallet_01a`, `flags="549584896"`:
+Sample decode — vanilla `prop_pallet_01a`, `flags="549584896"`:
 ```
 549584896 = Dynamic | Does Not Provide AI Cover
           | Does Not Provide Player Cover | Use Ambient Scale
 ```
-(Kırılabilir bir palet için: dinamik, siper vermez, ambient ölçekli. Tutarlı.)
+(For a breakable pallet: dynamic, gives no cover, ambient-scaled. Consistent.)
 
-### Videolarda kullanılan bayrak setleri
+### Flag sets used in videos
 
-- Animasyonlu prop → `Dynamic` + `Has Anim (YCD)` + `Auto Start Anim`
-- UV/spritesheet animasyonu → `UV anims (YCD)`
-- Kapı → `Dynamic` + `Enable Door Physics`
+- Animated prop → `Dynamic` + `Has Anim (YCD)` + `Auto Start Anim`
+- UV/spritesheet animation → `UV anims (YCD)`
+- Door → `Dynamic` + `Enable Door Physics`
 
-### ⭐ 2.1 GERÇEK kullanım dağılımı — 316.975 arketip, tam sayım
+### ⭐ 2.1 REAL usage distribution — 316,975 archetypes, full count
 
-Yukarıdaki bit tablosu "hangi bit ne demek"i söyler; bu tablo **vanilla'nın
-gerçekten ne yazdığını**. Bayrak seçerken önce buraya bak: listede olmayan bir
-kombinasyon kuruyorsan, sebebini bilerek kuruyor ol.
+The bit table above says "what each bit means"; this table says **what vanilla
+actually writes**. Look here first when choosing flags: if you are setting a combination that is
+not in the list, set it knowing why.
 
-**224 benzersiz bayrak değeri var, ama üç tanesi %90,5'i kaplıyor.**
+**There are 224 unique flag values, but three of them cover 90.5%.**
 
-| değer | adet | % | kümülatif | çözümü |
+| value | count | % | cumulative | decode |
 |---:|---:|---:|---:|---|
-| `536870912` | 137.663 | 43,4 | 43,4 | Use Ambient Scale |
-| `0` | 108.104 | 34,1 | 77,5 | *(hiçbiri)* |
-| `8192` | 41.210 | 13,0 | **90,5** | Dont Cast Shadows |
-| `537001984` | 5.122 | 1,6 | 92,2 | Dynamic \| Ambient |
-| `33685504` | 4.049 | 1,3 | 93,4 | Dynamic \| Has Cloth |
-| `537002016` | 2.787 | 0,9 | 94,3 | Static \| Dynamic \| Ambient |
-| `8196` | 2.486 | 0,8 | 95,1 | Draw Last \| Dont Cast Shadows |
-| `549584896` | 1.723 | 0,5 | 95,6 | Dynamic \| No AI Cover \| No Player Cover \| Ambient |
-| `32` | 1.287 | 0,4 | 96,0 | Static |
-| `2097152` | 1.035 | 0,3 | 96,4 | Drawable Proxy Water Refl |
-| `604110848` | 860 | 0,3 | 96,6 | Dynamic \| **Enable Door Physics** \| Ambient |
-| `2048` | 849 | 0,3 | 96,9 | Shadow Only |
-| `4` | 839 | 0,3 | 97,2 | Draw Last |
-| `12582912` | 810 | 0,3 | 97,4 | No AI Cover \| No Player Cover |
-| `549453824` | 593 | 0,2 | 97,6 | No AI/Player Cover \| Ambient |
-| `536870944` | 550 | 0,2 | 97,8 | Static \| Ambient |
-| `131072` | 425 | 0,1 | 97,9 | Dynamic |
-| `1024` | 363 | 0,1 | 98,4 | UV anims |
-| `536936448` | 232 | 0,1 | 98,6 | Double-sided \| Ambient *(bitki)* |
-| `570556416` | 177 | 0,1 | 98,7 | Dynamic \| Has Cloth \| Ambient *(bayrak/flama)* |
-| `537264128` | 170 | 0,1 | 98,8 | Dynamic \| Override Physics Bounds \| Ambient |
-| `67239936` | 158 | 0,0 | 98,8 | Dynamic \| Enable Door Physics *(ambient'siz)* |
-| `536871424` | 149 | 0,0 | 98,9 | **Has Anim** \| Ambient *(RayFire kökleri: `des_*_root`)* |
+| `536870912` | 137,663 | 43.4 | 43.4 | Use Ambient Scale |
+| `0` | 108,104 | 34.1 | 77.5 | *(none)* |
+| `8192` | 41,210 | 13.0 | **90.5** | Dont Cast Shadows |
+| `537001984` | 5,122 | 1.6 | 92.2 | Dynamic \| Ambient |
+| `33685504` | 4,049 | 1.3 | 93.4 | Dynamic \| Has Cloth |
+| `537002016` | 2,787 | 0.9 | 94.3 | Static \| Dynamic \| Ambient |
+| `8196` | 2,486 | 0.8 | 95.1 | Draw Last \| Dont Cast Shadows |
+| `549584896` | 1,723 | 0.5 | 95.6 | Dynamic \| No AI Cover \| No Player Cover \| Ambient |
+| `32` | 1,287 | 0.4 | 96.0 | Static |
+| `2097152` | 1,035 | 0.3 | 96.4 | Drawable Proxy Water Refl |
+| `604110848` | 860 | 0.3 | 96.6 | Dynamic \| **Enable Door Physics** \| Ambient |
+| `2048` | 849 | 0.3 | 96.9 | Shadow Only |
+| `4` | 839 | 0.3 | 97.2 | Draw Last |
+| `12582912` | 810 | 0.3 | 97.4 | No AI Cover \| No Player Cover |
+| `549453824` | 593 | 0.2 | 97.6 | No AI/Player Cover \| Ambient |
+| `536870944` | 550 | 0.2 | 97.8 | Static \| Ambient |
+| `131072` | 425 | 0.1 | 97.9 | Dynamic |
+| `1024` | 363 | 0.1 | 98.4 | UV anims |
+| `536936448` | 232 | 0.1 | 98.6 | Double-sided \| Ambient *(plant)* |
+| `570556416` | 177 | 0.1 | 98.7 | Dynamic \| Has Cloth \| Ambient *(flag/banner)* |
+| `537264128` | 170 | 0.1 | 98.8 | Dynamic \| Override Physics Bounds \| Ambient |
+| `67239936` | 158 | 0.0 | 98.8 | Dynamic \| Enable Door Physics *(no ambient)* |
+| `536871424` | 149 | 0.0 | 98.9 | **Has Anim** \| Ambient *(RayFire roots: `des_*_root`)* |
 
-Okunacak dört şey:
+Four things to read from it:
 
-- **`Use Ambient Scale` neredeyse serbest bir varsayılandır** (tek başına
-  %43,4). Emin değilsen kurmak vanilla davranışıdır.
-- **`Static` nadirdir** (tek başına %0,4). "Static + Dynamic birlikte" ise
-  vanilla'da gerçekten var (`537002016`, 2.787 arketip) — çelişki değil.
-- **Kapı bayrağı iki sürümlüdür**: `604110848` (860, ambient'li) ve
-  `67239936` (158, ambient'siz). Beşte dördü ambient'li.
-- **`536871424` = Has Anim + Ambient**, `Auto Start Anim` **yok** — ve
-  taşıyıcıları `des_*_root` yani RayFire kökleri. RayFire klibini motor
-  başlattığı için auto-start gerekmiyor. Kendi RayFire kökünde
-  `Auto Start Anim` kurmak vanilla kalıbı **değildir**.
+- **`Use Ambient Scale` is almost a free default** (43.4% on its own).
+  If you are not sure, setting it is vanilla behaviour.
+- **`Static` is rare** (0.4% on its own). "Static + Dynamic together", however,
+  really exists in vanilla (`537002016`, 2,787 archetypes) — not a contradiction.
+- **The door flag has two versions**: `604110848` (860, with ambient) and
+  `67239936` (158, without ambient). Four out of five have ambient.
+- **`536871424` = Has Anim + Ambient**, **no** `Auto Start Anim` — and
+  its carriers are `des_*_root`, i.e. RayFire roots. The engine starts the RayFire clip,
+  so no auto-start is needed. Setting `Auto Start Anim` on your own RayFire root
+  is **not** the vanilla pattern.
 
-⚠ **ENTITY (ymap) tarafının aynı dağılımı ÖLÇÜLEMEDİ** — `entities.tsv.gz`
-ve `entities.db` şemasında `flags` kolonu yok (`name,x,y,z,kind,ymap,interior`).
-Aşağıdaki §3 bit tablosu ve çözülmüş sihirli sayılar geçerli, ama "vanilla en
-çok hangi entity bayrağını yazıyor" sorusunun cevabı **elimizde yok**. Gerekirse
-ymap dump'ına `flags` kolonu eklenmeli.
+⚠ **The same distribution for the ENTITY (ymap) side COULD NOT BE MEASURED** — the
+`entities.tsv.gz` and `entities.db` schemas have no `flags` column (`name,x,y,z,kind,ymap,interior`).
+The §3 bit table and the decoded magic numbers below hold, but the answer to "which entity flag
+does vanilla write most" is **not in our hands**. If needed, a `flags` column must be added to the
+ymap dump.
 
 ---
 
-## 3. ENTITY bayrakları (`CEntityDef.flags`, ymap)
+## 3. ENTITY flags (`CEntityDef.flags`, ymap)
 
-> ⚠ Bu tablo `assetdb.py::ENTITY_FLAGS`'ten **üretildi**, elle yazılmadı.
-> Önceki sürümünde 128'den sonrası bir satır kaymıştı (elle kopyalama hatası);
-> kod hep doğruydu, hatalı olan belgeydi. Değiştirirsen koddan yeniden üret.
+> ⚠ This table was **generated** from `assetdb.py::ENTITY_FLAGS`, not written by hand.
+> In its previous version everything after 128 had shifted by one row (a hand-copy error);
+> the code was always right, the document was wrong. If you change it, regenerate it from the code.
 
-| Değer | Bit | Ad |
+| Value | Bit | Name |
 |---:|---:|---|
 | 1 | 0 | Allow full rotation |
 | 2 | 1 | Stream Low Priority |
@@ -202,15 +202,15 @@ ymap dump'ına `flags` kolonu eklenmeli.
 | 1073741824 | 30 | Unknown 31 |
 | 2147483648 | 31 | Unknown 32 |
 
-### `65536` = Underwater — ölçüldü
+### `65536` = Underwater — measured
 
-Sollumz kaynağı bu biti **"Unused"** diye adlandırıyor, CodeWalker
-**"Underwater"** diyor. 3.145.882 entity tarandı: bit **yalnız 14 kez** kurulu
-ve hepsi su prop'u — `prop_dock_bouy_1/2/3` (iskele şamandırası) ve
-`prop_rub_wheel_01`, liman/nehir ymap'lerinde (`po1_09_long_0`,
-`vb_rv_strm_1`). **CodeWalker haklı.**
+The Sollumz source names this bit **"Unused"**, CodeWalker calls it
+**"Underwater"**. 3,145,882 entities scanned: the bit is set **only 14 times**
+and all of them are water props — `prop_dock_bouy_1/2/3` (dock buoy) and
+`prop_rub_wheel_01`, in harbour/river ymaps (`po1_09_long_0`,
+`vb_rv_strm_1`). **CodeWalker is right.**
 
-### ⭐ Elimizdeki sihirli sayılar artık çözülüyor
+### ⭐ The magic numbers we have now decode
 
 ```
 1572872  = LOD in Parented YMAP | Cast Static Shadows | Cast Dynamic Shadows
@@ -218,82 +218,82 @@ ve hepsi su prop'u — `prop_dock_bouy_1/2/3` (iskele şamandırası) ve
 18350080 = Dont Render In Reflections | Cast Static Shadows | Cast Dynamic Shadows
 ```
 
-- **`1572872` LOD zincirindeki HD entity'nin değeridir.** 8. bit motora
-  "benim LOD'um ÜST haritada" der. Üst harita yoksa entity **sessizce düşer**.
-  CLAUDE.md §4'teki "ymap değeri verilirse obje oluşmaz" uyarısının sebebi budur
-  — değer bozuk değil, **bir zincirin ortasına ait**.
-- **`1572865` ile arasındaki tek fark 1. bittir**: `LOD in Parented YMAP` yerine
-  `Allow full rotation`. Bayrak/flama prop'u bunu kullanır (rüzgârda dönebilsin).
-- **`18350080` MLO entity'sidir**: iç mekân objesi yansımalarda çizilmez.
+- **`1572872` is the value of the HD entity in a LOD chain.** The `8` bit tells the engine
+  "my LOD is in the PARENT map". If there is no parent map the entity **silently drops**.
+  This is the reason for the old warning "if the ymap value is given the object does not
+  spawn" — the value is not broken, it **belongs in the middle of a chain**.
+- **The only difference from `1572865` is the `1` bit**: `Allow full rotation` instead of
+  `LOD in Parented YMAP`. Flag/banner props use it (so they can turn in the wind).
+- **`18350080` is an MLO entity**: the interior object is not drawn in reflections.
 
 ---
 
-### `assetType` — alan değil PROPERTY (`rage__fwArchetypeDef__eAssetType`)
+### `assetType` — not a field but a PROPERTY (`rage__fwArchetypeDef__eAssetType`)
 
-`ASSET_TYPE_DRAWABLE` (`.ydr`) · `ASSET_TYPE_FRAGMENT` (`.yft`, per-bone collision **yalnız** bununla) · `ASSET_TYPE_DRAWABLEDICTIONARY`
-(`.ydd`, LOD ebeveynleri) · `ASSET_TYPE_ASSETLESS`. Fragment üretip `assetType` drawable bırakmak tüm emeği boşa çıkarır
-(`branches/prop/fragment.md`); RayFire kökü **drawable**dır, fragment değil (`branches/map/destruction.md`).
+`ASSET_TYPE_DRAWABLE` (`.ydr`) · `ASSET_TYPE_FRAGMENT` (`.yft`, per-bone collision **only** with this) · `ASSET_TYPE_DRAWABLEDICTIONARY`
+(`.ydd`, LOD parents) · `ASSET_TYPE_ASSETLESS`. Producing a fragment and leaving `assetType` as drawable wastes all the work
+(`branches/prop/fragment.md`); a RayFire root is a **drawable**, not a fragment (`branches/map/destruction.md`).
 
-## 4. `specialAttribute` — 21 değerin tamamı
+## 4. `specialAttribute` — all 21 values
 
-Sollumz enum adı = **motorun semantiği**; "vanilla kullanımı" sütunu = bizim
-316k arketip üzerinden ölçtüğümüz **gerçek kullanım**. İkisi farklı katman ve
-ikisi de gerekli.
+Sollumz enum name = **the engine's semantics**; the "vanilla count" column = the **real usage**
+we measured over 316k archetypes. The two are different layers and
+both are needed.
 
-| Değer | Sollumz adı | Vanilla adet | Gerçek kullanım / örnek |
+| Value | Sollumz name | Vanilla count | Real use / example |
 |---:|---|---:|---|
-| 0 | None | 314.116 | kapı değil |
+| 0 | None | 314,116 | not a door |
 | 1 | Deprecated - Unused | 41 | *"Does nothing"* — `sm_boat_clutter2` |
-| 2 | Deprecated - Ladder | 233 | ~~vinç~~ → merdiven; `prop_towercrane_02a..e` |
-| 3 | Traffic Light | 80 | trafik lambası |
-| 4 | Unknown 4 | 17 | Sollumz de bilmiyor; `*_hedgedtl_*` (çit detayı) |
-| 5 | Garage Door | 81 | garaj/rulo kapı |
-| 6 | MLO Water Level | 630 | ⚠ örnekler `ch1_roadsb_slod*` — çelişki, §4.1 |
-| 7 | Normal Door | 661 | menteşeli kapı |
-| 8 | Sliding Door | 74 | sürgülü kapı |
+| 2 | Deprecated - Ladder | 233 | ~~crane~~ → ladder; `prop_towercrane_02a..e` |
+| 3 | Traffic Light | 80 | traffic light |
+| 4 | Unknown 4 | 17 | Sollumz does not know either; `*_hedgedtl_*` (hedge detail) |
+| 5 | Garage Door | 81 | garage/roll-up door |
+| 6 | MLO Water Level | 630 | ⚠ examples `ch1_roadsb_slod*` — contradiction, §4.1 |
+| 7 | Normal Door | 661 | hinged door |
+| 8 | Sliding Door | 74 | sliding door |
 | **9** | **Barrier Door** | **1** | `m26_1_prop_m61_sewer_gate` |
-| 10 | Sliding Vertical Door | 8 | kepenk / asansör kapısı |
-| 11 | Bush *(içeride `NOISY_BUSH`)* | 39 | çalı |
+| 10 | Sliding Vertical Door | 8 | roller shutter / elevator door |
+| 11 | Bush *(internally `NOISY_BUSH`)* | 39 | bush |
 | 12 | Rail Crossing Barrier Door | 2 | `prop_railway_barrier_01/02` |
-| 13 | Deformable Bush | 226 | ezilebilen çalı |
+| 13 | Deformable Bush | 226 | crushable bush |
 | 14 | Single Axis Rotation | 2 | *"procedural animation"*; `prop_roofvent_06a/14a` |
-| 15 | Dynamic Cover Bound | 81 | siper verir; `v_ret_fh_dinetable`, `prop_aircon_m_10` |
+| 15 | Dynamic Cover Bound | 81 | gives cover; `v_ret_fh_dinetable`, `prop_aircon_m_10` |
 | 16 | Rumble On Vehicle Collision | 207 | `prop_barrier_work01a..d`, `prop_pallet_01a` |
-| 17 | Rail Crossing Light | 2 | ⚠ örnekler `prop_traffic_rail_*` — çelişki, §4.1 |
-| 30 | Clock | 11 | *"animated clock hands"*; `prop_big_clock_01` (kemik tag 0/419/418, klip YOK) |
-| 31 | Deprecated - Tree | 463 | *"double-sided rendering ile aynı"* |
-| **32** | **Street Light** | **0** | vanilla'da hiç kullanılmıyor |
+| 17 | Rail Crossing Light | 2 | ⚠ examples `prop_traffic_rail_*` — contradiction, §4.1 |
+| 30 | Clock | 11 | *"animated clock hands"*; `prop_big_clock_01` (bone tags 0/419/418, NO clip) |
+| 31 | Deprecated - Tree | 463 | *"same as double-sided rendering"* |
+| **32** | **Street Light** | **0** | never used in vanilla |
 
-### 4.1 İki ad çelişkisi — biri çözüldü, biri daraldı
+### 4.1 Two name contradictions — one resolved, one narrowed
 
-**17 → Sollumz haklı, ben yanılmışım.** İki örnek `prop_traffic_rail_1a` ve
-`prop_traffic_rail_2`, ikisi de **`v_traffic_lights.ytyp`** içinde — yani
-trafik *lambası* ytyp'i. Adındaki "rail" yol korkuluğu değil, demiryolu geçidi.
-Eski etiketimiz ("trafik korkuluğu") **yanlıştı**, düzeltildi.
+**17 → Sollumz is right, I was wrong.** The two examples `prop_traffic_rail_1a` and
+`prop_traffic_rail_2` are both in **`v_traffic_lights.ytyp`** — i.e. the traffic *light*
+ytyp. The "rail" in the name is not a road barrier but a railway crossing.
+Our old label ("traffic barrier") **was wrong** and has been fixed.
 
-**6 → çelişki duruyor ama şekli değişti.** Önce "630 örneğin hepsi `*_slod*`"
-demiştim; bu **6 satırlık bir örneklemden** çıkarılmış yanlış bir genellemeydi.
-Tam ölçüm:
+**6 → the contradiction stands, but its shape changed.** Earlier I had said "all 630 examples
+are `*_slod*`"; that was a wrong generalisation drawn from **a 6-row sample**.
+Full measurement:
 
-- 630 arketipin **yalnız 99'unda (%15,7)** adında `slod` geçiyor
-- Kalanı sıradan kırsal harita parçası: `cs1_15b_barn`, `cs1_15b_bridge_det1`,
+- **only 99 (15.7%)** of the 630 archetypes have `slod` in their name
+- The rest are ordinary rural map pieces: `cs1_15b_barn`, `cs1_15b_bridge_det1`,
   `cs1_15b_chimneydet1` …
-- Ad önekleri: `cs1_` (474) · `ch1_` (37) · `cs2_` (21) · `cs6_` (18)
-- 20 farklı ytyp'e dağılmış, en yoğunu `country_01_metadata_010_strm.ytyp` (363)
-- `lodDist` medyanı **80** — SLOD'a ait olmayacak kadar küçük
+- Name prefixes: `cs1_` (474) · `ch1_` (37) · `cs2_` (21) · `cs6_` (18)
+- Spread over 20 different ytyps, the densest being `country_01_metadata_010_strm.ytyp` (363)
+- `lodDist` median **80** — too small to belong to an SLOD
 
-Yani ne "hepsi SLOD" doğru, ne de "MLO Water Level" adı kullanımla örtüşüyor.
-**Ölçmeden yeniden adlandırma; ikisini de bil.**
+So neither "all SLOD" is right, nor does the name "MLO Water Level" match the usage.
+**Do not rename without measuring; know both.**
 
-⚠ Ders: 6 satırlık örnekten genelleme yapmıştım ve yanlış çıktı. Bu tablodaki
-her iddia tam sayımdan gelmeli.
+⚠ Lesson: I generalised from a 6-row sample and it turned out wrong. Every claim in this
+table must come from a full count.
 
-### 4.2 Kapı sistemi hangi tipleri gerçekten oynatır
+### 4.2 Which types the door system really animates
 
-**Ölçüm:** `Enable Door Physics` biti (67108864) kurulu **1176** arketipin
-`specialAttribute` dağılımı:
+**Measured:** the `specialAttribute` distribution of the **1176** archetypes with the
+`Enable Door Physics` bit (67108864) set:
 
-| specialAttribute | Adet |
+| specialAttribute | Count |
 |---:|---:|
 | 7 Normal Door | 646 |
 | **0 None** | **379** |
@@ -305,23 +305,23 @@ her iddia tam sayımdan gelmeli.
 | **9 Barrier Door** | **0** |
 | **14 Single Axis Rotation** | **0** |
 
-→ `DOOR_CAPABLE = {5, 7, 8, 10, 12}` **doğrudur**. `9` ve `14` enum'da var ama
-vanilla onlara door physics vermiyor: `14` bir **prosedürel dönüş**tür (çatı
-fanı), kapı değil. Bir eğitim videosunda `14` ile kapı yapılıp "açıldı"
-görülmesi door sistemini değil bu prosedürel dönüşü gösterir.
-→ Ayrıca **379 arketip `specialAttribute=0` olduğu hâlde door physics taşıyor**:
-kapı olup olmadığını yalnız `specialAttribute`'a bakarak söylemek eksiktir,
-bayrağa da bakılmalı.
+→ `DOOR_CAPABLE = {5, 7, 8, 10, 12}` **is right**. `9` and `14` are in the enum, but
+vanilla gives them no door physics: `14` is a **procedural rotation** (roof
+fan), not a door. A tutorial video that makes a door with `14` and sees it "open"
+shows this procedural rotation, not the door system.
+→ Also, **379 archetypes carry door physics while `specialAttribute=0`**:
+saying whether something is a door by looking only at `specialAttribute` is incomplete,
+look at the flag too.
 
 ---
 
-## 5. ytyp EXTENSION tipleri (14)
+## 5. ytyp EXTENSION types (14)
 
-`ytyp/properties/extensions.py:29`. **Sollumz arayüzü bunlardan yalnız 11'ini
-gösterir**; `DOOR`, `SPAWN_POINT_OVERRIDE`, `LIGHT_EFFECT` listede yoktur ama
-içe aktarma yolunda desteklenir.
+`ytyp/properties/extensions.py:29`. **The Sollumz UI shows only 11 of
+them**; `DOOR`, `SPAWN_POINT_OVERRIDE`, `LIGHT_EFFECT` are not in the list but
+are supported on the import path.
 
-| Sollumz sabiti | XML sınıfı | Arayüzde |
+| Sollumz constant | XML class | In UI |
 |---|---|:--:|
 | `DOOR` | `CExtensionDefDoor` | — |
 | `PARTICLE` | `CExtensionDefParticleEffect` | ✓ |
@@ -338,21 +338,21 @@ içe aktarma yolunda desteklenir.
 | **`EXPRESSION`** | **`CExtensionDefExpression`** | ✓ |
 | `LIGHT_EFFECT` | `CExtensionDefLightEffect` | — |
 
-⚠ **`EXPRESSION` bizim `.yed` zincirimizin ytyp ayağıdır** (CLAUDE.md §1).
-Orada "ytyp'e Expression extension ekle, **çıplak ad** yaz" diyoruz — bunun
-Sollumz'da hazır bir arayüzü var, XML'i elle yazmak gerekmiyor.
-`PROC_OBJECT` ise @ma prosedürel çim sisteminin ytyp ayağı.
+⚠ **`EXPRESSION` is the ytyp leg of a `.yed` expression chain.**
+The rule there: "add an Expression extension to the ytyp, write the **bare name**" — Sollumz
+has a ready UI for it, no need to write the XML by hand.
+`PROC_OBJECT` is the ytyp leg of the @ma procedural grass system.
 
 ---
 
 
-> §6 partikül extension → `branches/particle/ready-made-effects.md` (2026-09-05).
+> §6 particle extension → `branches/particle/ready-made-effects.md` (2026-09-05).
 
-## 8. Collision — ÜÇ AYRI BAYRAK KATMANI
+## 8. Collision — THREE SEPARATE FLAG LAYERS
 
-Sık karıştırılır. Üçü farklı yerde yaşar ve farklı iş yapar.
+Often confused. The three live in different places and do different jobs.
 
-### 8.1 Materyalin kendi bayrakları (16)
+### 8.1 The material's own flags (16)
 
 ```
 STAIRS          NOT COVER         NO DECAL        NO PTFX
@@ -361,13 +361,13 @@ SEE THROUGH     NO CAM COLLISION  NO RAGDOLL      NO NETWORK SPAWN
 SHOOT THROUGH   SHOOT THROUGH FX  VEHICLE WHEEL   NO CAM COLLISION ALLOW CLIPPING
 ```
 
-Aynı panelde: `Procedural ID` · `Ped Density` · `Room ID` · `Material Color Index`.
+In the same panel: `Procedural ID` · `Ped Density` · `Room ID` · `Material Color Index`.
 
-### 8.2 Bound COMPOSITE bayrakları (31, İKİ ayrı küme)
+### 8.2 Bound COMPOSITE flags (31, TWO separate sets)
 
-`ybn/properties.py::BoundFlags`. Obje **iki** küme taşır:
-`composite_flags1` = **Type Flags** (bu bound *nedir*),
-`composite_flags2` = **Include Flags** (bu bound *neyle çarpışır*).
+`ybn/properties.py::BoundFlags`. An object carries **two** sets:
+`composite_flags1` = **Type Flags** (what this bound *is*),
+`composite_flags2` = **Include Flags** (what this bound *collides with*).
 
 ```
 UNKNOWN          MAP WEAPON       MAP DYNAMIC      MAP ANIMAL
@@ -380,46 +380,46 @@ TEST VEHICLE WHEEL  GLASS         MAP RIVER        SMOKE
 UNSMASHED        MAP STAIRS       MAP DEEP SURFACE
 ```
 
-Ölçülmüş örnek (havuz/su): Type = `MAP WEAPON` + `MAP DYNAMIC` + `MAP ANIMAL`
-+ `MAP COVER` + `MAP RIVER`; materyal `WATER`, materyal bayrakları
+Measured example (pool/water): Type = `MAP WEAPON` + `MAP DYNAMIC` + `MAP ANIMAL`
++ `MAP COVER` + `MAP RIVER`; material `WATER`, material flags
 `SEE THROUGH` + `SHOOT THROUGH` + `NO CAM COLLISION`.
 
-### 8.3 Arketip bayrakları
+### 8.3 Archetype flags
 
-§2'deki tablo (`Dynamic`, `Enable Door Physics`, `Has Cloth` …). Bunlar
-collision'ın değil **arketipin** bayrakları.
+The table in §2 (`Dynamic`, `Enable Door Physics`, `Has Cloth` …). These are the flags
+of the **archetype**, not of the collision.
 
-### 8.4 Materyal tablosu (185)
+### 8.4 Material table (185)
 
-`data/collision_materials.tsv` · sorgu: `assetdb.py mat [<ad>|--index N]`
-Kaynak: Sollumz `ybn/collision_materials.py`; liste sırası = oyunun materyal
-indeksi. **Çapraz doğrulandı:** `ANIMAL_DEFAULT = 171` — bizim yaratık rig'i
-çalışmasında bağımsız olarak ölçülen değerle birebir aynı (CLAUDE.md §10).
+`data/collision_materials.tsv` · query: `assetdb.py mat [<name>|--index N]`
+Source: Sollumz `ybn/collision_materials.py`; list order = the game's material
+index. **Cross-checked:** `ANIMAL_DEFAULT = 171` — exactly the value of an earlier,
+independent measurement.
 
-Uçlar: en hafif `Fibreglass Hollow` (126.0), `Polystyrene` (157.5),
-`Foam` (175.0); en ağır `Metal Solid Large` / `Metal Garage Door` /
-`Metal Manhole` (31500.0). Sık kullanılanlar: `CONCRETE` 1 · `GRAVEL_SMALL` 31
+Extremes: lightest `Fibreglass Hollow` (126.0), `Polystyrene` (157.5),
+`Foam` (175.0); heaviest `Metal Solid Large` / `Metal Garage Door` /
+`Metal Manhole` (31500.0). Common ones: `CONCRETE` 1 · `GRAVEL_SMALL` 31
 · `GRASS_SHORT` 48 · `METAL_GARAGE_DOOR` 67 · `WOOD_SOLID_MEDIUM` 70 ·
 `GLASS_SHOOT_THROUGH` 112 · `CAR_METAL` 116 · `WATER` 125 · `ANIMAL_DEFAULT` 171.
 
-### 8.5 Ölçülmüş davranış
+### 8.5 Measured behaviour
 
-**`mesh` collision + `Dynamic` arketip bayrağı = obje dünya collision'ıyla
-etkileşmez, yerin içine düşer.** Dinamik obje istiyorsan collision
-**primitive** (bound box / cylinder) olmalı. Kapı standardı: `NOT COVER` +
+**`mesh` collision + `Dynamic` archetype flag = the object does not interact with world
+collision and falls into the ground.** If you want a dynamic object the collision
+must be a **primitive** (bound box / cylinder). Door standard: `NOT COVER` +
 `NOT CLIMBABLE`.
 
 ---
 
 
-## 11. Nametables — hash → isim
+## 11. Nametables — hash → name
 
-Blender `Preferences → Sollumz → Name Tables → +` ile bir klasör eklenir,
-Blender yeniden başlatılır; içe aktarılan modellerde `hash_...` yerine gerçek
-adlar görünür. Tablolar Sollumz Discord `#resources` kanalında (Oohk),
-`nametables.rpf` (~13,6 MB) olarak dağıtılıyor; RPF Explorer'a atılıp içindeki
-`.nametable` dosyaları klasöre çıkarılır.
+In Blender, add a folder with `Preferences → Sollumz → Name Tables → +` and
+restart Blender; imported models then show real names instead of `hash_...`.
+The tables are distributed in the Sollumz Discord `#resources` channel (Oohk)
+as `nametables.rpf` (~13.6 MB); drop it into RPF Explorer and extract the
+`.nametable` files inside into the folder.
 
-Faydası kozmetik değil: nametable olmadan bir ymap'te iki entity `hash_60F...`
-diye gelir ve hangisinin `arch_lod`, hangisinin `lod_canopy` olduğu ancak
-CodeWalker'ın hash hesaplayıcısıyla tek tek denenerek bulunur.
+The benefit is not cosmetic: without a nametable two entities in a ymap come in as `hash_60F...`
+and which one is `arch_lod` and which is `lod_canopy` can only be found by trying them one by one
+with CodeWalker's hash calculator.

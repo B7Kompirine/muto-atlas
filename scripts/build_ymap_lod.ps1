@@ -1,20 +1,20 @@
-﻿# build_ymap_lod.ps1 — ymap ROOT entity'lerinin LOD alanlarini indeksler.
+﻿# build_ymap_lod.ps1 - indexes the LOD fields of ymap ROOT entities.
 #
-# NEDEN AYRI INDEKS: entities.tsv.gz / entities.db "bu obje dunyada NEREDE"
-# sorusuna cevap veriyor ve MLO ic mekanlarini da dunya koordinatina acarak
-# sisiriyor (214 MB). LOD sorusu bambaska: konum degil, ZINCIR lazim.
-# Ayni tabloya sokmak hem o hatti bozar hem gereksiz buyutur.
+# WHY A SEPARATE INDEX: entities.tsv.gz / entities.db answer "WHERE is this object in
+# the world", and they also expand MLO interiors into world coordinates, which
+# inflates them (214 MB). The LOD question is entirely different: not a position but a CHAIN.
+# Putting it into the same table would both break that pipeline and bloat it for nothing.
 #
-# KRITIK: parentIndex, UST ymap'in entity LISTESINDEKI SIRAYA isaret eder
-# (0 tabanli). O yuzden her satirda 'idx' saklaniyor -- sira kaybolursa
-# zincir cozulemez. Bu yuzden hicbir entity filtrelenmiyor; eleme yapilirsa
-# indeksler kayar ve tum zincir yanlis okunur.
+# CRITICAL: parentIndex points to the ORDER in the PARENT ymap's entity LIST
+# (0-based). That is why every row stores 'idx' -- if the order is lost the
+# chain cannot be resolved. For the same reason no entity is filtered; if any are
+# dropped the indexes shift and the whole chain is read wrong.
 #
-# Zincir ymap DOSYALARINI asar:  X.ymap -> X_lod.ymap -> X_slod.ymap
-# CodeWalker'daki karsiligi: entity 'LOD Hierarchy' sekmesi (ParentIndex +
-# NumChildren). Ayrinti: skills/fivem-assets/trunk/flags.md
+# The chain crosses ymap FILES:  X.ymap -> X_lod.ymap -> X_slod.ymap
+# The CodeWalker equivalent: the entity 'LOD Hierarchy' tab (ParentIndex +
+# NumChildren). Details: skills/fivem-assets/trunk/flags.md
 #
-# Kullanim:
+# Usage:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File build_ymap_lod.ps1
 
 param(
@@ -31,17 +31,17 @@ if (-not (Test-Path -LiteralPath $Out)) { New-Item -ItemType Directory -Path $Ou
 
 $CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
 if (-not $CodeWalker -or -not (Test-Path -LiteralPath $CodeWalker)) {
-    throw "CodeWalker.Core.dll bulunamadi. -CodeWalker <yol> ile ver."
+    throw "CodeWalker.Core.dll not found. Pass it with -CodeWalker <path>."
 }
 
 $GtaFolder = & "$PSScriptRoot\paths.ps1" gta $GtaFolder
-if (-not $GtaFolder) { throw "GTA V klasoru bulunamadi. -GtaFolder <yol> ile ver." }
+if (-not $GtaFolder) { throw "GTA V folder not found. Pass it with -GtaFolder <path>." }
 
 $cwDir = Split-Path $CodeWalker -Parent
 Write-Output "CodeWalker : $CodeWalker"
 Write-Output "GTA V      : $GtaFolder"
-Write-Output "Ekstra     : $(if($ExtraFolders.Count){$ExtraFolders -join '; '}else{'(yok)'})"
-Write-Output "Cikti      : $Out"
+Write-Output "Extra      : $(if($ExtraFolders.Count){$ExtraFolders -join '; '}else{'(none)'})"
+Write-Output "Output     : $Out"
 
 $script:cwDir = $cwDir
 [System.AppDomain]::CurrentDomain.add_AssemblyResolve([System.ResolveEventHandler]{
@@ -65,10 +65,10 @@ public static class YmapLodIndexer
 {
     static string F(float v) { return v.ToString("0.##", CultureInfo.InvariantCulture); }
 
-    // Custom ymap'lerde archetype adi HASH olarak durur; CodeWalker onu ancak
-    // JenkIndex'te varsa cozer. Stream klasorundeki model dosya adlarini
-    // besliyoruz -- custom prop adi neredeyse her zaman dosya adiyla ayni.
-    // (build_archetypes.ps1 ile ayni yontem.)
+    // In custom ymaps the archetype name is stored as a HASH; CodeWalker resolves it only
+    // if it is in JenkIndex. We feed the model file names in the stream folder
+    // -- a custom prop name is almost always the same as the file name.
+    // (Same method as build_archetypes.ps1.)
     static void SeedNames(string folder, ref int seeded)
     {
         string[] exts = { "*.ydr", "*.yft", "*.ydd", "*.ytd" };
@@ -100,10 +100,10 @@ public static class YmapLodIndexer
                 var fe = e as RpfFileEntry;
                 if (fe != null && fe.NameLower.EndsWith(".ymap")) ymaps.Add(fe);
             }
-        Console.WriteLine("[*] ymap girdisi: {0}", ymaps.Count);
+        Console.WriteLine("[*] ymap entries: {0}", ymaps.Count);
 
         var t0 = DateTime.Now;
-        long n = 0, nC = 0, zincirli = 0;
+        long n = 0, nC = 0, chained = 0;
         int okY = 0, errY = 0, okC = 0, errC = 0;
 
         var outPath = Path.Combine(outFolder, "ymap_lod.tsv.gz");
@@ -111,15 +111,15 @@ public static class YmapLodIndexer
         using (var gz = new GZipStream(fs, CompressionLevel.Optimal))
         using (var w = new StreamWriter(gz))
         {
-            // 'parentYmap' OLMADAN ZINCIR YURUNEMEZ: parentIndex bir SIRA
-            // numarasidir, hangi dosyanin sirasi oldugunu ymap basligindaki
-            // CMapData.parent soyler. Dosya ADI kalibina (X_lod.ymap) guvenme --
-            // olculdu: 8143 ymap'in yalniz 456'si o kalibi tutuyor.
-            // 'rpfPath' SART: 8252 ymap ADININ 4751'i birden cok RPF'te var
-            // (base + DLC guncellemeleri, 4 kopyaya kadar). Yalniz dosya adi
-            // saklanirsa kopyalar ust uste biner, entity indeksleri karisir ve
-            // zincir YANLIS "kopuk" gorunur -- olculdu: ad bazli okumada
-            // 53.102 SAHTE kopukluk cikti.
+            // WITHOUT 'parentYmap' THE CHAIN CANNOT BE WALKED: parentIndex is an ORDER
+            // number; which file's order it is, CMapData.parent in the ymap header
+            // tells. Do not trust the file NAME pattern (X_lod.ymap) --
+            // measured: only 456 of 8143 ymaps follow that pattern.
+            // 'rpfPath' is REQUIRED: 4751 of 8252 ymap NAMES exist in more than one RPF
+            // (base + DLC updates, up to 4 copies). If only the file name is
+            // stored, the copies stack on top of each other, entity indexes get mixed up and
+            // the chain looks WRONGLY "broken" -- measured: reading by name gave
+            // 53,102 FALSE breaks.
             w.Write("ymap\tmapName\trpfPath\tparentYmap\tidx\tarchetype\tflags\tparentIndex\tnumChildren\tlodDist\tchildLodDist\tlodLevel\tpriority\n");
 
             foreach (var fe in ymaps)
@@ -136,14 +136,14 @@ public static class YmapLodIndexer
 
                     var par = y.CMapData.parent;
                     string parName = (par.Hash == 0) ? "" : par.ToString();
-                    // 'mapName' SART: CMapData.parent DOSYA ADINA degil ymap'in
-                    // IC ADINA isaret eder ve ikisi her zaman ayni degil.
-                    // Olculdu: 3000 ymap'in 177'sinde (%5,9) farkli --
-                    // ornek 'dt1_02_grass_0.ymap' -> ic ad 'dt1_02'.
-                    // Dosya adiyla eslestirirsen zincir sahte kopuk gorunur.
+                    // 'mapName' is REQUIRED: CMapData.parent points not to the FILE NAME but to
+                    // the ymap's INTERNAL NAME, and the two are not always the same.
+                    // Measured: different in 177 of 3000 ymaps (5.9%) --
+                    // example 'dt1_02_grass_0.ymap' -> internal name 'dt1_02'.
+                    // If you match on the file name, the chain looks falsely broken.
                     string mapName = y.CMapData.name.ToString();
 
-                    // SIRA = parentIndex'in isaret ettigi sey. Filtreleme YOK.
+                    // ORDER = what parentIndex points to. NO filtering.
                     for (int i = 0; i < ceds.Length; i++)
                     {
                         var d = ceds[i];
@@ -161,24 +161,24 @@ public static class YmapLodIndexer
                         w.Write(d.lodLevel);                 w.Write('\t');
                         w.Write(d.priorityLevel);            w.Write('\n');
                         n++;
-                        if (d.parentIndex >= 0 || d.numChildren > 0) zincirli++;
+                        if (d.parentIndex >= 0 || d.numChildren > 0) chained++;
                     }
                 }
                 catch { errY++; }
             }
 
-            // ── Custom (sunucu resource'lari, loose .ymap) ──────────
-            // Adlar VANILLA TARAMASINDAN SONRA beslenir: RpfManager.Init
-            // JenkIndex'i yeniden kuruyor ve once beslenenleri siliyor.
+            // -- Custom (server resources, loose .ymap) ------------------
+            // Names are fed AFTER THE VANILLA SCAN: RpfManager.Init
+            // rebuilds JenkIndex and erases anything fed before.
             int seeded = 0;
             foreach (var f in extraFolders)
                 if (Directory.Exists(f)) SeedNames(f, ref seeded);
             if (extraFolders.Length > 0)
-                Console.WriteLine("[*] JenkIndex'e beslenen custom model adi: {0}", seeded);
+                Console.WriteLine("[*] Custom model names fed to JenkIndex: {0}", seeded);
 
             foreach (var folder in extraFolders)
             {
-                if (!Directory.Exists(folder)) { Console.WriteLine("[!] yok: {0}", folder); continue; }
+                if (!Directory.Exists(folder)) { Console.WriteLine("[!] missing: {0}", folder); continue; }
                 string[] files;
                 try { files = Directory.GetFiles(folder, "*.ymap", SearchOption.AllDirectories); }
                 catch { continue; }
@@ -214,7 +214,7 @@ public static class YmapLodIndexer
                             w.Write(d.lodLevel);                 w.Write('\t');
                             w.Write(d.priorityLevel);            w.Write('\n');
                             nC++;
-                            if (d.parentIndex >= 0 || d.numChildren > 0) zincirli++;
+                            if (d.parentIndex >= 0 || d.numChildren > 0) chained++;
                         }
                     }
                     catch { errC++; }
@@ -224,11 +224,11 @@ public static class YmapLodIndexer
 
         var mb = new FileInfo(outPath).Length / 1024.0 / 1024.0;
         Console.WriteLine("[+] {0}  ({1:0.0} MB)", outPath, mb);
-        Console.WriteLine("[+] Vanilla : {0} ymap ({1} hata), {2} entity", okY, errY, n);
+        Console.WriteLine("[+] Vanilla : {0} ymap ({1} errors), {2} entities", okY, errY, n);
         if (extraFolders.Length > 0)
-            Console.WriteLine("[+] Custom  : {0} ymap ({1} hata), {2} entity", okC, errC, nC);
-        Console.WriteLine("[+] Toplam {0} entity, {1}'i LOD zincirinde, {2:0.0} sn",
-                          n + nC, zincirli, (DateTime.Now - t0).TotalSeconds);
+            Console.WriteLine("[+] Custom  : {0} ymap ({1} errors), {2} entities", okC, errC, nC);
+        Console.WriteLine("[+] Total {0} entities, {1} of them in a LOD chain, {2:0.0} s",
+                          n + nC, chained, (DateTime.Now - t0).TotalSeconds);
     }
 }
 '@

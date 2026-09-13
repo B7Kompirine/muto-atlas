@@ -1,41 +1,40 @@
 #!/usr/bin/env python3
-"""build_dumps.py — DurtyFree GTA V data dump'larindan plugin veri katmanlari uretir.
+"""build_dumps.py — builds plugin data layers from DurtyFree's GTA V data dumps.
 
-  python scripts/build_dumps.py --dump <gta-v-data-dumps klasoru>
+  python scripts/build_dumps.py --dump <gta-v-data-dumps folder>
 
-Uretilen katmanlar (data/ altina):
-  peds_meta.tsv.gz       ped kimligi + ANIMASYON/EXPRESSION baglantilari
-  weapons.tsv.gz         silah kunyesi
-  weapon_parts.tsv.gz    bilesen + livery (kind kolonu ile AYNI tabloda)
-  vehicles.tsv.gz        arac kunyesi
-  mlo_interiors.tsv.gz   MLO ic mekanlari, KONUM BASINA bir satir
-  ipls.tsv.gz            IPL adlari + sinir kutulari
-  world_objects.tsv.gz   dunya nesneleri: aile etiketi + konum + ROTASYON
-  dumps.meta.json        kaynak, tarih, satir sayilari
+Layers produced (under data/):
+  peds_meta.tsv.gz       ped identity + ANIMATION/EXPRESSION links
+  weapons.tsv.gz         weapon record
+  weapon_parts.tsv.gz    components + liveries (in the SAME table, split by the kind column)
+  vehicles.tsv.gz        vehicle record
+  mlo_interiors.tsv.gz   MLO interiors, one row PER LOCATION
+  ipls.tsv.gz            IPL names + bounding boxes
+  world_objects.tsv.gz   world objects: family label + position + ROTATION
+  dumps.meta.json        source, date, row counts
 
-TASARIM KURALLARI (olculerek konuldu, degistirmeden once oku):
+DESIGN RULES (set by measurement, read before changing):
 
-1. AD KOLONU KAYNAKTAKI HALIYLE yazilir, JOIN daima .lower() uzerinden kurulur.
-   Dump adlari MixedCase (W_AR_ASSAULTRIFLE), plugin katmanlari kucuk harf.
-   Birebir join her ailede 0 dondurur ve bu SESSIZDIR - tablo dolu gorunur,
-   eslesme bos cikar, cagiran taraf "bu model yok" der.
+1. THE NAME COLUMN is written AS IT IS IN THE SOURCE; joins are always built on .lower().
+   Dump names are MixedCase (W_AR_ASSAULTRIFLE), the plugin layers are lower case.
+   An exact join returns 0 in every family and it is SILENT - the table looks full,
+   the match comes out empty, the caller says "this model does not exist".
 
-2. weapon_parts'ta component VE livery ayni tabloda, ayirt eden `kind` kolonu.
-   155 livery adi da gecerli bir COMPONENT_* adidir (GiveWeaponComponentToPed
-   onlari kabul eder). Ayri tablo yapmak, livery'leri "gecersiz bilesen" diye
-   isaretleyen bir kapiya yol acar.
+2. In weapon_parts, components AND liveries share one table, told apart by the `kind` column.
+   155 livery names are also valid COMPONENT_* names (GiveWeaponComponentToPed
+   accepts them). A separate table leads to a gate that flags liveries as
+   "invalid component".
 
-3. Her katmanda `dlc` kolonu ZORUNLU. Sunucu sv_enforceGameBuild ile bir yapiya
-   sabitlenir; dump'ta VAR ama sunucunun yapisinda YOK olan ad, "gecerli" diye
-   raporlanir ve oyunda RequestModel hic yuklenmez, F8'de hata da olmaz.
+3. The `dlc` column is REQUIRED in every layer. A server is pinned to a build with
+   sv_enforceGameBuild; a name that EXISTS in the dump but NOT in the server's build is
+   reported as "valid", and in game RequestModel never loads it, with no error in F8 either.
 
-4. mlo_interiors KONUM BASINA satirdir (385 MLO, 844 konum). Ayni ic mekan
-   birden fazla yere yerlestirilir; MLO basina tek satir yazmak konumlarin
-   %54'unu atar.
+4. mlo_interiors is one row PER LOCATION (385 MLOs, 844 locations). The same interior
+   is placed in more than one spot; one row per MLO drops 54% of the locations.
 
-5. Bos degerler bos string yazilir, "None"/"null" DIZESI yazilmaz. Kaynakta
-   732 pedin ExpressionDictionaryName alani literal 'null' dizesidir - bu
-   dizeyi gercek bir sozluk adi sanan sorgu sessizce yanlis cevap verir.
+5. Empty values are written as an empty string, never as the STRING "None"/"null". In the
+   source the ExpressionDictionaryName field of 732 peds is the literal string 'null' - a
+   query that takes that string for a real dictionary name silently answers wrong.
 """
 from __future__ import annotations
 
@@ -55,16 +54,16 @@ except Exception:
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(os.path.dirname(HERE), "data")
 
-# Kaynakta gercek yoklugu temsil eden degerler. 'null'/'None' DIZE olarak gelir.
-BOS = {None, "", "null", "NULL", "None", "none"}
+# Values that stand for a real absence in the source. 'null'/'None' arrive as STRINGS.
+EMPTY = {None, "", "null", "NULL", "None", "none"}
 
 
 def s(v):
-    """Hucre degeri: yoklugu bos string yapar, sekme/satir sonunu temizler.
+    """Cell value: turns absence into an empty string, strips tabs/line breaks.
 
-    Tip testleri SIRAYLA onemli: `v in BOS` hashlenemeyen tipte (list/dict)
-    TypeError atar, o yuzden once koleksiyonlar ayiklanir. Tints ve Flags
-    liste; TranslatedLabel dict.
+    The ORDER of the type tests matters: `v in EMPTY` raises TypeError on an
+    unhashable type (list/dict), so collections are handled first. Tints and
+    Flags are lists; TranslatedLabel is a dict.
     """
     if isinstance(v, bool):
         return "1" if v else "0"
@@ -73,62 +72,62 @@ def s(v):
         for x in v:
             if isinstance(x, dict):
                 x = x.get("Name") or x.get("English") or ""
-            if x not in BOS:
+            if x not in EMPTY:
                 parts.append(str(x))
         return ",".join(parts)
     if isinstance(v, dict):
         return s(v.get("Name") or v.get("English") or "")
-    if v in BOS:
+    if v in EMPTY:
         return ""
     return str(v).replace("\t", " ").replace("\n", " ").replace("\r", "")
 
 
 def xyz(p, nd=4):
-    """{'X':..,'Y':..,'Z':..} -> uc ayri hucre. Yoksa uc bos hucre."""
+    """{'X':..,'Y':..,'Z':..} -> three separate cells. Three empty cells when missing."""
     if not isinstance(p, dict):
         return ["", "", ""]
     return [f"{float(p.get(k, 0) or 0):.{nd}f}" for k in ("X", "Y", "Z")]
 
 
 def label(t):
-    """TranslatedLabel dict'inden Ingilizce etiket."""
+    """English label from a TranslatedLabel dict."""
     return s(t.get("English")) if isinstance(t, dict) else ""
 
 
 def load(dump, name):
     p = os.path.join(dump, name)
     if not os.path.exists(p):
-        print(f"  [!] {name} yok, bu katman atlandi", file=sys.stderr)
+        print(f"  [!] {name} not found, this layer is skipped", file=sys.stderr)
         return None
     with open(p, encoding="utf-8") as fh:
         return json.load(fh)
 
 
 def write(fname, cols, rows):
-    """Gzip TSV yazar (BASLIKLI). Yazdiktan sonra GERI OKUYUP dogrular."""
+    """Writes a gzip TSV (WITH a header). READS IT BACK after writing to verify."""
     path = os.path.join(DATA, fname)
     tmp = path + ".tmp"
     with gzip.open(tmp, "wt", encoding="utf-8", newline="\n") as fh:
         fh.write("\t".join(cols) + "\n")
         for r in rows:
             fh.write("\t".join(r) + "\n")
-    # Geri okuma: "komut hata vermedi" yazma kaniti degildir.
+    # Read back: "the command raised no error" is not proof of a write.
     with gzip.open(tmp, "rt", encoding="utf-8") as fh:
         head = fh.readline().rstrip("\n").split("\t")
         n = sum(1 for _ in fh)
     if head != cols:
         os.remove(tmp)
-        sys.exit(f"HATA: {fname} basligi geri okumada uyusmadi: {head}")
+        sys.exit(f"ERROR: {fname} header did not match on read-back: {head}")
     if n != len(rows):
         os.remove(tmp)
-        sys.exit(f"HATA: {fname} {len(rows)} satir yazildi, {n} okundu")
+        sys.exit(f"ERROR: {fname} {len(rows)} rows written, {n} read")
     os.replace(tmp, path)
     kb = os.path.getsize(path) / 1024
-    print(f"  {fname:<24} {n:>7} satir  {kb:>8.1f} KB")
+    print(f"  {fname:<24} {n:>7} rows  {kb:>8.1f} KB")
     return n
 
 
-# --- katmanlar ---------------------------------------------------------------
+# --- layers ------------------------------------------------------------------
 
 PED_COLS = ["name", "hash", "dlc", "pedtype", "propsName", "clipDict", "blendShape",
             "exprSet", "exprDict", "exprName", "movementClipSet", "strafeClipSet",
@@ -227,7 +226,7 @@ def build_mlo(dump):
     for m in d:
         locs = m.get("Locations") or []
         if not locs:
-            # Konumu bilinmeyen MLO da yazilir; "yok" ile "yerlestirilmemis" farkli.
+            # An MLO with no known location is written too; "missing" and "not placed" differ.
             rows.append([s(m.get("Name")), s(m.get("DlcName")), "", "", "", "", "",
                          s(m.get("TotalEntitiesCount")), s(m.get("FilePath")), ""])
             continue
@@ -262,17 +261,17 @@ WORLD_COLS = ["family", "model", "x", "y", "z", "rx", "ry", "rz"]
 
 
 def build_world(dump):
-    """objectslocations/*.json -> tek tablo. Aile etiketi dosya adindan gelir.
+    """objectslocations/*.json -> one table. The family label comes from the file name.
 
-    NEDEN DEGERLI: entities.tsv.gz 3M satirla "nerede ne var" der ama SEMANTIK
-    etiket tasimaz - "bu bir ATM'dir" diyemez, ROTASYON da tutmaz. Loot/spawn
-    noktasi, anti-cheat beyaz listesi, prop degistirme icin gereken ikisi de bu.
+    WHY IT IS VALUABLE: entities.tsv.gz says "what is where" in 3M rows but carries
+    no SEMANTIC label - it cannot say "this is an ATM", and it does not hold ROTATION
+    either. Loot/spawn points, anti-cheat whitelists and prop swaps need both.
     """
     dirp = os.path.join(dump, "objectslocations")
     if not os.path.isdir(dirp):
-        print("  [!] objectslocations/ yok, atlandi", file=sys.stderr)
+        print("  [!] objectslocations/ not found, skipped", file=sys.stderr)
         return 0
-    rows, bos = [], []
+    rows, empty = [], []
     for f in sorted(glob.glob(os.path.join(dirp, "*.json"))):
         fam = os.path.basename(f)[:-5]
         if fam.startswith("world"):
@@ -281,198 +280,199 @@ def build_world(dump):
         with open(f, encoding="utf-8") as fh:
             d = json.load(fh)
         if not d:
-            bos.append(fam)
+            empty.append(fam)
             continue
         for o in d:
             rows.append([fam, s(o.get("Name"))] + xyz(o.get("Position")) + xyz(o.get("Rotation")))
-    if bos:
-        print(f"  (bos dosya, satir uretmedi: {', '.join(bos)})")
+    if empty:
+        print(f"  (empty file, produced no rows: {', '.join(empty)})")
     return write("world_objects.tsv.gz", WORLD_COLS, rows)
 
 
 RAW = "https://raw.githubusercontent.com/DurtyFree/gta-v-data-dumps/master/"
 
-# --fetch ile indirilecek dosyalar. objectslocations/ ayri ele alinir.
-GEREKLI = ["README.md", "peds.json", "weapons.json", "vehicles.json",
-           "mloInteriors.json", "ipls.json",
-           "animDictsCompact.json", "ObjectList.ini", "scenariosCompact.json"]
-DUNYA = ["worldAirMasts", "worldAntennas", "worldAtms", "worldBinsDumpsters",
-         "worldBusStopSigns", "worldBusStops", "worldCctvs", "worldContainerCabins",
-         "worldDartDiscs", "worldElectricityBoxes", "worldExtraPhones",
-         "worldFireHydrantDriser", "worldFoodStands", "worldFruitStands",
-         "worldGasPumps", "worldHarvestFields", "worldJukeboxes", "worldLetterBoxes",
-         "worldMobileMasts", "worldNewsPaperDispensers", "worldOilJacks",
-         "worldParknmeters", "worldPostBoxes", "worldPublicPhones", "worldRadioTowers",
-         "worldRecycleBins", "worldSatDishes", "worldSeats", "worldStreetLights",
-         "worldTelescopes", "worldTrafficLights", "worldVendingMachines",
-         "worldWreckedBikes", "worldWreckedCars"]
+# Files downloaded with --fetch. objectslocations/ is handled separately.
+REQUIRED = ["README.md", "peds.json", "weapons.json", "vehicles.json",
+            "mloInteriors.json", "ipls.json",
+            "animDictsCompact.json", "ObjectList.ini", "scenariosCompact.json"]
+WORLD_FILES = ["worldAirMasts", "worldAntennas", "worldAtms", "worldBinsDumpsters",
+               "worldBusStopSigns", "worldBusStops", "worldCctvs", "worldContainerCabins",
+               "worldDartDiscs", "worldElectricityBoxes", "worldExtraPhones",
+               "worldFireHydrantDriser", "worldFoodStands", "worldFruitStands",
+               "worldGasPumps", "worldHarvestFields", "worldJukeboxes", "worldLetterBoxes",
+               "worldMobileMasts", "worldNewsPaperDispensers", "worldOilJacks",
+               "worldParknmeters", "worldPostBoxes", "worldPublicPhones", "worldRadioTowers",
+               "worldRecycleBins", "worldSatDishes", "worldSeats", "worldStreetLights",
+               "worldTelescopes", "worldTrafficLights", "worldVendingMachines",
+               "worldWreckedBikes", "worldWreckedCars"]
 
 
-def indir(hedef, force=False):
-    """Dump dosyalarini upstream'den ceker. Klasor yoksa olusturur.
+def download(target, force=False):
+    """Pulls the dump files from upstream. Creates the folder when it is missing.
 
-    ⛔ VAR OLANI ATLAR. Sebebi olculdu: "klasor bos degilse indirme" mantigi,
-    kaynak listesine sonradan dosya EKLENDIGINDE sessizce basarisiz olur —
-    klasor dolu gorunur, yeni dosyalar hic inmez, o katmanlar "atlandi" der
-    ve kullanici sebebini bilmez. Dosya bazinda kontrol bunu kokten keser.
+    ⛔ SKIPS WHAT EXISTS. The reason was measured: "do not download if the folder is
+    not empty" logic fails silently when a file is ADDED to the source list later —
+    the folder looks full, the new files never arrive, those layers say "skipped"
+    and the user does not know why. Checking per file removes this at the root.
     """
     import urllib.request
-    os.makedirs(os.path.join(hedef, "objectslocations"), exist_ok=True)
-    isler = [(RAW + f, os.path.join(hedef, f)) for f in GEREKLI]
-    isler += [(RAW + "objectslocations/" + f + ".json",
-               os.path.join(hedef, "objectslocations", f + ".json")) for f in DUNYA]
-    hata = atlandi = 0
-    for i, (url, dest) in enumerate(isler, 1):
+    os.makedirs(os.path.join(target, "objectslocations"), exist_ok=True)
+    jobs = [(RAW + f, os.path.join(target, f)) for f in REQUIRED]
+    jobs += [(RAW + "objectslocations/" + f + ".json",
+              os.path.join(target, "objectslocations", f + ".json")) for f in WORLD_FILES]
+    failed = skipped = 0
+    for i, (url, dest) in enumerate(jobs, 1):
         if not force and os.path.exists(dest) and os.path.getsize(dest) > 0:
-            atlandi += 1
+            skipped += 1
             continue
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "fivem-natives-plugin"})
             with urllib.request.urlopen(req, timeout=120) as r:
-                veri = r.read()
+                payload = r.read()
             with open(dest, "wb") as fh:
-                fh.write(veri)
-            print(f"  [{i:>2}/{len(isler)}] {os.path.basename(dest):<34} {len(veri)/1024:>8.0f} KB")
+                fh.write(payload)
+            print(f"  [{i:>2}/{len(jobs)}] {os.path.basename(dest):<34} {len(payload)/1024:>8.0f} KB")
         except Exception as e:
-            hata += 1
-            print(f"  [{i:>2}/{len(isler)}] {os.path.basename(dest):<34} HATA: {e}", file=sys.stderr)
-    if atlandi:
-        print(f"  ({atlandi} dosya zaten vardi, atlandi)")
-    if hata:
-        print(f"\n  {hata} dosya inemedi. Eksik dosyanin katmani atlanir.", file=sys.stderr)
-    return hata
+            failed += 1
+            print(f"  [{i:>2}/{len(jobs)}] {os.path.basename(dest):<34} ERROR: {e}", file=sys.stderr)
+    if skipped:
+        print(f"  ({skipped} files already existed, skipped)")
+    if failed:
+        print(f"\n  {failed} files could not be downloaded. The layer of a missing file is skipped.",
+              file=sys.stderr)
+    return failed
 
 
-def yaz_basliksiz(fname, satirlar):
-    """BASLIKSIZ gzip TSV. anims/props/scenarios tarihsel olarak basliksizdir;
-    baslik eklemek assetdb.py'in gz_lines(header=False) okumasini bozar ve
-    ilk kayit sessizce 'baslik' sanilip dusurulur."""
+def write_headerless(fname, lines):
+    """HEADERLESS gzip TSV. anims/props/scenarios are headerless for historical reasons;
+    adding a header breaks assetdb.py's gz_lines(header=False) read and the first
+    record is silently taken for a 'header' and dropped."""
     path = os.path.join(DATA, fname)
     tmp = path + ".tmp"
     with gzip.open(tmp, "wt", encoding="utf-8", newline="\n") as fh:
-        for s_ in satirlar:
-            fh.write(s_ + "\n")
+        for line in lines:
+            fh.write(line + "\n")
     with gzip.open(tmp, "rt", encoding="utf-8") as fh:
         n = sum(1 for _ in fh)
-    if n != len(satirlar):
+    if n != len(lines):
         os.remove(tmp)
-        sys.exit(f"HATA: {fname} {len(satirlar)} yazildi, {n} okundu")
+        sys.exit(f"ERROR: {fname} {len(lines)} written, {n} read")
     os.replace(tmp, path)
-    print(f"  {fname:<24} {n:>7} satir  {os.path.getsize(path)/1024:>8.1f} KB")
+    print(f"  {fname:<24} {n:>7} rows  {os.path.getsize(path)/1024:>8.1f} KB")
     return n
 
 
 def build_anim(dump):
-    """animDictsCompact.json -> anims.tsv.gz  (dict<TAB>clip, basliksiz)
+    """animDictsCompact.json -> anims.tsv.gz  (dict<TAB>clip, headerless)
 
-    NOT: 408 sozluk SIFIR animasyonlu (hepsi '-N' sonekli ara sahne dilimi) ve
-    satir uretmez. README 20179 dict der, dosyaya 19771 girer - fark budur,
-    kayip degil.
+    NOTE: 408 dictionaries have ZERO animations (all of them cutscene slices with a
+    '-N' suffix) and produce no rows. The README says 20179 dicts, 19771 go into the
+    file - that is the difference, not a loss.
     """
     d = load(dump, "animDictsCompact.json")
     if d is None:
         return 0
-    satir = []
+    lines = []
     for e in d:
         dn = e.get("DictionaryName") or ""
         for c in (e.get("Animations") or []):
-            satir.append(f"{dn}\t{c}")
-    return yaz_basliksiz("anims.tsv.gz", satir)
+            lines.append(f"{dn}\t{c}")
+    return write_headerless("anims.tsv.gz", lines)
 
 
 def build_props(dump):
-    """ObjectList.ini -> props.tsv.gz (satir basina bir ad)"""
+    """ObjectList.ini -> props.tsv.gz (one name per line)"""
     p = os.path.join(dump, "ObjectList.ini")
     if not os.path.exists(p):
-        print("  [!] ObjectList.ini yok, props atlandi", file=sys.stderr)
+        print("  [!] ObjectList.ini not found, props skipped", file=sys.stderr)
         return 0
-    adlar = [l.strip() for l in open(p, encoding="utf-8", errors="replace") if l.strip()]
-    return yaz_basliksiz("props.tsv.gz", adlar)
+    names = [l.strip() for l in open(p, encoding="utf-8", errors="replace") if l.strip()]
+    return write_headerless("props.tsv.gz", names)
 
 
 def build_scenarios(dump):
     d = load(dump, "scenariosCompact.json")
     if d is None:
         return 0
-    return yaz_basliksiz("scenarios.tsv.gz", [str(x) for x in d if x])
+    return write_headerless("scenarios.tsv.gz", [str(x) for x in d if x])
 
 
 def main():
-    ap = argparse.ArgumentParser(description="GTA V data dump -> plugin veri katmanlari")
-    ap.add_argument("--dump", required=True, help="gta-v-data-dumps klasoru")
+    ap = argparse.ArgumentParser(description="GTA V data dump -> plugin data layers")
+    ap.add_argument("--dump", required=True, help="gta-v-data-dumps folder")
     ap.add_argument("--fetch", action="store_true",
-                    help="eksik kaynak dosyalari indir (var olani atlar)")
+                    help="download the missing source files (skips what exists)")
     ap.add_argument("--force-fetch", action="store_true",
-                    help="var olan dosyalari da yeniden indir")
-    ap.add_argument("--only", nargs="*", help="yalniz bu katmanlar (peds weapons vehicles mlo ipls world anim props scenarios)")
+                    help="download existing files again as well")
+    ap.add_argument("--only", nargs="*", help="only these layers (peds weapons vehicles mlo ipls world anim props scenarios)")
     a = ap.parse_args()
 
     if a.fetch or a.force_fetch:
-        print(f"Indiriliyor -> {a.dump}\n")
+        print(f"Downloading -> {a.dump}\n")
         os.makedirs(a.dump, exist_ok=True)
-        indir(a.dump, force=a.force_fetch)
+        download(a.dump, force=a.force_fetch)
         print()
     if not os.path.isdir(a.dump):
-        sys.exit(f"HATA: dump klasoru yok: {a.dump}\n"
-                 f"  Indirmek icin: --fetch ekle")
+        sys.exit(f"ERROR: dump folder not found: {a.dump}\n"
+                 f"  To download it: add --fetch")
     os.makedirs(DATA, exist_ok=True)
 
-    # Dump surumu README'nin ilk 'update:' satirindan okunur (elle yazilmaz).
-    surum = ""
+    # The dump version is read from the README's first 'update:' line (never written by hand).
+    version = ""
     rp = os.path.join(a.dump, "README.md")
     if os.path.exists(rp):
         for line in open(rp, encoding="utf-8"):
             if "up2date as of GTA V update" in line:
-                surum = line.strip().replace("*", "").split("update:")[-1].strip()
+                version = line.strip().replace("*", "").split("update:")[-1].strip()
                 break
 
-    print(f"Dump : {a.dump}")
-    print(f"Surum: {surum or '(README okunamadi)'}")
-    print(f"Hedef: {DATA}\n")
+    print(f"Dump   : {a.dump}")
+    print(f"Version: {version or '(README could not be read)'}")
+    print(f"Target : {DATA}\n")
 
-    sec = set(a.only) if a.only else None
-    say = {}
+    selected = set(a.only) if a.only else None
+    counts = {}
 
-    def istendi(k):
-        return sec is None or k in sec
+    def wanted(k):
+        return selected is None or k in selected
 
-    if istendi("peds"):
-        say["peds_meta"] = build_peds(a.dump)
-    if istendi("weapons"):
-        say["weapons"], say["weapon_parts"] = build_weapons(a.dump)
-    if istendi("vehicles"):
-        say["vehicles"] = build_vehicles(a.dump)
-    if istendi("mlo"):
-        say["mlo_interiors"] = build_mlo(a.dump)
-    if istendi("ipls"):
-        say["ipls"] = build_ipls(a.dump)
-    if istendi("world"):
-        say["world_objects"] = build_world(a.dump)
-    if istendi("anim"):
-        say["anims"] = build_anim(a.dump)
-    if istendi("props"):
-        say["props"] = build_props(a.dump)
-    if istendi("scenarios"):
-        say["scenarios"] = build_scenarios(a.dump)
+    if wanted("peds"):
+        counts["peds_meta"] = build_peds(a.dump)
+    if wanted("weapons"):
+        counts["weapons"], counts["weapon_parts"] = build_weapons(a.dump)
+    if wanted("vehicles"):
+        counts["vehicles"] = build_vehicles(a.dump)
+    if wanted("mlo"):
+        counts["mlo_interiors"] = build_mlo(a.dump)
+    if wanted("ipls"):
+        counts["ipls"] = build_ipls(a.dump)
+    if wanted("world"):
+        counts["world_objects"] = build_world(a.dump)
+    if wanted("anim"):
+        counts["anims"] = build_anim(a.dump)
+    if wanted("props"):
+        counts["props"] = build_props(a.dump)
+    if wanted("scenarios"):
+        counts["scenarios"] = build_scenarios(a.dump)
 
     meta_p = os.path.join(DATA, "dumps.meta.json")
-    eski = {}
+    previous = {}
     if os.path.exists(meta_p):
         try:
-            eski = json.load(open(meta_p, encoding="utf-8")).get("rows", {})
+            previous = json.load(open(meta_p, encoding="utf-8")).get("rows", {})
         except Exception:
-            eski = {}
-    eski.update(say)
+            previous = {}
+    previous.update(counts)
     with open(meta_p, "w", encoding="utf-8") as fh:
         json.dump({
             "generatedAtUtc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "source": "https://github.com/DurtyFree/gta-v-data-dumps",
             "dumpPath": a.dump,
-            "gameVersion": surum,
-            "rows": eski,
+            "gameVersion": version,
+            "rows": previous,
         }, fh, indent=2, ensure_ascii=False)
 
-    print(f"\n{sum(say.values())} satir uretildi, {len(say)} katman.")
+    print(f"\n{sum(counts.values())} rows produced, {len(counts)} layers.")
     print(f"meta: {meta_p}")
     return 0
 

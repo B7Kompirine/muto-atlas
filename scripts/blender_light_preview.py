@@ -394,8 +394,8 @@ def load_timecycle(weather="w_clear", hour=20.0, region="GLOBAL",
     """Ambient + sun from a real GTA weather cycle, optionally with an interior
     timecycle modifier blended over it (base + (mod - base) * strength)."""
     import cycle
-    a = cycle.ortam(hava=weather, saat=hour, bolge=region,
-                    modifier=modifier, guc=strength, hdr=hdr)
+    a = cycle.ambient_at(weather=weather, hour=hour, region=region,
+                         modifier=modifier, strength=strength, hdr=hdr)
     for k in ("amb_nat_up", "amb_nat_dn", "amb_art_up", "amb_art_dn",
               "dir_amb", "dir_col", "amb_down_wrap", "light_dir"):
         setattr(_S, k, a[k])
@@ -407,12 +407,12 @@ def load_timecycle(weather="w_clear", hour=20.0, region="GLOBAL",
 
 def weathers():
     import cycle
-    return cycle.mevcut()
+    return cycle.available()
 
 
 def modifiers(pattern=""):
     import cycle
-    return cycle.modifierlar(pattern)
+    return cycle.modifiers(pattern)
 
 
 def report():

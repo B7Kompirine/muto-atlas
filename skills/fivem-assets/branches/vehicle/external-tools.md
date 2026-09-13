@@ -1,17 +1,16 @@
-# Dış araç — Vehicle Debadger, Sollumz araç videoları (ayıklandı)
+# External tool — Vehicle Debadger, Sollumz vehicle videos (removed)
 
-**Ne zaman okunur:** araç modeline/logosuna dış araçla dokunacaksın; topluluk araç videolarını arıyorsun.
-**When to read:** touching a vehicle model or logo with a third-party tool; looking for community vehicle tutorials.
-**Kaynak:** `sources/external-tools.md` §1k · Sollumz Discord çıkarımı (araç videoları **istek üzerine ayıklandı**, atlas'a alınmadı) · **Ölçüm:** yok
-**Önce:** `branches/vehicle/_branch.md`
+**When to read:** you will touch a vehicle model or logo with a third-party tool; you are looking for community vehicle tutorials.
+**Source:** `sources/external-tools.md` §1k · Sollumz Discord extraction (vehicle videos **removed on request**, not taken into the atlas) · **Measured:** none
+**Read first:** `branches/vehicle/_branch.md`
 
 ---
 
 ## Vehicle Debadger (Five Toolkit)
 
-Ölçülmüş gözlem ve etiketleri → `sources/external-tools.md` §1k.
+Measured observations and labels → `sources/external-tools.md` §1k.
 
 
-## Ayıklanan araç videoları (Sollumz Discord)
+## Removed vehicle videos (Sollumz Discord)
 
-Bu içerik atlas'a **bilerek alınmadı**; ihtiyaç olursa yerel çıkarımdan okunur: `R5T7stYU3A0` vehicle tint · `w1JUh66MP8I` window tint · `4fHDu6fUw74` siren · `_zH0QaFmFz0` bulletproof glass · `j61xy_BoDNA` shattermap fix · `FZfkuJj5yx0` + `nYeVr126qIk` polis lambaları · `JtAWRNCIT-k` Lola araç yapımı · tuning parça offset düzeltmeleri. `notlar/04` §1 araç kurulumu.
+This content was **deliberately left out** of the atlas; if needed, read it from the local extraction: `R5T7stYU3A0` vehicle tint · `w1JUh66MP8I` window tint · `4fHDu6fUw74` siren · `_zH0QaFmFz0` bulletproof glass · `j61xy_BoDNA` shattermap fix · `FZfkuJj5yx0` + `nYeVr126qIk` police lights · `JtAWRNCIT-k` Lola vehicle build · tuning part offset fixes. Local notes `notes/04` §1 vehicle setup.

@@ -1,22 +1,22 @@
-﻿# build_procedural.ps1 — procedural.meta'yi (prosedurel bitki/obje tablosu)
-# indeksler.
+﻿# build_procedural.ps1 - indexes procedural.meta (the procedural plant/object
+# table).
 #
-# NE ISE YARAR: Sollumz collision materyalindeki 'Procedural ID' alani ile
-# CodeWalker'daki grass batch adlari buradan gelir. Bir zemin collision'ina
-# hangi sayiyi yazarsan orada ne bitecegini soyleyen tek kaynak budur.
+# WHAT IT IS FOR: the 'Procedural ID' field of a Sollumz collision material and the
+# grass batch names in CodeWalker come from here. It is the only source that tells
+# you what grows on a ground collision for the number you write into it.
 #
-# ⭐ 'Procedural ID' = <procTagTable> LISTESININ INDEKSIDIR (0 tabanli).
-#    <procObjInfos> DEGIL -- ikisi ayri listedir ve indeksleri tutmaz.
-#    Dogrulandi: procTagTable[15] = Green_Meadow_Flowers,
-#                procTagTable[38] = MOUNTAINSIDE_DRY
-#    (ikisi de bagimsiz olarak Sollumz arayuzunden okunmustu).
+# * 'Procedural ID' = the INDEX INTO THE <procTagTable> LIST (0-based).
+#    NOT <procObjInfos> -- they are two separate lists and their indexes do not match.
+#    Verified: procTagTable[15] = Green_Meadow_Flowers,
+#              procTagTable[38] = MOUNTAINSIDE_DRY
+#    (both had been read independently from the Sollumz UI).
 #
-# Bir tag iki tarafa da bakabilir:
-#   procObjTag -> <procObjInfos> icindeki KATI OBJE (tas, cop, cali modeli)
-#   plantTag   -> <plantInfos>   icindeki CIM/BITKI (shader'la cizilen)
-# Ikisi bos ise o indeks kullanilmiyordur (0 = 'null', 9 = '_EMPTY_DO_NOT_USE_').
+# A tag can point to either side:
+#   procObjTag -> a SOLID OBJECT in <procObjInfos> (rock, litter, bush model)
+#   plantTag   -> GRASS/PLANT in <plantInfos>      (drawn by a shader)
+# If both are empty the index is unused (0 = 'null', 9 = '_EMPTY_DO_NOT_USE_').
 #
-# Kullanim:
+# Usage:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File build_procedural.ps1
 
 param(
@@ -32,11 +32,11 @@ if (-not (Test-Path -LiteralPath $Out)) { New-Item -ItemType Directory -Path $Ou
 
 $CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
 if (-not $CodeWalker -or -not (Test-Path -LiteralPath $CodeWalker)) {
-    throw "CodeWalker.Core.dll bulunamadi. -CodeWalker <yol> ile ver."
+    throw "CodeWalker.Core.dll not found. Pass it with -CodeWalker <path>."
 }
 
 $GtaFolder = & "$PSScriptRoot\paths.ps1" gta $GtaFolder
-if (-not $GtaFolder) { throw "GTA V klasoru bulunamadi." }
+if (-not $GtaFolder) { throw "GTA V folder not found." }
 
 $cwDir = Split-Path $CodeWalker -Parent
 $script:cwDir = $cwDir
@@ -57,19 +57,19 @@ Write-Output "GTA V      : $GtaFolder"
 $man = New-Object CodeWalker.GameFiles.RpfManager
 $man.Init($GtaFolder, {param($s)}, {param($s)}, $false, $true)
 
-# update.rpf surumu common.rpf'i EZER -- once onu ara.
-$yollar = @(
+# The update.rpf version OVERRIDES common.rpf -- search it first.
+$metaPaths = @(
     'update\update.rpf\common\data\materials\procedural.meta',
     'common.rpf\data\materials\procedural.meta'
 )
 $xml = $null
-foreach ($yol in $yollar) {
+foreach ($metaPath in $metaPaths) {
     foreach ($rpf in $man.AllRpfs) {
         foreach ($e in $rpf.AllEntries) {
             $fe = $e -as [CodeWalker.GameFiles.RpfFileEntry]
-            if ($fe -and $fe.Path -eq $yol) {
+            if ($fe -and $fe.Path -eq $metaPath) {
                 $xml = [System.Text.Encoding]::UTF8.GetString($fe.File.ExtractFile($fe))
-                Write-Output "Kaynak     : $yol"
+                Write-Output "Source     : $metaPath"
                 break
             }
         }
@@ -77,14 +77,14 @@ foreach ($yol in $yollar) {
     }
     if ($xml) { break }
 }
-if (-not $xml) { throw "procedural.meta bulunamadi." }
+if (-not $xml) { throw "procedural.meta not found." }
 
-# UTF8.GetString BOM'u (U+FEFF) metnin basinda birakir ve [xml] cast'i
-# "Cannot convert value" ile coker. Kirpilmasi SART.
+# UTF8.GetString leaves the BOM (U+FEFF) at the start of the text and the [xml] cast
+# crashes with "Cannot convert value". Trimming it is REQUIRED.
 $xml = $xml.TrimStart([char]0xFEFF, [char]0xFFFE).Trim()
 $doc = [xml]$xml
 
-# procObjInfos: tag -> model listesi (bir tag'e birden fazla model asilabilir)
+# procObjInfos: tag -> model list (several models can hang off one tag)
 $objByTag = @{}
 foreach ($it in $doc.CProceduralInfo.procObjInfos.Item) {
     $t = "$($it.Tag)".Trim()
@@ -97,17 +97,18 @@ $rows = New-Object System.Collections.ArrayList
 [void]$rows.Add("id`tname`tprocObjTag`tplantTag`tkind`tmodels")
 
 $i = 0
-$kullanilan = 0
+$usedCount = 0
 foreach ($it in $doc.CProceduralInfo.procTagTable.Item) {
     $name = "$($it.name)".Trim()
     $po   = "$($it.procObjTag)".Trim()
     $pl   = "$($it.plantTag)".Trim()
 
+    # 'bos' (Turkish for "empty") stays as the kind value: assetdb.py compares the kind column against it.
     $kind = if ($po -and $pl) { 'obj+plant' }
             elseif ($po)      { 'obj' }
             elseif ($pl)      { 'plant' }
             else              { 'bos' }
-    if ($kind -ne 'bos') { $kullanilan++ }
+    if ($kind -ne 'bos') { $usedCount++ }
 
     $models = ''
     if ($po -and $objByTag.ContainsKey($po)) {
@@ -122,4 +123,4 @@ $outPath = Join-Path $Out 'procedural.tsv'
 [IO.File]::WriteAllLines($outPath, $rows, (New-Object System.Text.UTF8Encoding($false)))
 
 Write-Output "[+] $outPath"
-Write-Output "[+] $i procedural ID ($kullanilan tanesi dolu), $($objByTag.Count) farkli procObj tag"
+Write-Output "[+] $i procedural IDs ($usedCount of them filled), $($objByTag.Count) distinct procObj tags"

@@ -4,44 +4,44 @@ argument-hint: [path]  ·  omit to just show it
 allowed-tools: Bash(python:*), Read
 ---
 
-Kullanıcının sorgusu: `$ARGUMENTS`
+User query: `$ARGUMENTS`
 
 ```bash
-# nerede?
+# where is it?
 python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" path blender
 
-# ayarla
+# set it
 python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" path blender "$ARGUMENTS"
 ```
 
-`$ARGUMENTS` boşsa **göster**, bir yol verilmişse **ayarla**.
+If `$ARGUMENTS` is empty, **show** the path; if a path was given, **set** it.
 
-`blender_*.py` betikleri (ışık önizlemesi) Blender'ın içinde
-çalışır. Bu yol kayıtlıysa betikler başsız
-(`--background`) çalıştırılabilir.
+The `blender_*.py` scripts (light preview) run inside
+Blender. If this path is stored, the scripts can be run headless
+(`--background`).
 
-**Otomatik arama Steam kurulumunu bulamaz** — ölçüldü: Blender
-`steamapps\common\Blender\blender.exe` altına kurulabiliyor ve varsayılan
-aday listesinde yok. Böyle bir kurulumda yol bir kez elle verilir.
+**The automatic search cannot find a Steam install** — measured: Blender
+can be installed under `steamapps\common\Blender\blender.exe`, which is not in the default
+candidate list. For such an install, give the path by hand once.
 
-## Sonucu sunarken
+## When presenting the result
 
-- **Işığı okumak/yazmak için Blender GEREKMEZ** — `/look` dosya üzerinden
-  çalışır. Kullanıcı ışık değeri ayarlıyorsa Blender önerme.
-- Blender sürümü önemli: 5.x'te `GPUShader(vs, fs)` kaldırıldı ve
-  `GPUStorageBuf` yok; 4.4+ Action API katmanlı. Sürüm farkı betik
-  hatalarının ilk şüphelisidir.
+- **Reading/writing lights does NOT NEED Blender** — `/look` works on the file
+  directly. If the user is adjusting light values, do not suggest Blender.
+- The Blender version matters: in 5.x `GPUShader(vs, fs)` was removed and there is no
+  `GPUStorageBuf`; in 4.4+ the Action API is layered. A version difference is the first suspect
+  for script errors.
 
-## Eklentiler — kod yazmadan önce buna bak
+## Add-ons — check this before writing code
 
-Bir iş için sıfırdan `bpy` kodu yazmadan önce **kullanıcının kurulu bir eklentisi onu
-yapıyor mu** diye sor.
+Before writing `bpy` code from scratch for a job, ask **whether an add-on the user has installed
+already does it**.
 
-⚠️ Eklentilerin ürettiği geometri **Sollumz'a girmeden önce** normal kurallara tabidir:
-transform pişer, `Ctrl+A` şart, doku ikinin kuvveti
+⚠️ Geometry produced by add-ons follows the normal rules **before it goes into Sollumz**:
+bake the transforms, `Ctrl+A` is required, textures are powers of two
 (`skills/fivem-assets/trunk/tool-pitfalls.md` §2, `trunk/gta-fundamentals.md` §5).
 
-### İşe yarayan üçüncü taraf eklentiler
+### Useful third-party add-ons
 
 `sollumz` · `sollumz_rdr_dev` ·
 `cell_fracture` · `ZenUV` / `mio3_uv` / `flat_uv_mapper` / `propgon_uv_trim` ·
@@ -50,9 +50,9 @@ transform pişer, `Ctrl+A` şart, doku ikinin kuvveti
 `RayPilot` · `stair_generator_addon` · `Organic_Addon` · `luman_tools` ·
 `unreal_viewport_navigation`.
 
-Kanalda paylaşılan, **kurulu olmayan** araçlar (Vertex Color Master, geonodes
+Tools shared in the channel that are **not installed** (Vertex Color Master, geonodes
 decal/terrain, `blender_rayfirev`, FakeBones) →
 `skills/fivem-assets/sources/community-resources.md`.
 
-**Ölçüm:** `AppData\Roaming\Blender Foundation\Blender\*\extensions\` ve
-`\scripts\addons\` taraması, 2026-09-06.
+**Measured:** scan of `AppData\Roaming\Blender Foundation\Blender\*\extensions\` and
+`\scripts\addons\`, 2026-09-06.

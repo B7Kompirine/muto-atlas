@@ -1,15 +1,15 @@
-﻿# build_archetypes.ps1 — GTA V RPF'lerinden ve custom kaynaklardan archetype indeksi uretir.
+﻿# build_archetypes.ps1 - builds an archetype index from the GTA V RPFs and custom resources.
 #
-# Neden: bir prop/kapi/obje ile ilgili kod yazmadan ONCE "bu obje gercekten ne"
-# sorusunun cevabi lazim. specialAttribute, flags, bbox (pivot), assetType ve
-# fizik sozlugu bu sorunun cevabidir ve SADECE ytyp icinde vardir.
+# Why: BEFORE writing code for a prop/door/object you need the answer to "what is this
+# object really". specialAttribute, flags, bbox (pivot), assetType and the
+# physics dictionary are that answer, and they exist ONLY inside the ytyp.
 #
-# Kullanim:
+# Usage:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File build_archetypes.ps1 `
-#       [-GtaFolder <yol>] [-CodeWalker <CodeWalker.Core.dll>] `
-#       [-ExtraFolders <resources yolu>[,<yol2>]] [-Out <data klasoru>]
+#       [-GtaFolder <path>] [-CodeWalker <CodeWalker.Core.dll>] `
+#       [-ExtraFolders <resources path>[,<path2>]] [-Out <data folder>]
 #
-# Cikti: data/archetypes.tsv.gz  +  data/assets.meta.json
+# Output: data/archetypes.tsv.gz  +  data/assets.meta.json
 
 param(
     [string]   $GtaFolder,
@@ -20,32 +20,32 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# ── Yol tespiti ─────────────────────────────────────────────────────
+# -- Path detection -------------------------------------------------------
 if (-not $Out) { $Out = Join-Path (Split-Path $PSScriptRoot -Parent) 'data' }
 if (-not (Test-Path $Out)) { New-Item -ItemType Directory -Path $Out -Force | Out-Null }
 
 $CodeWalker = & "$PSScriptRoot\paths.ps1" codewalker $CodeWalker
 if (-not $CodeWalker) {
-    # Son care: diskte ara. YAVAS (C:\ altini tarar). Kalicisi icin:
-    #   python assetdb.py yol codewalker "<yol>"
+    # Last resort: search the disk. SLOW (scans under C:\). To make it permanent:
+    #   python assetdb.py path codewalker "<path>"
     $CodeWalker = Get-ChildItem -Path "$env:USERPROFILE\Desktop","C:\" -Filter 'CodeWalker.Core.dll' `
                     -Recurse -Depth 4 -ErrorAction SilentlyContinue |
                   Select-Object -First 1 -ExpandProperty FullName
 }
 if (-not $CodeWalker -or -not (Test-Path $CodeWalker)) {
-    throw "CodeWalker.Core.dll bulunamadi. -CodeWalker <yol> ile ver."
+    throw "CodeWalker.Core.dll not found. Pass it with -CodeWalker <path>."
 }
 
 $GtaFolder = & "$PSScriptRoot\paths.ps1" gta $GtaFolder
-if (-not $GtaFolder) { Write-Warning "GTA V klasoru bulunamadi; sadece custom kaynaklar indekslenecek." }
+if (-not $GtaFolder) { Write-Warning "GTA V folder not found; only custom resources will be indexed." }
 
 $cwDir = Split-Path $CodeWalker -Parent
 Write-Output "CodeWalker : $CodeWalker"
-Write-Output "GTA V      : $(if($GtaFolder){$GtaFolder}else{'(yok)'})"
-Write-Output "Ekstra     : $(if($ExtraFolders.Count){$ExtraFolders -join '; '}else{'(yok)'})"
-Write-Output "Cikti      : $Out"
+Write-Output "GTA V      : $(if($GtaFolder){$GtaFolder}else{'(none)'})"
+Write-Output "Extra      : $(if($ExtraFolders.Count){$ExtraFolders -join '; '}else{'(none)'})"
+Write-Output "Output     : $Out"
 
-# ── Calisma aninda bagimlilik cozumu ────────────────────────────────
+# -- Runtime dependency resolution ----------------------------------------
 $script:cwDir = $cwDir
 [System.AppDomain]::CurrentDomain.add_AssemblyResolve([System.ResolveEventHandler]{
     param($sender, $e)
@@ -66,10 +66,10 @@ using CodeWalker.GameFiles;
 
 public static class ArchetypeIndexer
 {
-    // ytyp'te archetype adi HASH olarak durur. Vanilla'da CodeWalker cozer;
-    // custom kaynakta cozemez. O yuzden stream klasorundeki model dosya
-    // adlarini (ydr/yft/ydd/ytd) JenkIndex'e besliyoruz — custom prop adi
-    // neredeyse her zaman model dosya adiyla ayni.
+    // In a ytyp the archetype name is stored as a HASH. For vanilla, CodeWalker resolves it;
+    // for a custom resource it cannot. So we feed the model file names in the stream
+    // folder (ydr/yft/ydd/ytd) into JenkIndex - a custom prop name is
+    // almost always the same as the model file name.
     static void SeedNames(string folder, ref int seeded)
     {
         string[] exts = { "*.ydr", "*.yft", "*.ydd", "*.ytd" };
@@ -129,7 +129,7 @@ public static class ArchetypeIndexer
         int vanillaYtyp = 0, vanillaArch = 0, customYtyp = 0, customArch = 0, errors = 0, seeded = 0;
         var t0 = DateTime.Now;
 
-        // ── Vanilla RPF'ler ─────────────────────────────────────────
+        // -- Vanilla RPFs ------------------------------------------------
         if (!string.IsNullOrEmpty(gtaFolder))
         {
             GTA5Keys.LoadFromPath(gtaFolder, null);
@@ -143,7 +143,7 @@ public static class ArchetypeIndexer
                     var fe = e as RpfFileEntry;
                     if (fe != null && fe.NameLower.EndsWith(".ytyp")) entries.Add(fe);
                 }
-            Console.WriteLine("[*] Vanilla ytyp girdisi: {0}", entries.Count);
+            Console.WriteLine("[*] Vanilla ytyp entries: {0}", entries.Count);
 
             foreach (var e in entries)
             {
@@ -159,19 +159,19 @@ public static class ArchetypeIndexer
                 }
                 catch { errors++; }
             }
-            Console.WriteLine("[*] Vanilla: {0} ytyp / {1} archetype", vanillaYtyp, vanillaArch);
+            Console.WriteLine("[*] Vanilla: {0} ytyp / {1} archetypes", vanillaYtyp, vanillaArch);
         }
 
-        // ── Custom (sunucu resource'lari, loose .ytyp) ──────────────
-        // Custom adlari VANILLA TARAMASINDAN SONRA beslenir: RpfManager.Init
-        // JenkIndex'i yeniden kuruyor ve once beslenenleri siliyor.
+        // -- Custom (server resources, loose .ytyp) ----------------------
+        // Custom names are fed AFTER THE VANILLA SCAN: RpfManager.Init
+        // rebuilds JenkIndex and erases anything fed before.
         foreach (var f in extraFolders)
             if (Directory.Exists(f)) SeedNames(f, ref seeded);
-        Console.WriteLine("[*] JenkIndex'e beslenen custom model adi: {0}", seeded);
+        Console.WriteLine("[*] Custom model names fed to JenkIndex: {0}", seeded);
 
         foreach (var folder in extraFolders)
         {
-            if (!Directory.Exists(folder)) { Console.WriteLine("[!] yok: {0}", folder); continue; }
+            if (!Directory.Exists(folder)) { Console.WriteLine("[!] missing: {0}", folder); continue; }
             string[] files;
             try { files = Directory.GetFiles(folder, "*.ytyp", SearchOption.AllDirectories); }
             catch { continue; }
@@ -189,9 +189,9 @@ public static class ArchetypeIndexer
                 catch { errors++; }
             }
         }
-        Console.WriteLine("[*] Custom: {0} ytyp / {1} archetype", customYtyp, customArch);
+        Console.WriteLine("[*] Custom: {0} ytyp / {1} archetypes", customYtyp, customArch);
 
-        // ── Yaz (gzip) ──────────────────────────────────────────────
+        // -- Write (gzip) ------------------------------------------------
         var outPath = Path.Combine(outFolder, "archetypes.tsv.gz");
         var raw = Encoding.UTF8.GetBytes(sb.ToString());
         using (var fs = File.Create(outPath))
@@ -199,7 +199,7 @@ public static class ArchetypeIndexer
             gz.Write(raw, 0, raw.Length);
 
         var mb = new FileInfo(outPath).Length / 1024.0 / 1024.0;
-        Console.WriteLine("[+] {0}  ({1:0.0} MB sikistirilmis / {2:0.0} MB ham)", outPath, mb, raw.Length / 1024.0 / 1024.0);
+        Console.WriteLine("[+] {0}  ({1:0.0} MB compressed / {2:0.0} MB raw)", outPath, mb, raw.Length / 1024.0 / 1024.0);
 
         var meta = new StringBuilder();
         meta.Append("{\n");
@@ -213,7 +213,7 @@ public static class ArchetypeIndexer
         meta.Append("}\n");
         File.WriteAllText(Path.Combine(outFolder, "assets.meta.json"), meta.ToString(), Encoding.UTF8);
 
-        Console.WriteLine("[+] Toplam {0} archetype, {1:0.0} sn, {2} hata", vanillaArch + customArch, (DateTime.Now - t0).TotalSeconds, errors);
+        Console.WriteLine("[+] Total {0} archetypes, {1:0.0} s, {2} errors", vanillaArch + customArch, (DateTime.Now - t0).TotalSeconds, errors);
     }
 
     static string Quote(string s)
@@ -224,10 +224,10 @@ public static class ArchetypeIndexer
 }
 '@
 
-# 'System.Collections'/'System.Runtime'/'System.Console' SART: PowerShell 7 (.NET 8+)
-# altinda bu tipler netstandard'dan FORWARD edilmis durumda; referans verilmezse
-# Add-Type "CS1069: type has been forwarded" / "CS0103: Console does not exist"
-# ile coker. Windows PowerShell 5.1'de sorun cikmaz, PS7'de her seferinde cikar.
+# 'System.Collections'/'System.Runtime'/'System.Console' are REQUIRED: under PowerShell 7 (.NET 8+)
+# these types are FORWARDED from netstandard; without a reference
+# Add-Type crashes with "CS1069: type has been forwarded" / "CS0103: Console does not exist".
+# Windows PowerShell 5.1 has no problem with it; PS7 fails every time.
 $refs = @($CodeWalker, (Join-Path $cwDir 'SharpDX.dll'), (Join-Path $cwDir 'SharpDX.Mathematics.dll'), 'netstandard',
           'System.Collections', 'System.Runtime', 'System.Linq', 'System.Console', 'System.IO.Compression', 'System.Text.RegularExpressions')
 Add-Type -TypeDefinition $src -ReferencedAssemblies $refs -Language CSharp

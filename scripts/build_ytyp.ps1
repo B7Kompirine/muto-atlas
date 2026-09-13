@@ -1,17 +1,17 @@
-﻿# build_ytyp.ps1 -- .ytyp.xml dosyasindan binary .ytyp uretir.
+﻿# build_ytyp.ps1 -- builds a binary .ytyp from a .ytyp.xml file.
 #
-# NEDEN: xml_to_res.ps1 .ytyp uzantisini DESTEKLEMIYOR ("desteklenmeyen uzanti")
-#        ve CodeWalker.Core'da XmlYtyp diye bir tip YOKTUR. Ytyp bir meta/PSO
-#        dosyasidir; dogru yol genel XmlMeta ice aktaricisidir:
-#          XmlMeta.GetXMLFormat(<dosya adi>, [ref]$trim)  -> MetaFormat
-#          XmlMeta.GetData($doc, $fmt, <cikti klasoru>)   -> byte[]
+# WHY: xml_to_res.ps1 does NOT SUPPORT the .ytyp extension ("unsupported extension")
+#      and CodeWalker.Core has NO type called XmlYtyp. A ytyp is a meta/PSO
+#      file; the right path is the general XmlMeta importer:
+#        XmlMeta.GetXMLFormat(<file name>, [ref]$trim)  -> MetaFormat
+#        XmlMeta.GetData($doc, $fmt, <output folder>)   -> byte[]
 #
-# !! Cikis boyutu gecerlilik olcutu DEGILDIR -- RSC7 zlib sikistirilmistir.
-#    Bu yuzden betik uretimden sonra dosyayi GERI OKUR (YtypFile.Load) ve
-#    archetype sayisi / ad / textureDictionary / assetType degerlerini basar.
-#    Archetype cikmazsa exit 1.
+# !! Output size is NOT a validity measure -- RSC7 is zlib compressed.
+#    That is why the script READS the file BACK after building it (YtypFile.Load) and
+#    prints the archetype count / name / textureDictionary / assetType values.
+#    If no archetype comes out, exit 1.
 #
-# Kullanim:
+# Usage:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File build_ytyp.ps1 `
 #       -XmlPath x.ytyp.xml -OutPath stream\x.ytyp [-CodeWalker <...dll>]
 
@@ -19,8 +19,8 @@
 param(
     [Parameter(Mandatory)][string] $XmlPath,
     [Parameter(Mandatory)][string] $OutPath,
-    # Varsayilan yok: yol data/config.json'dan ya da -CodeWalker ile verilir.
-    # Kisisel bir yolu varsayilan yapmak baskasinin makinesinde sessizce basarisiz olur.
+    # No default: the path comes from data/config.json or from -CodeWalker.
+    # Making a personal path the default fails silently on someone else's machine.
     [string] $CodeWalker = $(if ($env:MUTO_ATLAS_CODEWALKER) { $env:MUTO_ATLAS_CODEWALKER } else { '' })
 )
 
@@ -32,16 +32,16 @@ if (-not $CodeWalker) {
         $CodeWalker = (Get-Content -LiteralPath $cfg -Raw | ConvertFrom-Json).codeWalker
     }
 }
-if (-not (Test-Path -LiteralPath $CodeWalker)) { throw "CodeWalker.Core.dll yok: $CodeWalker" }
-if (-not (Test-Path -LiteralPath $XmlPath))    { throw "XML yok: $XmlPath" }
+if (-not (Test-Path -LiteralPath $CodeWalker)) { throw "CodeWalker.Core.dll missing: $CodeWalker" }
+if (-not (Test-Path -LiteralPath $XmlPath))    { throw "XML missing: $XmlPath" }
 
 [void][System.Reflection.Assembly]::LoadFrom($CodeWalker)
 
-# XML once AYRISTIRILIR: bozuk XML'i CodeWalker'a vermek anlamsiz hata verir.
+# The XML is PARSED first: handing broken XML to CodeWalker gives a meaningless error.
 $doc = New-Object System.Xml.XmlDocument
 $doc.Load($XmlPath)
 
-# Format tespiti dosya ADINDAN yapilir (".ytyp.xml" -> RSC), yol degil.
+# Format detection is done from the file NAME (".ytyp.xml" -> RSC), not the path.
 $name = [IO.Path]::GetFileName($XmlPath)
 $trim = 0
 $fmt = [CodeWalker.GameFiles.XmlMeta]::GetXMLFormat($name, [ref]$trim)
@@ -53,22 +53,22 @@ if ($outDir -and -not (Test-Path -LiteralPath $outDir)) {
 }
 
 $data = [CodeWalker.GameFiles.XmlMeta]::GetData($doc, $fmt, $outDir)
-if ($null -eq $data -or $data.Length -eq 0) { throw "GetData bos dondu -- XML semasi ytyp degil olabilir" }
+if ($null -eq $data -or $data.Length -eq 0) { throw "GetData returned empty -- the XML schema may not be a ytyp" }
 [IO.File]::WriteAllBytes($OutPath, $data)
-Write-Host "[yazildi] $OutPath  ($($data.Length) bayt, zlib sikistirilmis)"
+Write-Host "[written] $OutPath  ($($data.Length) bytes, zlib compressed)"
 
-# --- GERI OKUMA: tek gecerli olcut ---
+# --- READ BACK: the only valid measure ---
 Write-Host ''
-Write-Host '=== GERI OKUMA ==='
+Write-Host '=== READ BACK ==='
 $bytes = [IO.File]::ReadAllBytes($OutPath)
 $ytyp = New-Object CodeWalker.GameFiles.YtypFile
-$ytyp.Load($bytes)      # tek argumanli overload: RpfFileEntry gerektirmez
+$ytyp.Load($bytes)      # single-argument overload: needs no RpfFileEntry
 $archs = $ytyp.AllArchetypes
 if ($null -eq $archs -or $archs.Count -lt 1) {
-    Write-Host 'DENETIM BASARISIZ: archetype okunamadi'
+    Write-Host 'CHECK FAILED: no archetype could be read'
     exit 1
 }
-Write-Host "  archetype sayisi: $($archs.Count)"
+Write-Host "  archetype count: $($archs.Count)"
 foreach ($a in $archs) {
     $bd = $a._BaseArchetypeDef
     Write-Host ("  name={0}  assetName={1}  textureDict={2}  assetType={3}" -f `
@@ -76,4 +76,4 @@ foreach ($a in $archs) {
     Write-Host ("     lodDist={0}  flags={1}  bbMin=({2})  bbMax=({3})" -f `
         $bd.lodDist, $bd.flags, $bd.bbMin, $bd.bbMax)
 }
-Write-Host 'TUM DENETIMLER GECTI'
+Write-Host 'ALL CHECKS PASSED'

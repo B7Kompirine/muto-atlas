@@ -1,25 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""install_skills.py — muto-atlas skill'lerini Claude Code DISINDAKI araclara kurar.
+"""install_skills.py — installs the muto-atlas skills into tools OTHER than Claude Code.
 
-NEDEN: Agent Skills acik standardi (agentskills.io) bir SKILL.md klasorunu
-Codex, ChatGPT masaustu, Gemini CLI, VS Code/Copilot, Cursor ve digerlerinde
-ayni bicimde okutur. Ama bu skill'ler betikleri depo kokundeki scripts/'ten
-calistirir ve yolu Claude Code'un ${CLAUDE_PLUGIN_ROOT} degiskeniyle yazar;
-baska arac bu degiskeni tanimaz. Kurucu skill klasorunu hedefe KOPYALAR ve
-degiskeni bu klonun mutlak yoluyla degistirir. Kaynak tek kalir; kopyalar
-elle duzenlenmez, yeniden uretilir.
+WHY: the Agent Skills open standard (agentskills.io) makes Codex, the ChatGPT
+desktop app, Gemini CLI, VS Code/Copilot, Cursor and others read a SKILL.md
+folder the same way. But these skills run scripts from scripts/ at the
+repository root and write that path with Claude Code's ${CLAUDE_PLUGIN_ROOT}
+variable, which no other tool knows. The installer COPIES each skill folder to
+the target and replaces the variable with the absolute path of this clone.
+There is one source; the copies are never edited by hand, they are generated
+again.
 
-Kullanim:
+Usage:
   python scripts/install_skills.py                     # ~/.agents/skills
   python scripts/install_skills.py --tool cursor       # ~/.cursor/skills
   python scripts/install_skills.py --tool copilot --project <repo>   # <repo>/.github/skills
-  python scripts/install_skills.py --dest <klasor>     # herhangi bir skills klasoru
-  python scripts/install_skills.py --check             # yalniz standarda uygunluk, yazmaz
+  python scripts/install_skills.py --dest <folder>     # any skills folder
+  python scripts/install_skills.py --check             # only check against the standard, writes nothing
   python scripts/install_skills.py --uninstall [--tool/--project/--dest]
 
-Cikis: 0 tamam | 1 SKILL.md standarda uymuyor (hicbir sey yazilmadi) |
-       2 hedefte bu kurucunun kurmadigi bir klasor var ya da geri okuma tutmadi
+Exit: 0 done | 1 a SKILL.md does not meet the standard (nothing was written) |
+      2 the target holds a folder this installer did not install, or the read-back did not match
 """
 import argparse
 import io
@@ -40,10 +41,10 @@ VAR = "${CLAUDE_PLUGIN_ROOT}"
 MARKER = ".muto-atlas-install.json"
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
-# Hangi arac hangi klasoru okur -- 2026-09 belgelerinden:
-#   ~/.agents/skills : Codex CLI/IDE, ChatGPT masaustu, Gemini CLI (alias), VS Code/Copilot
+# Which tool reads which folder -- from the 2026-09 documentation:
+#   ~/.agents/skills : Codex CLI/IDE, ChatGPT desktop, Gemini CLI (alias), VS Code/Copilot
 #   ~/.gemini/skills : Gemini CLI      ~/.copilot/skills : Copilot
-#   ~/.cursor/skills : Cursor           ~/.claude/skills  : Claude Code (plugin'siz)
+#   ~/.cursor/skills : Cursor           ~/.claude/skills  : Claude Code (without the plugin)
 USER_DIRS = {
     "agents": "~/.agents/skills", "codex": "~/.agents/skills", "gemini": "~/.gemini/skills",
     "copilot": "~/.copilot/skills", "cursor": "~/.cursor/skills", "claude": "~/.claude/skills",
@@ -125,7 +126,7 @@ def install_one(src, dest_root, root_posix):
     with io.open(os.path.join(dest, MARKER), "w", encoding="utf-8") as fh:
         json.dump({"source": root_posix, "skill": name, "installed": time.strftime("%Y-%m-%d %H:%M:%S")}, fh, indent=2)
 
-    # geri oku: dosya kumesi, degisken kalintisi, frontmatter
+    # read back: file set, leftover variable, frontmatter
     got = files_of(dest)
     if got != rels:
         print(t("sk_readback_fail", path=dest, why=f"{len(got)} files, expected {len(rels)}"))

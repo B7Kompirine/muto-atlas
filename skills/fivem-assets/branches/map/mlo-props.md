@@ -1,43 +1,42 @@
-# MLO'ya kendi prop'unu / drawable'ını koy (yeni entity)
+# Put your own prop / drawable into an MLO (new entity)
 
-**Ne zaman okunur:** iç mekâna yeni obje ekleyeceksin (kutu, kapı, animasyonlu emanet kasası), kendi mesh'in MLO'da siyah/görünmez, oda ataması, iki MLO sürümü.
-**When to read:** adding your own prop or drawable into an MLO as a new entity.
-**Kaynak:** `mlo-prop-uretim-hatti.md` + `mlo-drawable-export-bulgulari.md` (tamamı, 2026-07/08) · **Ölçüm:** Fleeca kasa odası 20 emanet kutusu + 2 kapı; `trees_normal.sps` A/B; v_coroner asansör kabini
-**Önce:** `branches/map/_branch.md` · gövde › `trunk/flags.md`, `trunk/tool-pitfalls.md`
-
----
-
-
-Fleeca kasa odasına 20 animasyonlu emanet kutusu ve iki özel kapı koyarken
-uçtan uca kurulan hat. Her madde oyun içi ölçümle doğrulandı.
-
-**Sırayla oku. Adım atlarsan sessizce başarısız olur — bu iş hata vermez,
-sadece "hiçbir şey olmaz".**
+**When to read:** adding your own prop or drawable into an MLO as a new entity (box, door, animated deposit box); your own mesh is black/invisible in the MLO; room assignment; two MLO versions.
+**Source:** former MLO prop pipeline + MLO drawable export findings references (2.5.0, in full, 2026-07/08) · **Measured:** Fleeca vault room 20 deposit boxes + 2 doors; `trees_normal.sps` A/B; v_coroner elevator cab
+**Read first:** `branches/map/_branch.md` · trunk › `trunk/flags.md`, `trunk/tool-pitfalls.md`
 
 ---
 
-## 0. ÖNCE BUNU BELİRLE
 
-**Obje MLO iç mekânında mı, dışında mı?** Her şey buna bağlı.
+The end-to-end pipeline built while placing 20 animated deposit boxes and two custom doors
+in the Fleeca vault room. Every item was verified by in-game measurement.
 
-| | MLO **dışı** | MLO **içi** |
+**Read in order. Skip a step and it fails silently — this work gives no error,
+just "nothing happens".**
+
+---
+
+## 0. DECIDE THIS FIRST
+
+**Is the object inside an MLO interior or outside?** Everything depends on it.
+
+| | **outside** the MLO | **inside** the MLO |
 |---|---|---|
-| kendi ymap'in | ✅ | ❌ oda/portal eler, obje hiç gelmez |
-| MLO entity listesi | — | ✅ tek yol |
-| script spawn | ⚠️ harita objesi değil | ⚠️ aynı + her istemcide yük |
+| your own ymap | ✅ | ❌ room/portal culls it, the object never appears |
+| MLO entity list | — | ✅ the only way |
+| script spawn | ⚠️ not a map object | ⚠️ same + a load on every client |
 
-**Aynı iç mekânın birden fazla MLO sürümü olabilir.** Fleeca'da iki tane:
-`v_genbank` (`v_int_10.ytyp`) ve `hei_generic_bank_dlc`
-(`hei_dlc_generic_bank.ytyp`). İkisi **aynı MLO-yerel çerçeveyi** paylaşıyor
-(aynı prop ikisinde de aynı yerel koordinatta) ama entity listeleri farklı.
-Birine yamayıp diğerini atlarsan test ettiğin şubede hiçbir şey görünmez —
-bu bir kez yaşandı ve uzun süre yanlış yerde arandı.
+**The same interior can have more than one MLO version.** Fleeca has two:
+`v_genbank` (`v_int_10.ytyp`) and `hei_generic_bank_dlc`
+(`hei_dlc_generic_bank.ytyp`). Both share **the same MLO-local frame**
+(the same prop sits at the same local coordinate in both) but their entity lists differ.
+Patch one and skip the other, and nothing shows in the branch you test —
+this happened once and was searched for in the wrong place for a long time.
 
 ---
 
-## 1. MEVCUT OBJEYİ DEĞİŞTİRME (model adı swap)
+## 1. REPLACING AN EXISTING OBJECT (model name swap)
 
-En güvenli işlem: dosya boyutu değişmez, MLO yapısına dokunulmaz.
+The safest operation: the file size does not change, the MLO structure is not touched.
 
 ```
 patch_vanilla_ytyp.ps1 -YtypName v_int_10.ytyp `
@@ -45,9 +44,9 @@ patch_vanilla_ytyp.ps1 -YtypName v_int_10.ytyp `
   -OutDir <...>\stream
 ```
 
-- `data_file 'DLC_ITYP_REQUEST'` **EKLENMEZ** (vanilla dosya değişimi).
+- `data_file 'DLC_ITYP_REQUEST'` is **NOT ADDED** (vanilla file replacement).
 
-## 2. YENİ ENTITY EKLEME
+## 2. ADDING A NEW ENTITY
 
 ```
 add_mlo_entities.ps1 -YtypName v_int_10.ytyp -Mlo v_genbank `
@@ -55,444 +54,443 @@ add_mlo_entities.ps1 -YtypName v_int_10.ytyp -Mlo v_genbank `
   -CellsJson <...>.json -Count 20 -Room bankvault -OutDir <...>\stream
 ```
 
-Üç şey aynı anda doğru olmalı, biri eksikse obje **görünmez**:
+Three things must be right at the same time; if one is missing the object is **invisible**:
 
-| alan | doğru | yanlış olursa |
+| field | right | if wrong |
 |---|---|---|
-| `flags` | **18350080** (vanilla MLO entity'sinden ölçüldü) | ymap değeri `1572872` → obje hiç oluşmaz |
+| `flags` | **18350080** (measured from a vanilla MLO entity) | ymap value `1572872` → the object is never created |
 | `lodDist` | **-1** | — |
-| **oda** | `AttachedObjects`'e indeks eklenmeli | **eklenmezse obje hiç oluşmaz, MLO bozulabilir** |
+| **room** | an index must be added to `AttachedObjects` | **if not added, the object is never created and the MLO can break** |
 
-Oda ataması en kolay atlanan adım: entity `entities` dizisinde görünür,
-ytyp sorunsuz yüklenir, oyunda hiçbir şey çıkmaz.
+Room assignment is the step most easily skipped: the entity shows in the `entities` array,
+the ytyp loads fine, nothing appears in game.
 
-**Koordinat MLO-YEREL olmalı.** Parça yerel verisi varsa zincir:
-`panelLocal → (parça pos/rot) → mloLocal`. Referans parça hedef MLO'da
-yoksa diğer MLO'larda aranır (ikisi aynı çerçeveyi paylaşıyor).
+**The coordinate must be MLO-LOCAL.** If there is part-local data, the chain is:
+`panelLocal → (part pos/rot) → mloLocal`. If the reference part is not in the target MLO,
+look for it in the other MLOs (both share the same frame).
 
-## 3. YAMALAR ÜST ÜSTE BİNMELİ
+## 3. PATCHES MUST STACK
 
-Her script vanilla RPF'ten okursa öncekini **ezer**. Gerçek vaka: kapı
-değişimi yapıldı, sonra aynı ytyp'ye kutu eklenince kapılar vanilla'ya
-döndü. Her iki script de artık çıktı klasöründe dosya varsa **ondan**
-devam ediyor.
-
----
-
-## 4. FRAGMENT ÜRETİMİ
-
-Buradaki tek kritik hatırlatma:
-
-**`parentIdx = 255` olan grup entity gövdesidir ve kemiği TAKİP ETMEZ.**
-En az iki grup gerekir:
-
-```
-grup[0]  sabit kemik   parentIdx=255   → gövde / menteşe
-grup[1]  hareketli     parentIdx=0     → dönen parça
-```
-
-Bound'u kemiğe bağlayan şey **COPY_TRANSFORMS constraint**'i —
-`parent_bone` değil, isim eşleşmesi değil.
-
-### Statik bit
-
-Duvara monte fragment `flags`'ine **32** eklenmezse oyuncu dokununca
-**düşer**. `537526784` (animasyonlu fragment) + `32` = **537526816**.
+If every script reads from the vanilla RPF, it **overwrites** the previous one. Real case: a door
+swap was done, then boxes were added to the same ytyp and the doors went back
+to vanilla. Both scripts now continue **from** the file in the output folder if
+one exists.
 
 ---
 
-## 5. KENDİ .ycd'NİN
+## 4. BUILDING THE FRAGMENT
 
-Sollumz `.ycd`'yi **XML** olarak yazar ("Successfully exported" der ama
-klasörde `.ycd` yoktur). Binary'ye çevirmeden önce XML'e **elle** üç şey
-eklenir — Sollumz hiçbirini yazmaz:
+The one critical reminder here:
+
+**The group with `parentIdx = 255` is the entity body and does NOT FOLLOW the bone.**
+At least two groups are needed:
+
+```
+group[0]  fixed bone     parentIdx=255   → body / hinge
+group[1]  moving         parentIdx=0     → turning part
+```
+
+What binds the bound to the bone is the **COPY_TRANSFORMS constraint** —
+not `parent_bone`, not name matching.
+
+### Static bit
+
+If **32** is not added to the `flags` of a wall-mounted fragment, it **falls**
+when the player touches it. `537526784` (animated fragment) + `32` = **537526816**.
+
+---
+
+## 5. YOUR OWN .ycd
+
+Sollumz writes the `.ycd` as **XML** (it says "Successfully exported" but there is
+no `.ycd` in the folder). Before converting to binary, add three things to the XML
+**by hand** — Sollumz writes none of them:
 
 ```xml
 <Clips><Item>
-  <Hash>my_depobox_open</Hash>            ← klip hash'i
-  <Name>pack:/my_depobox_open</Name>       ← pack:/ NORMAL, dokunma
+  <Hash>my_depobox_open</Hash>            ← clip hash
+  <Name>pack:/my_depobox_open</Name>       ← pack:/ is NORMAL, do not touch
   <Tags /> <Properties />
   <AnimationHash>my_depobox_open</AnimationHash>
 </Item></Clips>
 <Animations><Item>
-  <Hash>my_depobox_open</Hash>            ← ANIMASYON hash'i
-  <Unknown1C>hash_22E95D79</Unknown1C>      ← Sollumz hash_00000001 yazar
+  <Hash>my_depobox_open</Hash>            ← ANIMATION hash
+  <Unknown1C>hash_22E95D79</Unknown1C>      ← Sollumz writes hash_00000001
 </Item></Animations>
 ```
 
-Sonra:
+Then:
 ```powershell
-[CodeWalker.GameFiles.XmlMeta]::GetYcdData($doc)   # GUI'nin kullandigi yol
+[CodeWalker.GameFiles.XmlMeta]::GetYcdData($doc)   # the path the GUI uses
 ```
 
-**`XmlYcd.GetYcd($doc).Save()` KULLANMA** — nesne modeline girer,
-`ClipDictionary.Clips` üzerinde gezinmek `NotImplementedException` fırlatır.
+**DO NOT USE `XmlYcd.GetYcd($doc).Save()`** — it goes into the object model,
+and iterating `ClipDictionary.Clips` throws `NotImplementedException`.
 
-### Doğrulama (bunu görmeden "oldu" deme)
+### Verification (do not say "done" before you see this)
 
 ```
-ClipMap = <joaat(klip)>     AnimMap = <joaat(klip)>
+ClipMap = <joaat(clip)>     AnimMap = <joaat(clip)>
 ```
 
-İkisi de sıfırdan farklı olmalı. `AnimMap = 0` ise `PlayEntityAnim` **true
-döner ama kemikler kımıldamaz** — en kafa karıştırıcı belirti.
+Both must be non-zero. If `AnimMap = 0`, `PlayEntityAnim` **returns true
+but the bones do not move** — the most confusing symptom.
 
-**Sollumz'un çıktısı her export'ta aynı değil.** Bir seferinde Animations
-bloğuna `<Hash>hash_00000000</Hash>` yazdı, bir seferinde elementi **hiç
-yazmadı**. Körlemesine `replace` yetmez; her seferinde geri okuyup
-`AnimMap`'i doğrula.
+**Sollumz's output is not the same on every export.** Once it wrote
+`<Hash>hash_00000000</Hash>` into the Animations block, another time it did not write the element
+**at all**. A blind `replace` is not enough; read back every time and
+verify `AnimMap`.
 
 ---
 
 ## 6. YTYP + EXPRESSION EXTENSION
 
-Nesne modeliyle (`Archetype.Extensions`) yazmak **serileşmiyor**.
-Tutan yol XML:
+Writing through the object model (`Archetype.Extensions`) **does not serialize**.
+The way that holds is XML:
 
 ```powershell
 [CodeWalker.GameFiles.XmlMeta]::GetData($doc, [MetaFormat]::RSC, "")
 ```
 
-`MetaFormat`'ta **`ytyp` yok** — ytyp bir RSC meta'sıdır.
+**There is no `ytyp`** in `MetaFormat` — a ytyp is an RSC meta.
 
-Doğrulama: `ext: MCExtensionDefExpression dict=<hash> name=<hash>`
+Verification: `ext: MCExtensionDefExpression dict=<hash> name=<hash>`
 
 ---
 
-## 7. ANİMASYON SEÇİMİ — ped mi prop mu?
+## 7. CHOOSING THE ANIMATION — ped or prop?
 
-**Kemik sayısı söyler:**
+**The bone count tells you:**
 
-| kemik | ne |
+| bones | what |
 |---|---|
-| 44+32 (çok-izli) | **ped** klibi (gövde + mimik) |
-| 72 | genelde **prop** izi (çanta, alet) |
-| 4-24 (tek-iz) | prop izi |
+| 44+32 (multi-track) | **ped** clip (body + facial) |
+| 72 | usually a **prop** track (bag, tool) |
+| 4-24 (single track) | prop track |
 
-Gerçek hata: kutu soyma sekansında ped'e `reward_p_m_bag_var22_arm_s_f`
-(72 kemik) oynattım — o **çantanın** izi. Karakter hiç kımıldamadı.
-Doğru ped klipleri çok-izli olanlardı: `enter` / `action` / `reward` /
+Real mistake: in the box robbery sequence I played `reward_p_m_bag_var22_arm_s_f`
+(72 bones) on the ped — that is the **bag's** track. The character did not move at all.
+The right ped clips were the multi-track ones: `enter` / `action` / `reward` /
 `no_reward` / `rest_exit`.
 
-Süreleri tahmin etme, `assetdb.py anim <dict> --dict-only` ile oku.
+Do not guess durations, read them with `assetdb.py anim <dict> --dict-only`.
 
-### Hazır sekanslar
+### Ready-made sequences
 
-- **Kilitli kutu delme:** `anim@scripted@cbr5@ig3_drill_box@pattern_01@lockbox_01@male@`
+- **Drilling a lockbox:** `anim@scripted@cbr5@ig3_drill_box@pattern_01@lockbox_01@male@`
   `enter 3.8 · action 8.0 · reward 4.57 · no_reward 4.10 · rest_exit 3.23`
-  Matkap prop'u: `ch_prop_vault_drill_01a`. **Boş çıkma varyantı hazır.**
-- **Kasa/tezgâh soyma:** `oddjobs@shop_robbery@rob_till` (enter/loop/exit)
+  Drill prop: `ch_prop_vault_drill_01a`. **An empty-box variant is ready.**
+- **Robbing a till/counter:** `oddjobs@shop_robbery@rob_till` (enter/loop/exit)
 
-### Prop'u ele tutturma
+### Attaching the prop to a hand
 
-`PH_R_Hand` (28422) her ped'de çözülmeyebilir; `GetPedBoneIndex` **-1**
-dönünce attach kök kemiğe düşer ve prop **gövdenin yanında havada** kalır.
-Yedek: `SKEL_R_Hand` (57005). Ofset ve `rotationOrder` → `branches/prop/hand-attach.md`.
+`PH_R_Hand` (28422) may not resolve on every ped; when `GetPedBoneIndex` returns **-1**
+the attach falls back to the root bone and the prop floats **in the air beside the body**.
+Fallback: `SKEL_R_Hand` (57005). Offset and `rotationOrder` → `branches/prop/hand-attach.md`.
 
-Klip zaten aleti çantadan çıkarıyorsa prop'u **klipten sonra** tuttur —
-yoksa iki alet görünür.
+If the clip already takes the tool out of the bag, attach the prop **after the clip** —
+otherwise two tools show.
 
-### Senkron sahne klipleri konum ister
+### Synchronized scene clips need a position
 
-Bu klipler ped'in objeye göre **konumu** sabit olacak şekilde yapılmış.
-Sadece `TaskTurnPedToFaceCoord` yetmez; ped'i objenin önüne ofsetle koy.
+These clips are made so that the ped's **position** relative to the object is fixed.
+`TaskTurnPedToFaceCoord` alone is not enough; place the ped in front of the object with an offset.
 
-**Objenin ÖNÜ entity'nin ARKASI olabilir** — modelin ön yüzü yerel `-Y`'de
-ise (GTA entity ileri yönü `+Y`), `+ileri` kullanmak oyuncuyu 90-180°
-yanlış yere koyar.
-
----
-
-## 8. TEKRARLANMAMASI GEREKEN HATALAR
-
-Hepsi bu oturumda yaşandı ve zaman kaybettirdi.
-
-### Asset / yerleştirme
-1. **Script'le spawn edilen obje harita objesi değildir.** Kapı sistemi
-   bulamaz (kapı zeminden düştü), fragment collision'ı animasyonu takip
-   etmez. Ve 60 kişilik sunucuda her istemcide ayrı yük.
-2. **MLO içine ymap ile prop konmaz.** Referansın ymap kullanması
-   yanıltmasın — önce onun prop'unun MLO içinde mi dışında mı olduğuna bak.
-3. **Entity'yi odaya bağlamayı unutma.** Sessizce görünmez.
-4. **MLO entity'sine ymap bayrağı verme.** Sessizce görünmez.
-5. **Aynı iç mekânın ikinci MLO sürümünü atlama.**
-6. **Vanilla prop ytyp'sinde `specialAttribute` düzeltmek tutmadı** —
-   dosya doğru üretildi ama oyun içi fizik yüklenmedi. MLO entity swap
-   çalıştı.
-
-### Araç davranışı
-7. **CodeWalker `.yed`'i tam okuyamaz.** `ExprMap.Count == 0` görmek
-   "dosya boş" DEMEK DEĞİLDİR — expression bytecode'unu yazamıyor, sadece
-   okuyabiliyor. Bu yüzden "`.yed` işe yaramıyor" diye saatler kaybedildi.
-   **Bir aracın bir şeyi göstermemesi, o şeyin yok olduğu anlamına gelmez.**
-8. **Sollumz `.ycd`/`.yed`/`.ymap` binary üretemez** ve `.ycd`'yi XML
-   yazarken "Successfully exported" der.
-11. **Lua dosyasını Python ile yazarken kaçışlar bozulabilir.**
-    `\n` gerçek satır sonuna dönüşüp Lua stringini bölmüştü; dosya parse
-    edilemedi ve **hiçbir komut kayıtlı olmadı**. `lua_check` sözdizimini
-    temiz gösterir, çalışma zamanı hatasını yakalamaz.
-    → Bu tür satırları doğrudan `Edit` ile yaz.
-
-### Mantık
-12. **Durumu önbellekleme, sürekli doğrula.** Aynı hata iki yerde yapıldı:
-    `doorRegistered[hash]` önbelleği ve "entity handle değişti mi"
-    karşılaştırması. FiveM handle'ı yeniden kullanabilir; animasyon bir kez
-    başarısız olursa bir daha denenmez. Doğrusu: `IsEntityPlayingAnim` gibi
-    **gerçeğe** sor.
-13. **Model adını değiştirince onu arayan her config'i güncelle.**
-    `config/heists/fleeca.lua` hâlâ `v_ilev_gb_teldr` arıyordu; kapı modülü
-    kapıyı tanıyamayınca kilit mantığı yanlış tarafa düştü.
-14. **"Düzelttim, şimdi hiç açılmıyor" sahte regresyon olabilir.**
-    Config doğru adı gösterince o güne kadar hiç çalışmamış kilit ilk kez
-    devreye girer. Kapı tasarım gereği kilitlidir.
-15. **Tek otorite kuralı.** Aynı objeye iki modül durum yazarsa son yazan
-    kazanır. Kilit hem kapı sistemiyle hem `FreezeEntityPosition` ile
-    uygulanıyordu; donmuş entity kapı sisteminden etkilenmez, bu yüzden
-    `durum=0` göründüğü halde kapı açılmıyordu.
-16. **Referansı kopyalarken neyin işe yaradığını ölç.** Referansın kendi
-    `.ycd`'si olması "custom ycd şart" demek değildi; eksik parça `.yed` +
-    Expression extension'dı. O yerine oturunca vanilla klip zaten çalıştı.
-
-### Test disiplini
-18. **Bir seferde tek değişken değiştir.** Bir şey çalışmıyorsa zinciri
-    parçalara ayır (`.yed`'i çıkar / vanilla klip dene) — iki bambaşka
-    düzeltmeyi tek testle ayırt eden A/B testi kur.
-19. **Zincirin tamamı bitmeden test isteme.** Yarım zincirde çıkan sonuç
-    yanlış yöne götürür.
-
+**The FRONT of the object can be the BACK of the entity** — if the model's front face is at local `-Y`
+(GTA entity forward is `+Y`), using `+forward` puts the player 90-180°
+in the wrong place.
 
 ---
 
-# MLO'ya kendi drawable'ını koyma — ölçülmüş bulgular
+## 8. MISTAKES NOT TO REPEAT
 
+All of them happened in this session and cost time.
 
-`v_coroner` BodyStorage asansör sahnesi üretilirken ölçüldü. Hepsi **sessiz**
-hatadır: hata mesajı yok, "successfully exported" yazar, dosya oluşur, oyunda
-yanlış sonuç çıkar.
+### Asset / placement
+1. **An object spawned by script is not a map object.** The door system
+   cannot find it (the door fell through the floor), fragment collision does not follow
+   the animation. And on a 60-player server it is a separate load on every client.
+2. **A prop cannot be placed inside an MLO with a ymap.** Do not let a reference that uses a ymap
+   mislead you — first check whether its prop is inside the MLO or outside.
+3. **Do not forget to attach the entity to a room.** It is silently invisible.
+4. **Do not give an MLO entity a ymap flag.** It is silently invisible.
+5. **Do not skip the second MLO version of the same interior.**
+6. **Fixing `specialAttribute` in the vanilla prop ytyp did not take** —
+   the file was produced correctly but in-game physics did not load. The MLO entity swap
+   worked.
 
-Kardeş dosyalar: `mlo-prop-uretim-hatti.md` (entity/oda hattı) ·
-`trunk/flags.md` (bayraklar) · `branches/look/lights.md` (ışık).
+### Tool behaviour
+7. **CodeWalker cannot fully read `.yed`.** Seeing `ExprMap.Count == 0` does NOT
+   MEAN "the file is empty" — it cannot write expression bytecode, it can only
+   read it. Hours were lost thinking "`.yed` does not work" because of this.
+   **A tool not showing something does not mean that thing does not exist.**
+8. **Sollumz cannot produce binary `.ycd`/`.yed`/`.ymap`**, and when writing the `.ycd`
+   as XML it says "Successfully exported".
+11. **Escapes can break when a Lua file is written from Python.**
+    `\n` turned into a real line break and split a Lua string; the file could not
+    be parsed and **no command got registered**. `lua_check` shows the syntax
+    clean, it does not catch a runtime error.
+    → Write such lines directly with `Edit`.
+
+### Logic
+12. **Do not cache state, verify it continuously.** The same mistake was made in two places:
+    the `doorRegistered[hash]` cache and the "did the entity handle change"
+    comparison. FiveM can reuse a handle; if an animation fails once
+    it is never tried again. The right way: ask **the reality**, e.g. `IsEntityPlayingAnim`.
+13. **When you change the model name, update every config that looks for it.**
+    `config/heists/fleeca.lua` was still looking for `v_ilev_gb_teldr`; when the door module
+    could not recognise the door, the lock logic fell to the wrong side.
+14. **"I fixed it, now it does not open at all" can be a false regression.**
+    When the config points at the right name, the lock that had never worked until then kicks in
+    for the first time. The door is locked by design.
+15. **Single authority rule.** If two modules write state to the same object, the last writer
+    wins. The lock was applied both through the door system and with `FreezeEntityPosition`;
+    a frozen entity is not affected by the door system, so the door did not open
+    even though `state=0` showed.
+16. **When copying a reference, measure what actually does the work.** The reference having its own
+    `.ycd` did not mean "a custom ycd is required"; the missing piece was `.yed` +
+    the Expression extension. Once that was in place, the vanilla clip already worked.
+
+### Test discipline
+18. **Change one variable at a time.** If something does not work, break the chain
+    into parts (take out the `.yed` / try a vanilla clip) — set up an A/B test that tells
+    two completely different fixes apart in one test.
+19. **Do not ask for a test before the whole chain is done.** A result from a half-built chain
+    leads in the wrong direction.
+
 
 ---
 
-## 1. ⛔ `trees_normal.sps` İÇ MEKÂNDA SİMSİYAH ÇİZER
+# Putting your own drawable into an MLO — measured findings
 
-En pahalı bulgu. Bir MLO odasına `trees_normal` (ya da başka bir **foliage**)
-shader'ı ile geometri koyarsan model **tamamen siyah** çıkar.
 
-**Sebep:** foliage shader'ları aydınlatmayı **doğal/güneş** yolundan alır. MLO
-içinde doğal ambient sıfıra yakındır (`morgue_dark` 0.154, ondan türetilmiş
-`my_mlo_dark` **0.045**), yapay ambient (0.300) ise foliage tarafından
-okunmaz → ışık yok → siyah.
+Measured while building the `v_coroner` BodyStorage elevator scene. All of them are **silent**
+failures: no error message, it says "successfully exported", the file is created, the result in game
+is wrong.
 
-**Çözüm:** iç mekân geometrisi için `normal.sps` / `normal_spec.sps`
-(render bucket 0). `trees_normal`ı yalnızca dış mekânda kullan.
+Sibling notes: the entity/room pipeline in the first half of this file ·
+`trunk/flags.md` (flags) · `branches/look/lights.md` (lights).
 
-**BEDELİ — bunu bilerek öde:** `trees_normal`ın vertex rüzgârı
-(`WindGlobalParams`, `Color 2`.B maskesi) da gider. **İç mekânda “ağ/lif
-rüzgârla sallansın” diye bedava bir yol YOKTUR.** Hareket isteniyorsa
-`.yed` expression zinciri ya da RayFire gerekir.
+---
 
-### Sebep bulunmadan önce elenenler (hepsi doğruydu, hiçbiri sebep değildi)
+## 1. ⛔ `trees_normal.sps` RENDERS PITCH BLACK INDOORS
 
-Aynı yolu tekrar yürüme — bu altısı ölçüldü ve temiz çıktı:
+The most expensive finding. Put geometry with the `trees_normal` (or any other **foliage**)
+shader into an MLO room and the model comes out **completely black**.
 
-| kontrol | ölçülen |
+**Cause:** foliage shaders take their lighting from the **natural/sun** path. Inside an
+MLO the natural ambient is near zero (`morgue_dark` 0.154, the `my_mlo_dark` derived from it
+**0.045**), and the artificial ambient (0.300) is not read
+by foliage → no light → black.
+
+**Fix:** for interior geometry use `normal.sps` / `normal_spec.sps`
+(render bucket 0). Use `trees_normal` only outdoors.
+
+**THE COST — pay it knowingly:** the vertex wind of `trees_normal`
+(`WindGlobalParams`, `Color 2`.B mask) goes too. **Indoors there is NO free way
+to make “a net/fibres sway in the wind”.** If motion is wanted,
+it needs a `.yed` expression chain or RayFire.
+
+### Ruled out before the cause was found (all correct, none of them the cause)
+
+Do not walk the same path again — these six were measured and came out clean:
+
+| check | measured |
 |---|---|
-| gömülü doku var mı | 2 doku, 1024 DXT1 ✓ |
-| `DiffuseSampler` bağlı mı | doğru ada bağlı, sözlükte var ✓ |
-| vertex rengi | `Colour0 = 255,255,255,255` ✓ |
-| normaller | gerçek yüzey normalleri ✓ |
-| `UseTreeNormals` | zaten **0** (ilk teoriydi, çürüdü) ✓ |
-| UV / tangent | var ✓ |
+| embedded texture present | 2 textures, 1024 DXT1 ✓ |
+| `DiffuseSampler` bound | bound to the right name, present in the dictionary ✓ |
+| vertex color | `Colour0 = 255,255,255,255` ✓ |
+| normals | real surface normals ✓ |
+| `UseTreeNormals` | already **0** (the first theory, disproved) ✓ |
+| UV / tangent | present ✓ |
 
-### Teşhis yöntemi: aynı odada A/B
+### Diagnosis method: A/B in the same room
 
-Tek bir katmanın shader'ını değiştir, diğerini **kontrol grubu olarak
-`trees_normal`da bırak**, aynı karede bak. Bizde bizim katmanlar renklendi,
-kontrol siyah kaldı → sebep kesinleşti. Tek değişkenli test kurulmadan
-"shader yüzünden" demek tahmindir.
+Change the shader of one layer, leave the other **on `trees_normal` as the control
+group**, look at the same frame. In our case our layers got colour, the
+control stayed black → the cause was confirmed. Saying "it is the shader" without a
+single-variable test is a guess.
 
 ---
 
-## 2. ⛔ KAYNAK İKİ YERDEYSE FiveM BİRİNİ SESSİZCE YOK SAYAR
+## 2. ⛔ IF A RESOURCE IS IN TWO PLACES, FiveM SILENTLY IGNORES ONE
 
-Aynı adlı kaynak iki klasörde varsa yalnız biri yüklenir, diğerine yapılan
-her şey **çöpe gider**. Uyarı yalnızca **sunucu logundadır**, oyunda hiçbir
-belirti yoktur:
+If a resource with the same name exists in two folders, only one loads, and everything done to
+the other **goes in the bin**. The warning is **only in the server log**; there is no
+symptom in game:
 
 ```
 Warning: my-resource exists in more than one place
-([harita]\my-resource is used, the duplicate is [script]\my-resource)
+([maps]\my-resource is used, the duplicate is [script]\my-resource)
 ```
 
-**Kural: “oyunda görünmüyor” dendiğinde İLK BAKILACAK YER SUNUCU LOGUDUR**,
-`txData/default/logs/fxserver.log`. Teşhis betiği yazmadan, asset kurcalamadan
-önce oraya bak. Bu bir tur kaybettirdi.
+**Rule: when "it does not show in game" is reported, THE FIRST PLACE TO LOOK IS THE SERVER LOG**,
+`txData/default/logs/fxserver.log`. Look there before writing a diagnostic script or tinkering
+with assets. This cost a round.
 
-Aynı logdan çıkan ikinci uyarı da gerçek bir risktir:
+The second warning from the same log is a real risk too:
 
 ```
 Asset X.ydr uses 64.0 MiB of physical memory. Oversized assets can and
 WILL lead to streaming issues (such as models not loading/rendering).
 ```
 
-4096 DXT5 doku bunu tetikler. 2048'e indirmek 4 kat düşürür
-(ölçüldü: `.ydr` 5.35 MB → 1.85 MB, 64 MiB → ~16 MiB).
+A 4096 DXT5 texture triggers it. Dropping to 2048 cuts it by 4x
+(measured: `.ydr` 5.35 MB → 1.85 MB, 64 MiB → ~16 MiB).
 
 ---
 
-## 3. Sollumz export tuzakları
+## 3. Sollumz export pitfalls
 
-### ⛔ `use_custom_settings=False` VERİLEN ARGÜMANLARI YOK SAYAR
+### ⛔ `use_custom_settings=False` IGNORES THE ARGUMENTS YOU PASS
 
-`bpy.ops.sollumz.export_assets(...)` çağrısında bu bayrak **varsayılan False**
-ve o hâlde operatör senin geçtiğin argümanları **kullanmaz**, sahnenin kendi
-export ayarlarını kullanır. Ölçülen sonuç: `limit_to_selected=True` geçildiği
-hâlde **bütün sahne** (170+ drawable, 19 sn) ihraç edildi ve
-`target_versions={'GEN8'}` yok sayılıp çıktı `gen8/` + `gen9/` **alt
-klasörlerine** dağıldı. `use_custom_settings=True` ile 5 dosya, 1.2 sn.
+In a `bpy.ops.sollumz.export_assets(...)` call this flag **defaults to False**,
+and in that state the operator **does not use** the arguments you passed, it uses the scene's own
+export settings. Measured result: although `limit_to_selected=True` was passed,
+**the whole scene** (170+ drawables, 19 s) was exported, and
+`target_versions={'GEN8'}` was ignored and the output was spread into `gen8/` + `gen9/`
+**subfolders**. With `use_custom_settings=True`: 5 files, 1.2 s.
 
-### ⛔ Doku `embedded` bayrağı + PNG gömülemez
+### ⛔ Texture `embedded` flag + PNG cannot be embedded
 
-Sollumz doku düğümünde `n.texture_properties.embedded` **False** ise doku
-`.ydr`'ye **hiç yazılmaz**; export uyarmaz. Belirti: geri okumada
-`TextureDictionary` boş, oyunda model dokusuz.
+If `n.texture_properties.embedded` is **False** on the Sollumz texture node, the texture
+is **never written** into the `.ydr`; export does not warn. Symptom: on read back
+`TextureDictionary` is empty, the model has no texture in game.
 
-Bayrağı açtığında ikinci kapı gelir:
-`WARNING: Embedded texture '...' is not in DDS format.` — **PNG gömülemez.**
-`texconv -f DXT1 -m 0` ile DDS'e çevir (mip zinciri şart).
-Doku adı **dosya adından** türer, o yüzden dosya adını koru.
+Turn the flag on and the second gate comes:
+`WARNING: Embedded texture '...' is not in DDS format.` — **a PNG cannot be embedded.**
+Convert to DDS with `texconv -f DXT1 -m 0` (a mip chain is required).
+The texture name is **derived from the file name**, so keep the file name.
 
-### ⛔ `hide_select` `select_set()`'i SESSİZCE düşürür
+### ⛔ `hide_select` SILENTLY drops `select_set()`
 
-Obje ya da koleksiyon `hide_select=True` ise `select_set(True)` hata vermez,
-seçim **boş kalır** ve export `No Sollumz objects selected!` der. Obje
-görünürdür — gözle ayırt edilemez. `hide_viewport` / `hide_get()` temiz
-görünürken `hide_select` açık olabilir; üçünü de kontrol et.
+If an object or collection has `hide_select=True`, `select_set(True)` gives no error,
+the selection **stays empty** and export says `No Sollumz objects selected!`. The object
+is visible — you cannot tell by eye. `hide_select` can be on while `hide_viewport` / `hide_get()`
+look clean; check all three.
 
-### ⛔ `sz_lods.high.mesh` atanmazsa drawable KOMPLE atlanır
+### ⛔ If `sz_lods.high.mesh` is not set the drawable is skipped ENTIRELY
 
-Betikle üretilen mesh objelerinde bu alan `None` kalır ve export
-"has no Sollumz materials!" der — materyal aslında oradadır.
+On mesh objects created by script this field stays `None` and export
+says "has no Sollumz materials!" — the material is actually there.
 `ob.sz_lods.high.mesh = ob.data`.
 
-### ⛔ Her drawable'da `Color 1` olmalı
+### ⛔ Every drawable must have `Color 1`
 
-Motor doğal/yapay ambient'i vertex renginin `.r`/`.g` kanallarıyla kapıyor,
-`decal.sps` de harman katsayısını alfasından okuyor. OBJ'den gelen mesh'te bu
-katman **hiç olmaz**. `(1,1,1,1)` yaz — ve `.color` değil **`.color_srgb`**
-kullan (`.color` gamma çözer).
+The engine gates natural/artificial ambient with the `.r`/`.g` channels of the vertex color,
+and `decal.sps` reads its blend factor from the alpha. A mesh from OBJ has **no such
+layer at all**. Write `(1,1,1,1)` — and use **`.color_srgb`**, not `.color`
+(`.color` decodes gamma).
 
 ---
 
-## 4. ⛔ Transformu SIFIRLAMA, VERİYE PİŞİR
+## 4. ⛔ DO NOT RESET the transform, BAKE IT INTO THE DATA
 
-Geometriyi MLO-yerel dünya koordinatında üretiyorsan katmanların transformu
-zaten identity'dir. Ama **yerleştirilmiş** bir obje (konum + dönüş taşıyan)
-körlemesine `matrix_basis = Identity` yapılırsa **orijine ışınlanır**.
+If you build the geometry in MLO-local world coordinates, the layers' transform
+is already identity. But blindly setting `matrix_basis = Identity` on a **placed** object
+(one that carries position + rotation) **teleports it to the origin**.
 
-Ölçüldü: ceset bbMin `(15.94, 36.55, −9.28)` iken sıfırlanınca
-`(−0.408, −0.083, −0.506)` oldu — 40 m ötede, oyunda görünmez.
+Measured: a corpse with bbMin `(15.94, 36.55, −9.28)` became
+`(−0.408, −0.083, −0.506)` after the reset — 40 m away, invisible in game.
 
 ```python
 if c.matrix_world != Matrix.Identity(4):
-    c.data.transform(c.matrix_world)     # veriye PİŞİR
+    c.data.transform(c.matrix_world)     # BAKE into the data
 c.matrix_basis = Matrix.Identity(4)
 ```
 
-⛔ `bpy.ops.object.transform_apply` operatörüne güvenme — sessizce hiçbir şey
-yapmayabilir.
+⛔ Do not trust the `bpy.ops.object.transform_apply` operator — it may silently do
+nothing.
 
 ---
 
-## 5. ⛔ `matrix_world` okumadan önce `view_layer.update()`
+## 5. ⛔ `view_layer.update()` before reading `matrix_world`
 
-Parent atadıktan / obje oluşturduktan sonra depsgraph güncellenmeden
-`matrix_world` okunursa **bayat değer** döner. Bu oturumda iki kez yanlış
-teşhise yol açtı: ışıklar `(0,0,0)` göründü, ceset `(27, 75, −18)` göründü —
-ikisi de aslında doğru yerdeydi.
+If `matrix_world` is read after assigning a parent / creating an object without updating the
+depsgraph, it returns a **stale value**. In this session it led to a wrong diagnosis
+twice: the lights showed at `(0,0,0)`, the corpse at `(27, 75, −18)` —
+both were actually in the right place.
 
 ---
 
-## 6. ⛔ KOORDİNAT UYDURMA — veritabanında duruyor
+## 6. ⛔ DO NOT MAKE UP COORDINATES — they are in the database
 
-Dünya koordinatı gerekiyorsa tahmin etme:
+If you need a world coordinate, do not guess:
 
 ```
-assetdb.py where <model>      # dünya konumu (MLO içindekiler dahil)
-assetdb.py near <x> <y> <z>   # çevresinde ne var
+assetdb.py where <model>      # world position (MLO interiors included)
+assetdb.py near <x> <y> <z>   # what is around it
 ```
 
-Ölçüldü: asansör `v_2_bds_mesh_lift` → `vec3(286.05, −1350.90, 24.94)`.
-Elle uydurulan değer 55 m ötedeydi ve "yanlış yere mi bakıyorum" sorusunu
-gereksiz yere açtı.
+Measured: the elevator `v_2_bds_mesh_lift` → `vec3(286.05, −1350.90, 24.94)`.
+The made-up value was 55 m away and needlessly raised the question "am I looking in the
+wrong place".
 
 ---
 
-## 7. ytyp OVERRIDE deseni ve doğrulaması
+## 7. ytyp OVERRIDE pattern and its verification
 
-MLO'nun kendi ytyp'sini değiştirmek için **aynı adla** `stream/` içine koy.
-⛔ `data_file 'DLC_ITYP_REQUEST'` **EKLENMEZ** — çift kayıt yapar.
-(Yeni bir ytyp üretiyorsan ekle; override'da ekleme.)
+To change the MLO's own ytyp, put it in `stream/` **with the same name**.
+⛔ `data_file 'DLC_ITYP_REQUEST'` is **NOT ADDED** — it registers twice.
+(If you produce a new ytyp, add it; in an override, do not.)
 
-### Yamalar üst üste binmeli
+### Patches must stack
 
-Her üretim vanilla'dan değil **önceki çıktıdan** okumalı. Bu oturumda canlı
-ytyp (88 arketip / 585 entity / `attachedObjects` 20) çözülüp doğrulandı,
-sonra üstüne binildi (93 / 590 / 25). Boyut farkı (25.758 vs 25.901 bayt)
-**içerik farkı değil**, PSO paketleme varyansıdır — boyuta bakıp "farklı
-dosya" deme.
+Every build must read **from the previous output**, not from vanilla. In this session the live
+ytyp (88 archetypes / 585 entities / `attachedObjects` 20) was decoded and verified,
+then built on top of (93 / 590 / 25). The size difference (25,758 vs 25,901 bytes)
+is **not a content difference**, it is PSO packing variance — do not look at the size and say "different
+file".
 
-### `.ytyp` okuma/yazma
+### Reading/writing `.ytyp`
 
-`xml_to_res.ps1` **`.ytyp` desteklemez** ("desteklenmeyen uzantı") ve
-CodeWalker.Core'da `XmlYtyp` tipi **yoktur**. Doğru yol `build_ytyp.ps1`
-(genel `XmlMeta` içe aktarıcısı). Geri okuma:
+`xml_to_res.ps1` **does not support `.ytyp`** ("unsupported extension") and
+CodeWalker.Core has **no** `XmlYtyp` type. The right way is `build_ytyp.ps1`
+(the general `XmlMeta` importer). Read back:
 
 ```powershell
 $y = New-Object CodeWalker.GameFiles.YtypFile
-$y.Load($bytes)        # TEK argümanlı overload — RpfFileEntry İSTEMEZ
+$y.Load($bytes)        # SINGLE-argument overload — does NOT need RpfFileEntry
 ```
 
-⛔ `Load($bytes, $rpfEntry)` ile çağırmak `.ytyp`'de **patlar** ve dosya bozuk
-sanılır. `.ypt` için tersi geçerlidir (o `RpfFileEntry` ister) — ikisini
-karıştırma.
+⛔ Calling it as `Load($bytes, $rpfEntry)` **blows up** on a `.ytyp` and the file is taken
+for broken. The reverse holds for `.ypt` (it needs `RpfFileEntry`) — do not
+mix them up.
 
 ---
 
-## 8. ⛔ YANLIŞ TEST "YOK" SONUCU ÜRETİR — üç kez yaşandı
+## 8. ⛔ A WRONG TEST PRODUCES A "NOT THERE" RESULT — happened three times
 
-Doğrulama yazarken aracın/formatın sınırını hesaba katmazsan "eksik" sanırsın:
+If you write a verification without accounting for the limits of the tool/format, you think something is "missing":
 
-| yazılan test | dönen | gerçek |
+| test written | returned | reality |
 |---|---|---|
-| `.//Texture/Name` XPath | boş | doku adı `Item/Name` altında, **3 doku vardı** |
-| ikili dosyada string arama | bulunamadı | ytyp `timecycleName`'i **hash** tutar |
-| `YtypFile.Load($d, $null)` | "Value cannot be null" | yanlış overload, dosya sağlamdı |
+| `.//Texture/Name` XPath | empty | the texture name is under `Item/Name`, **there were 3 textures** |
+| string search in a binary file | not found | the ytyp stores `timecycleName` as a **hash** |
+| `YtypFile.Load($d, $null)` | "Value cannot be null" | wrong overload, the file was fine |
 
-**Kural (kataloğun genel kuralı):** *bir aracın bir şeyi göstermemesi, o şeyin
-yok olduğu anlamına gelmez.* Ölçüm aracını da denetle.
+**Rule (the catalogue's general rule):** *a tool not showing something does not mean
+that thing does not exist.* Audit the measuring tool too.
 
-Ek: **Blender yolu `//x.dds` şeklinde görelidir**; Windows'ta
-`os.path.basename('//x.dds')` bunu UNC kökü sanıp **boş string** döndürür.
-`bpy.path.abspath()` ile çöz.
+Also: **a Blender path is relative, like `//x.dds`**; on Windows
+`os.path.basename('//x.dds')` takes it for a UNC root and returns an **empty string**.
+Resolve it with `bpy.path.abspath()`.
 
 ---
 
-## 9. Ölçülmüş asansör kabini (v_coroner BodyStorage)
+## 9. Measured elevator cab (v_coroner BodyStorage)
 
-MLO-yerel koordinat, ışın ızgarasıyla ölçüldü:
+MLO-local coordinates, measured with a ray grid:
 
-| yüzey | konum |
+| surface | position |
 |---|---|
-| sol / sağ duvar | x = 14.485 / 18.212 |
-| tel kafes (arka) | y = **35.196** — `ah_meshfence1`, tek düzlem, 2 yüz |
-| dolu duvar | y = 35.12 → kafesle arasında **7.6 cm** var |
-| ön (açık ağız) | y ≈ 38.10 |
-| zemin / tavan | z = −9.707 / −6.920 |
-| oda ağzının dışı | tavan −6.51 · zemin −9.70 · duvar x 13.44 / 25.86 |
+| left / right wall | x = 14.485 / 18.212 |
+| wire cage (back) | y = **35.196** — `ah_meshfence1`, a single plane, 2 faces |
+| solid wall | y = 35.12 → **7.6 cm** between it and the cage |
+| front (open mouth) | y ≈ 38.10 |
+| floor / ceiling | z = −9.707 / −6.920 |
+| outside the room mouth | ceiling −6.51 · floor −9.70 · wall x 13.44 / 25.86 |
 
-⛔ **Asansörün kendi ışığı YOKTUR:** `v_2_bds_mesh_lift.ydr`'de `<Lights>`
-düğümü **var ama boş**. Kabine menzili yeten vanilla ışık sayısı ölçüldü:
-**0**. Aydınlatma tamamen senin koyduğun ışıklardan gelir.
+⛔ **The elevator has NO light of its own:** `v_2_bds_mesh_lift.ydr` has a `<Lights>`
+node **but it is empty**. Number of vanilla lights whose range reaches the cab, measured:
+**0**. The lighting comes entirely from the lights you place.

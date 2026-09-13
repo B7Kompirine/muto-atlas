@@ -1,136 +1,134 @@
-# Freemode kıyafet ekleme / 98-kemikli ped'e giysi taşıma / ped ölçekleme
+# Adding freemode clothing / moving a garment to a 98-bone ped / ped scaling
 
-**Ne zaman okunur:** kendi giysini `mp_m/f_freemode_01`'e ekleyeceksin; freemode giysisini yerel ped'e taşıyacaksın; export sessizce bozuk çıkıyor; ped boyunu değiştireceksin; topuklu ayakkabıda boy artsın (§8).
-**When to read:** adding your own garment to `mp_m/f_freemode_01`; moving a freemode garment onto a local ped; the export is silently broken; changing ped height; height increase with heels.
-**Kaynak:** `notlar/03` §2, §4-7 (Sollumz Discord videoları, 2026-08) · **Ölçüm:** video; ağırlık kuralları (4 kemik / 1.0) bizim ölçümümüzle birebir
-**Önce:** `branches/clothing/_branch.md` · gövde › `trunk/tool-pitfalls.md` §1
+**When to read:** you are adding your own garment to `mp_m/f_freemode_01`; moving a freemode garment onto a local ped; the export comes out silently broken; changing ped height; making the ped taller in heels (§8).
+**Source:** `notes/03` §2, §4-7 (Sollumz Discord videos, 2026-08) · **Measured:** video; the weight rules (4 bones / 1.0) match our measurement exactly
+**Read first:** `branches/clothing/_branch.md` · trunk › `trunk/tool-pitfalls.md` §1
 
 ---
 
-## 2. Ağırlık boyama — GTA'nın sert kuralları (`IbZ4xSCZt6I`)
+## 2. Weight painting — GTA's hard rules (`IbZ4xSCZt6I`)
 
-Atlas §7'deki ölçümlerle **birebir** aynı, bağımsız kaynaktan doğrulanmış:
+**Exactly** the same as the measurements in atlas §7, confirmed from an independent source:
 
-- **Vertex başına ağırlık toplamı tam `1.0`** olmalı.
-- **Vertex başına en fazla 4 kemik.** Fazlası export'ta **sessizce kesilir**.
-- Blender karşılıkları (Weight Paint → Weights):
-  - **Normalize All** (all groups, *lock active* kapalı) → toplamı 1.0 yapar
-  - **Limit Total = 4** (all groups) → 4 kemik kuralını uygular
-  - **Smooth** (all groups, 1-2 kez) → kaba geçişleri yumuşatır
+- **The weight sum per vertex** must be exactly `1.0`.
+- **At most 4 bones per vertex.** Extra ones are **silently cut** on export.
+- Blender equivalents (Weight Paint → Weights):
+  - **Normalize All** (all groups, *lock active* off) → makes the sum 1.0
+  - **Limit Total = 4** (all groups) → applies the 4-bone rule
+  - **Smooth** (all groups, 1-2 times) → softens rough transitions
 
-### Kemik sayısı gerçeği (atlas §8 ile aynı)
-- **`mp_m/f_freemode_01` = 128 kemik**
-- **Tipik yerel/hikâye ped'i = 98 kemik**
-- Fark: `MH_hair_scale` + ön/arka etek roll'ları (`SM_L/R_Front/BackSkirtRoll`)
-  + bir miktar yüz kemiği.
+### Bone count facts (same as atlas §8)
+- **`mp_m/f_freemode_01` = 128 bones**
+- **Typical local/story ped = 98 bones**
+- Difference: `MH_hair_scale` + front/back skirt rolls (`SM_L/R_Front/BackSkirtRoll`)
+  + some face bones.
 
-**Freemode giysisini 98 kemikli bir ped'e taşımanın iki yolu:**
-1. **Ağırlık transferi (önerilen)** — giysiyi **external skeleton OLMADAN** import et
-   → vertex grupları boş gelir → hedef ped'den ağırlık aktar.
-   Aktarım yalnız ped'in **gerçekten sahip olduğu** kemikleri kullanır.
-2. **Elle silme** — eksik kemikleri (etek roll'ları) sil, sonra **Normalize All** ile
-   kalan ağırlığı yeniden dağıt (`thigh_roll` 1.0'a çıkar, geçiş sert olur, düzelt).
+**Two ways to move a freemode garment onto a 98-bone ped:**
+1. **Weight transfer (recommended)** — import the garment **WITHOUT an external skeleton**
+   → the vertex groups come in empty → transfer weights from the target ped.
+   The transfer only uses the bones the ped **actually has**.
+2. **Manual deletion** — delete the missing bones (skirt rolls), then redistribute the
+   remaining weight with **Normalize All** (`thigh_roll` goes up to 1.0 and the transition gets hard; fix it).
 
-### Ağırlık transferi yordamı
-1. Hedef ped'in **upper + lower** mesh'lerini çoğalt → `Ctrl+J` ile birleştir.
-2. Edit Mode → **Merge by Distance** (birleşmemiş vertex transferi bozar),
-   sharp edges aç.
-3. **Önce gövdeyi**, sonra `Shift` ile giysiyi seç (gövde koyu turuncu, giysi açık).
+### Weight transfer procedure
+1. Duplicate the target ped's **upper + lower** meshes → join them with `Ctrl+J`.
+2. Edit Mode → **Merge by Distance** (unmerged vertices break the transfer),
+   turn on sharp edges.
+3. Select **the body first**, then the garment with `Shift` (body dark orange, garment light).
 4. Weight Paint → Weights → **Transfer Weights**:
-   - Vertex Mapping: **Nearest Vertex** (öznel, denenebilir)
-   - ⚠️ **Source Layers = `By Name`** (Active Layer DEĞİL)
+   - Vertex Mapping: **Nearest Vertex** (subjective, others are worth trying)
+   - ⚠️ **Source Layers = `By Name`** (NOT Active Layer)
    - Destination = All Layers
-5. Boş vertex gruplarını temizle — **Sushi Cleanups** eklentisi:
+5. Clean up empty vertex groups — the **Sushi Cleanups** add-on:
    *delete from active object → empty vertex groups*.
-6. Yaygın kusur: **omurga kemikleri kola sızar** → kol kalkınca kolun altı gövdeye
-   yapışır. Bol kesim giysilerde daha sık. Elle temizle, sonra yeniden normalize et.
+6. Common defect: **spine bones leak into the arm** → when the arm is raised, the underside of the arm sticks
+   to the body. More frequent on loose-cut garments. Clean it by hand, then normalize again.
 
-## 4. Freemode giysi üretimi 2025 (`uBBHJ4vG4fM`)
+## 4. Freemode garment production 2025 (`uBBHJ4vG4fM`)
 
-**Doku adlandırma kuralı** dalın tamamında geçerlidir → `branches/clothing/_branch.md`.
+**The texture naming rule** holds for the whole branch → `branches/clothing/_branch.md`.
 
-### Diğer adımlar
-- Başlamadan **`Ctrl+A` → Apply All Transforms**.
-- Materyal **basit** olmalı (yalnız image node'lar) ya da Sollumz `ped` shader'ını
-  sıfırdan kur (yazarın tercihi).
-- **spec ve bump gömülür (embed), diffuse GÖMÜLMEZ** — oyunda doku değiştirmek için.
-- LOD: Sollumz **LOD Tools → referans mesh seç → Medium + Low → Generate LODs**,
-  varsayılan decimation **0.6**. Elle yapılacaksa: çoğalt → Decimate → apply →
-  mesh'i anlaşılır bir adla adlandır → orijinalin Medium/Low yuvasına ata.
-- Kendi drawable model'ini import edilen **vanilla drawable'ın altına** taşı,
-  vanilla mesh'i sil.
-- **İki UV map zorunlu**: `UVMap 0` = doku UV'si, **`UVMap 1` = kan haritalaması**
-  (ona dokunma).
+### Other steps
+- Before starting, **`Ctrl+A` → Apply All Transforms**.
+- The material must be **simple** (image nodes only), or build the Sollumz `ped` shader
+  from scratch (the author's preference).
+- **spec and bump are embedded, diffuse is NOT embedded** — so the texture can be swapped in game.
+- LOD: Sollumz **LOD Tools → pick the reference mesh → Medium + Low → Generate LODs**,
+  default decimation **0.6**. To do it by hand: duplicate → Decimate → apply →
+  give the mesh a clear name → assign it to the original's Medium/Low slot.
+- Move your own drawable model **under the imported vanilla drawable**,
+  and delete the vanilla mesh.
+- **Two UV maps are required**: `UVMap 0` = texture UV, **`UVMap 1` = blood mapping**
+  (do not touch it).
 
-## 5. Export tuzakları — sessiz kıranlar (`IbZ4xSCZt6I`, `Jm3Ps157z3s`)
+## 5. Export pitfalls — silent breakers (`IbZ4xSCZt6I`, `Jm3Ps157z3s`)
 
 - ⛔ **Export → Drawable → `Mesh Domain` = `Face Corner`.**
-  `Vertex` seçeneği **yalnız MP freemode kafaları** içindir (vertex sırası önemli).
-  Yanlış seçilirse sessizce bozuk çıkar. Yazar bunu ilk çekimde kaçırıp
-  videoyu yeniden kaydetmek zorunda kalmış.
-- **Non-streamed ped'de hiçbir doku gömülü OLMAMALI** — hepsi ilgili `.ytd`'ye gider.
-  Export klasöründe bir `textures/` klasörü oluştuysa bir yerde embed kalmış demektir.
-  Doğru çıktı: yalnız `<ped>.ydd.xml`.
-- **Bileşen export'unda `Exclude Skeleton` KAPALI** (kafa için gerekli).
-  **Ped prop export'unda `Exclude Skeleton` AÇIK.**
-- `Alt+P` → **Clear and Keep Transformation** ile giysiyi hiyerarşiden çıkar,
-  sonra shift-drag ile hedef `upper_00X`'in altına at.
+  The `Vertex` option is **only for MP freemode heads** (vertex order matters).
+  With the wrong choice the export comes out silently broken. The author missed this in the first take
+  and had to record the video again.
+- **A non-streamed ped must have NO embedded texture** — they all go into the matching `.ytd`.
+  If a `textures/` folder appeared in the export folder, something is still embedded somewhere.
+  Correct output: only `<ped>.ydd.xml`.
+- **`Exclude Skeleton` OFF for a component export** (needed for the head).
+  **`Exclude Skeleton` ON for a ped prop export.**
+- `Alt+P` → **Clear and Keep Transformation** to take the garment out of the hierarchy,
+  then shift-drag it under the target `upper_00X`.
 
-## 6. Ped vertex renkleri (`uVlBINnNTGA`)
+## 6. Ped vertex colours (`uVlBINnNTGA`)
 
-Object Data Properties → **Color Attributes** (İngiliz yazımı: **`Colour`**):
+Object Data Properties → **Color Attributes** (British spelling: **`Colour`**):
 
-| ad | domain | tip | değer | ne işe yarar |
+| name | domain | type | value | what it does |
 |---|---|---|---|---|
-| **`Colour 0`** | Face Corner | Byte Color | hex **`FF8000`** (turuncu) | **oyun içi aydınlatma**. Yoksa güneşte parça garip koyu gölgelenir. |
-| **`Colour 1`** | Face Corner | Byte Color | hex **`000000`**, **Alpha = 0** | **rüzgâr + ter efektleri**. Alfa > 0 ise giysi rüzgârda sallanır / gereksiz parlar. |
+| **`Colour 0`** | Face Corner | Byte Color | hex **`FF8000`** (orange) | **in-game lighting**. Without it the part is shaded strangely dark in sunlight. |
+| **`Colour 1`** | Face Corner | Byte Color | hex **`000000`**, **Alpha = 0** | **wind + sweat effects**. With alpha > 0 the garment sways in the wind / shines needlessly. |
 
-- Neredeyse her ped `.ydd`'sinde **iki tane** olur.
-- **Emissive giysi**: `Colour 0` → pembe (video `FF00BF` civarı okuyor, tam değeri
-  gözle doğrula), `Colour 1` aynı kalır; materyali Shader Tools ile **`ped_emissive`**
-  yap; `value parameters` altındaki **emissive multiplier** (varsayılan 1) ile
-  parlaklığı artır.
-- Bazı yerel ped'ler sarı-yeşil paletli gelir; sorun değil, gerekirse hepsini
-  `FF8000` yap. Yüzdeki boyama subsurface-scattering benzeri aydınlatma farkıdır.
-- ⚠️ 360 spin videosunda (`ahPJhRZPiZQ`): **emissive alanların vertex rengi BEYAZ
-  olmalı**, yoksa emissive çalışmıyor. Bu yüzden emissive parça mesh'ten `Y` ile
-  ayrılır — vertex renkleri parça bazında farklı olabilsin diye.
+- Almost every ped `.ydd` has **two** of them.
+- **Emissive garment**: `Colour 0` → pink (the video reads about `FF00BF`; verify the exact value
+  by eye), `Colour 1` stays the same; make the material **`ped_emissive`** with Shader Tools;
+  raise the brightness with the **emissive multiplier** (default 1) under `value parameters`.
+- Some local peds come with a yellow-green palette; that is fine — set them all to
+  `FF8000` if needed. The painting on the face is a subsurface-scattering-like lighting difference.
+- ⚠️ In the 360 spin video (`ahPJhRZPiZQ`): **the vertex colour of emissive areas must be WHITE**,
+  otherwise emissive does not work. That is why the emissive part is separated from the mesh with `Y` —
+  so vertex colours can differ per part.
 
-## 7. Ped ölçekleme (`LfyCgqZMr3I`)
+## 7. Ped scaling (`LfyCgqZMr3I`)
 
-1. Zemin hizasına bir **plane** koy → `Shift+S` → **Cursor to Selected**
-   → pivot'u **3D Cursor** yap.
-2. Pose Mode → `SKEL_ROOT`'un **içindeki** her şeyi seç (pelvis vs.) → ölçekle.
-   Ölçek değerini **kopyala**.
-3. **Kafa iskeleti ayrı bir armature'dır** — aynı işlemi orada da yap ve
-   **aynı ölçek değerini** yapıştır.
-4. **Her bileşende ve HER LOD'da** (high/medium/low) **Armature modifier'ı apply et**.
-5. İki iskelette de Pose Mode → `A` → `Ctrl+A` → **Apply Pose as Rest Pose**.
-6. Export: Select Hierarchy → **Selected Objects AÇIK**, **Exclude Skeleton KAPALI**.
-7. Orijinal (değiştirilmemiş) `.yft`'i al; `.ydd.xml`'deki **`<Skeleton>`** bloğunu
-   `.yft.xml`'e kopyala.
-- ⚠️ **Bilinen kusur:** koşarken sağa-sola **salınım** olur, çünkü `SKEL_ROOT`'un
-  kendisi ölçeklenmiyor.
-- ⚠️ **Articulate iskeletli hayvan ped'lerinde çalışmıyor** (atlas §10'daki
-  dört ayaklı iskelet notlarıyla tutarlı).
+1. Put a **plane** at floor level → `Shift+S` → **Cursor to Selected**
+   → set the pivot to **3D Cursor**.
+2. Pose Mode → select everything **inside** `SKEL_ROOT` (pelvis etc.) → scale.
+   **Copy** the scale value.
+3. **The head skeleton is a separate armature** — do the same there and
+   paste **the same scale value**.
+4. **Apply the Armature modifier on every component and on EVERY LOD** (high/medium/low).
+5. On both skeletons: Pose Mode → `A` → `Ctrl+A` → **Apply Pose as Rest Pose**.
+6. Export: Select Hierarchy → **Selected Objects ON**, **Exclude Skeleton OFF**.
+7. Take the original (unchanged) `.yft`; copy the **`<Skeleton>`** block from the `.ydd.xml`
+   into the `.yft.xml`.
+- ⚠️ **Known defect:** there is a side-to-side **sway** when running, because `SKEL_ROOT`
+  itself is not scaled.
+- ⚠️ **Does not work on animal peds with articulated skeletons** (consistent with the
+  quadruped skeleton notes in atlas §10).
 
 
 ---
 
-## 8. Ayakkabıya göre boy + saç ölçekleme (`.ymt` tarafı)
+## 8. Height by shoes + hair scaling (the `.ymt` side)
 
-Topuklu ayakkabıda ped'in boyunun artması `.yed`'den **değil**, `.ymt`'den
-gelir. `.yed` tarafının ayrıntısı (`MP_HEELS.EXPR`, bileşen sırası, jiggle) bu sürümde
-yok; temel adımlar aşağıda.
+The ped getting taller in heels comes **not** from the `.yed` but from the
+`.ymt`. The details of the `.yed` side (`MP_HEELS.EXPR`, component order, jiggle) are not
+in this release; the basic steps are below.
 
-1. `MP_HEELS.EXPR`'i `AMBIENT.YED`'den kopyala → FEET bileşeni olarak yapıştır
-   → **`FEET_000_U`** diye yeniden adlandır (**sıraya dikkat**).
+1. Copy `MP_HEELS.EXPR` from `AMBIENT.YED` → paste it as the FEET component
+   → rename it **`FEET_000_U`** (**mind the order**).
 2. `AP_M.XML` → **`CreatureMetadataName` = `mp_creaturemetadata`**.
-   Saç ölçeklemeyi **ve** boy ayarını açan değer budur.
-3. **YMTEditor** (grzybeek) ile `.ymt`'yi aç → feet bileşeni → *View component
-   properties* → **`hash_07AE529D`** satırında **5 sayı** vardır;
-   **yalnız en sağdaki** boy ofsetidir. Ped havada kalıyorsa **negatif** ver.
-- ⚠️ Boy için yeni feet bileşeni eklerken **`.yed`'i değiştirmeye gerek yok** —
-  yalnız `.ymt` değeri.
+   This is the value that turns on hair scaling **and** the height offset.
+3. Open the `.ymt` with **YMTEditor** (grzybeek) → feet component → *View component
+   properties* → the **`hash_07AE529D`** row has **5 numbers**;
+   **only the rightmost** is the height offset. If the ped floats in the air, give a **negative** value.
+- ⚠️ When adding a new feet component for height, **there is no need to change the `.yed`** —
+  only the `.ymt` value.
 
-**Ölçüm:** NcProductions `.yed` Part 2 (`bxmVJfL8KcA`), `notlar/07` §4, 2026-09.
+**Measured:** NcProductions `.yed` Part 2 (`bxmVJfL8KcA`), `notes/07` §4, 2026-09.

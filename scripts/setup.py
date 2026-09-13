@@ -1,39 +1,41 @@
 #!/usr/bin/env python3
-"""setup.py — kurulum. 28 katmanın tamamını KULLANICININ KENDİ verisinden üretir.
+"""setup.py — setup. Builds all 28 layers from the USER'S OWN data.
 
   python scripts/setup.py --save --gta "<GTA V>" --codewalker "<...\\CodeWalker.Core.dll>" \\
-                          --resources "<sunucu>/resources"
-  python scripts/setup.py                # kayıtlı yollarla tekrar çalıştır
-  python scripts/setup.py --plan         # hiçbir şey yazma, sadece durumu göster
+                          --resources "<server>/resources"
+  python scripts/setup.py                # run again with the saved paths
+  python scripts/setup.py --plan         # write nothing, only show the state
 
-TASARIM İLKESİ
---------------
-Bu aracı kullanan HERKESTE GTA V ve CodeWalker vardır — bir GTA modlama
-aracıdır. O yüzden eksik olan şey veri değil, **yol bilgisidir.** Kurulum
-onu bir kez sorar, `data/config.json`'a yazar ve bir daha sormaz.
+DESIGN PRINCIPLE
+----------------
+EVERYONE who uses this tool has GTA V and CodeWalker — it is a GTA modding
+tool. So what is missing is not data but **path information.** Setup asks for
+it once, writes it to `data/config.json` and never asks again.
 
-Ağır katmanlar bu yüzden İSTEĞE BAĞLI DEĞİL, VARSAYILANDIR. Yol biliniyorsa
-kurulur. Kullanıcının elindeki gerçek veriyi kullanmamak, aracın var oluş
-sebebine aykırıdır: veri yoksa sorgu EXIT 2 döner ve model TAHMİNE düşer.
+That is why the heavy layers are NOT OPTIONAL, THEY ARE THE DEFAULT. If the
+path is known they are built. Not using the real data the user already has
+goes against the reason the tool exists: without data a query returns EXIT 2
+and the model falls back to GUESSING.
 
-NE DAĞITILIR, NE DAĞITILMAZ
----------------------------
-Bu public sürümde oyun verisi DAĞITILMAZ: bütün katmanlar kullanıcının kendi
-GTA V kurulumundan ve kendi sunucusundan yerelde üretilir. Depoda yalnız elle
-yazılmış üç küçük tablo durur (collision_materials, collision_flag_presets,
-light_presets).
+WHAT IS DISTRIBUTED, WHAT IS NOT
+--------------------------------
+This public release does NOT DISTRIBUTE game data: every layer is built
+locally from the user's own GTA V install and their own server. The repository
+only holds three small hand-written tables (collision_materials,
+collision_flag_presets, light_presets).
 
-Hiçbir durumda dağıtılmayan üç şey:
-  1. `entities.db` (214 MB) — TÜRETİLMİŞ; kurulumda yerelde üretilir.
-  2. `framework_api.tsv.gz` — KULLANICININ KENDİ SUNUCUSU. Her net event,
-     her export, dosya yolu ve satır numarasıyla. Yayınlanması gizlilik
-     değil GÜVENLİK sorunudur. Herkes kendi sunucusundan üretir.
-  3. `config.json` / `assets.meta.json` / `dumps.meta.json` — yerel yol
-     ve kullanıcı adı içerir.
+Three things that are never distributed:
+  1. `entities.db` (214 MB) — DERIVED; built locally during setup.
+  2. `framework_api.tsv.gz` — the USER'S OWN SERVER. Every net event and
+     every export, with file path and line number. Publishing it is not a
+     privacy problem but a SECURITY problem. Everyone builds it from their
+     own server.
+  3. `config.json` / `assets.meta.json` / `dumps.meta.json` — contain local
+     paths and the user name.
 
-⚠ SÜRÜM: katmanlar üretildikleri oyun sürümüne bağlıdır (ölçüldü: bir
-kurulumda 1271 adet `m26_*` arketip var, eski bir dump'ta 0). Oyun
-güncellenince `/asset-build`.
+⚠ VERSION: layers are tied to the game version they were built from (measured:
+one install has 1271 `m26_*` archetypes, an old dump has 0). When the game
+updates, run `/asset-build`.
 """
 from __future__ import annotations
 
@@ -57,85 +59,89 @@ ROOT = os.path.dirname(HERE)
 DATA = os.path.join(ROOT, "data")
 PY = sys.executable or "python"
 
-# Aday listesi TEK YERDE: paths.py. Burada ikinci bir kopya tutulursa biri
-# guncellenip digeri unutulur -- CodeWalker icin 29, GTA icin 23 kopya vardi.
+# The candidate list lives in ONE PLACE: paths.py. A second copy kept here gets
+# updated while the other is forgotten -- there were 29 copies for CodeWalker
+# and 23 for GTA.
 from paths import REGISTERED as _REGISTERED_PATHS  # noqa: E402
 
-GTA_ADAYLARI = _REGISTERED_PATHS["gta"][3]
+GTA_CANDIDATES = _REGISTERED_PATHS["gta"][3]
 
-# (dosya, kademe, aciklama, uretim komutu)
-KATMANLAR = [
-    ("natives.index.tsv", "hafif", "7191 native + apiset + imza",
+# (file, tier, description, build command)
+# tier: "light" = downloaded / small, "heavy" = built from the user's GTA V install.
+# audit_plugin.py reads this list as LAYERS (it only counts it).
+LAYERS = [
+    ("natives.index.tsv", "light", "7191 natives + apiset + signature",
      "python scripts/build_index.py --fetch"),
-    ("peds_meta.tsv.gz", "hafif", "1109 ped: klip sozlugu, expression, clipset", "DUMP"),
-    ("weapons.tsv.gz", "hafif", "184 silah", "DUMP"),
-    ("weapon_parts.tsv.gz", "hafif", "634 bilesen + livery", "DUMP"),
-    ("vehicles.tsv.gz", "hafif", "921 arac: handlingId, modkit", "DUMP"),
-    ("mlo_interiors.tsv.gz", "hafif", "853 MLO konumu", "DUMP"),
-    ("ipls.tsv.gz", "hafif", "895 IPL + sinir kutusu", "DUMP"),
-    ("world_objects.tsv.gz", "hafif", "33912 dunya nesnesi + rotasyon", "DUMP"),
-    ("framework_api.tsv.gz", "hafif", "QBCore/ox export-event indeksi", "FRAMEWORK"),
-    ("archetypes.tsv.gz", "agir", "316k arketip (kapi, pivot, fizik)",
+    ("peds_meta.tsv.gz", "light", "1109 peds: clip dictionary, expression, clipset", "DUMP"),
+    ("weapons.tsv.gz", "light", "184 weapons", "DUMP"),
+    ("weapon_parts.tsv.gz", "light", "634 components + liveries", "DUMP"),
+    ("vehicles.tsv.gz", "light", "921 vehicles: handlingId, modkit", "DUMP"),
+    ("mlo_interiors.tsv.gz", "light", "853 MLO locations", "DUMP"),
+    ("ipls.tsv.gz", "light", "895 IPLs + bounding box", "DUMP"),
+    ("world_objects.tsv.gz", "light", "33912 world objects + rotation", "DUMP"),
+    ("framework_api.tsv.gz", "light", "QBCore/ox export-event index", "FRAMEWORK"),
+    ("archetypes.tsv.gz", "heavy", "316k archetypes (door, pivot, physics)",
      "powershell -File scripts/build_archetypes.ps1"),
-    # entities.tsv.gz depoda gelir; .db ondan uretilir. Tsv yoksa (ya da
-    # kullanici kendi surumunden istiyorsa) once CodeWalker ile cikarilir.
-    ("entities.db", "agir", "3M dunya yerlesimi (entities.tsv.gz'den kurulur)",
+    # entities.tsv.gz comes with the repository; the .db is built from it. If
+    # the tsv is missing (or the user wants it from their own version) it is
+    # first extracted with CodeWalker.
+    ("entities.db", "heavy", "3M world placements (built from entities.tsv.gz)",
      "powershell -File scripts/build_entities.ps1 && python scripts/build_entities_db.py"),
-    ("ymap_lod.tsv.gz", "agir", "3.1M ymap LOD zinciri",
+    ("ymap_lod.tsv.gz", "heavy", "3.1M ymap LOD chain",
      "powershell -File scripts/build_ymap_lod.ps1"),
-    ("clips.tsv.gz", "agir", "316k klip: sure + kemik",
+    ("clips.tsv.gz", "heavy", "316k clips: duration + bones",
      "powershell -File scripts/build_clips.ps1"),
-    ("skeletons.tsv.gz", "agir", "478k kemik kaydi",
+    ("skeletons.tsv.gz", "heavy", "478k bone records",
      "powershell -File scripts/build_rigs.ps1"),
-    ("expressions.tsv.gz", "agir", "2338 expression (.yed)",
+    ("expressions.tsv.gz", "heavy", "2338 expressions (.yed)",
      "powershell -File scripts/build_rigs.ps1"),
-    ("ytyp_extensions.tsv.gz", "agir", "64k ytyp extension",
+    ("ytyp_extensions.tsv.gz", "heavy", "64k ytyp extensions",
      "powershell -File scripts/build_extensions.ps1"),
-    ("ptfx_effects.tsv.gz", "agir", "2549 partikul efekti",
+    ("ptfx_effects.tsv.gz", "heavy", "2549 particle effects",
      "powershell -File scripts/build_ptfx.ps1"),
-    ("shaders.tsv", "agir", "249 shader", "python scripts/build_shaders.py"),
-    ("collision_materials.tsv", "agir", "185 collision materyali", "(elle)"),
-    ("decal_types.tsv", "agir", "194 decal tipi", "python scripts/build_decals.py"),
-    ("procedural.tsv", "agir", "255 procedural kayit",
+    ("shaders.tsv", "heavy", "249 shaders", "python scripts/build_shaders.py"),
+    ("collision_materials.tsv", "heavy", "185 collision materials", "(manual)"),
+    ("decal_types.tsv", "heavy", "194 decal types", "python scripts/build_decals.py"),
+    ("procedural.tsv", "heavy", "255 procedural records",
      "powershell -File scripts/build_procedural.ps1"),
-    ("anims.tsv.gz", "hafif", "269k animasyon adi", "DUMP"),
-    ("props.tsv.gz", "hafif", "21631 spawn edilebilir prop", "DUMP"),
-    ("scenarios.tsv.gz", "hafif", "247 senaryo", "DUMP"),
+    ("anims.tsv.gz", "light", "269k animation names", "DUMP"),
+    ("props.tsv.gz", "light", "21631 spawnable props", "DUMP"),
+    ("scenarios.tsv.gz", "light", "247 scenarios", "DUMP"),
 ]
 
 
-def var(f):
+def have(f):
     return os.path.exists(os.path.join(DATA, f))
 
 
-def calistir(baslik, cmd, plan):
-    print(f"\n>>> {baslik}")
+def run_step(title, cmd, plan):
+    print(f"\n>>> {title}")
     print(f"    {' '.join(cmd) if isinstance(cmd, list) else cmd}")
     if plan:
-        print("    (--plan: calistirilmadi)")
+        print("    (--plan: not run)")
         return None
     try:
         r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
                            encoding="utf-8", errors="replace", timeout=1800)
-        cikti = (r.stdout or "").strip().split("\n")
-        for l in cikti[-6:]:
+        output = (r.stdout or "").strip().split("\n")
+        for l in output[-6:]:
             if l.strip():
                 print(f"    {l}")
         if r.returncode != 0:
-            hata = (r.stderr or "").strip().split("\n")
-            for l in hata[-4:]:
+            errors = (r.stderr or "").strip().split("\n")
+            for l in errors[-4:]:
                 if l.strip():
                     print(f"    ! {l}")
         return r.returncode
     except Exception as e:
-        print(f"    ! CALISTIRILAMADI: {e}")
+        print(f"    ! COULD NOT RUN: {e}")
         return 1
 
 
 CONFIG = os.path.join(DATA, "config.json")
 
 
-def config_oku():
+def read_config():
     if os.path.exists(CONFIG):
         try:
             return json.load(open(CONFIG, encoding="utf-8-sig"))
@@ -144,13 +150,13 @@ def config_oku():
     return {}
 
 
-def config_yaz(gta, cw, resources, lang=None):
-    """Yollari kaydeder ki bir daha sorulmasin.
+def write_config(gta, cw, resources, lang=None):
+    """Saves the paths so they are not asked for again.
 
-    data/ .gitignore'da oldugu icin bu dosya asla repoya girmez - kisisel
-    yol bilgisi paylasilmis olmaz.
+    data/ is in .gitignore, so this file never enters the repository - personal
+    path information is not shared.
     """
-    d = config_oku()
+    d = read_config()
     if gta:
         d["gtaFolder"] = gta
     if cw:
@@ -162,15 +168,15 @@ def config_yaz(gta, cw, resources, lang=None):
     os.makedirs(DATA, exist_ok=True)
     with open(CONFIG, "w", encoding="utf-8") as fh:
         json.dump(d, fh, indent=2, ensure_ascii=False)
-    print(f"\n  Yollar kaydedildi -> {CONFIG}")
-    print("  Bir dahaki calistirmada sorulmaz.")
+    print(f"\n  Paths saved -> {CONFIG}")
+    print("  They will not be asked for on the next run.")
 
 
-def gta_bul(verilen):
-    if verilen:
-        return verilen if os.path.isdir(verilen) else None
+def find_gta(given):
+    if given:
+        return given if os.path.isdir(given) else None
     import paths
-    c, _ = paths.resolve("gta")          # config.json + bilinen adaylar, tek kaynak
+    c, _ = paths.resolve("gta")          # config.json + known candidates, single source
     if c:
         return c
     meta = os.path.join(DATA, "assets.meta.json")
@@ -181,17 +187,17 @@ def gta_bul(verilen):
                 return g
         except Exception:
             pass
-    for p in GTA_ADAYLARI:
+    for p in GTA_CANDIDATES:
         if os.path.isdir(p):
             return p
     return None
 
 
-def cw_bul(verilen):
-    if verilen:
-        return verilen if os.path.exists(verilen) else None
+def find_codewalker(given):
+    if given:
+        return given if os.path.exists(given) else None
     import paths
-    c, _ = paths.resolve("codewalker")   # config.json + bilinen adaylar, tek kaynak
+    c, _ = paths.resolve("codewalker")   # config.json + known candidates, single source
     if c:
         return c
     meta = os.path.join(DATA, "assets.meta.json")
@@ -202,11 +208,11 @@ def cw_bul(verilen):
                 return c
         except Exception:
             pass
-    for kok in (os.path.expanduser("~/Desktop"), os.path.expanduser("~")):
-        if not os.path.isdir(kok):
+    for base in (os.path.expanduser("~/Desktop"), os.path.expanduser("~")):
+        if not os.path.isdir(base):
             continue
-        for dirp, dirs, files in os.walk(kok):
-            if dirp.count(os.sep) - kok.count(os.sep) > 3:
+        for dirp, dirs, files in os.walk(base):
+            if dirp.count(os.sep) - base.count(os.sep) > 3:
                 dirs[:] = []
                 continue
             if "CodeWalker.Core.dll" in files:
@@ -215,139 +221,139 @@ def cw_bul(verilen):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="fivem-natives kademeli kurulum")
-    ap.add_argument("--resources", help="FiveM sunucusunun resources klasoru (framework indeksi icin)")
-    ap.add_argument("--dump", help="gta-v-data-dumps klasoru (yoksa indirilir)")
-    ap.add_argument("--gta", help="GTA V kurulum klasoru")
-    ap.add_argument("--codewalker", help="CodeWalker.Core.dll yolu")
-    ap.add_argument("--plan", action="store_true", help="hicbir sey yazma, sadece raporla")
-    ap.add_argument("--light-only", "--hafif-only", dest="hafif_only", action="store_true",
-                    help="skip layers built from GTA V / agir katmanlari kurma")
+    ap = argparse.ArgumentParser(description="fivem-natives tiered setup")
+    ap.add_argument("--resources", help="the FiveM server's resources folder (for the framework index)")
+    ap.add_argument("--dump", help="gta-v-data-dumps folder (downloaded if missing)")
+    ap.add_argument("--gta", help="GTA V install folder")
+    ap.add_argument("--codewalker", help="path to CodeWalker.Core.dll")
+    ap.add_argument("--plan", action="store_true", help="write nothing, only report")
+    ap.add_argument("--light-only", "--hafif-only", dest="light_only", action="store_true",
+                    help="skip the heavy layers built from GTA V")
     add_lang_arg(ap)
     ap.add_argument("--save", action="store_true",
-                    help="verilen yollari data/config.json'a kaydet (bir daha sorulmaz)")
+                    help="save the given paths to data/config.json (not asked again)")
     a = ap.parse_args()
     set_lang(getattr(a, "lang", None))
 
     os.makedirs(DATA, exist_ok=True)
     dump = a.dump or os.path.join(ROOT, "data", "_raw", "dumps")
-    gta = gta_bul(a.gta)
-    cw = cw_bul(a.codewalker)
-    kayitli = config_oku()
-    resources = a.resources or kayitli.get("resources")
+    gta = find_gta(a.gta)
+    cw = find_codewalker(a.codewalker)
+    saved = read_config()
+    resources = a.resources or saved.get("resources")
     if a.save and not a.plan:
-        config_yaz(gta, cw, resources, getattr(a, "lang", None))
+        write_config(gta, cw, resources, getattr(a, "lang", None))
 
     print("=" * 68)
-    print("fivem-natives — kurulum")
+    print("fivem-natives — setup")
     print("=" * 68)
     print(f"  plugin      : {ROOT}")
-    print(f"  GTA V       : {gta or 'BULUNAMADI'}")
-    print(f"  CodeWalker  : {cw or 'BULUNAMADI'}")
-    print(f"  sunucu      : {resources or '(verilmedi)'}")
+    print(f"  GTA V       : {gta or 'NOT FOUND'}")
+    print(f"  CodeWalker  : {cw or 'NOT FOUND'}")
+    print(f"  server      : {resources or '(not given)'}")
     print(f"  dump        : {dump}")
-    eksik0 = [f for f, k, *_ in KATMANLAR if not var(f)]
-    print(f"  durum       : {len(KATMANLAR) - len(eksik0)}/{len(KATMANLAR)} katman kurulu")
+    missing0 = [f for f, k, *_ in LAYERS if not have(f)]
+    print(f"  state       : {len(LAYERS) - len(missing0)}/{len(LAYERS)} layers installed")
 
-    # --- HAFIF KADEME ---
+    # --- LIGHT TIER ---
     print("\n" + "-" * 68)
-    print("1) INTERNETTEN INEN KATMANLAR")
+    print("1) LAYERS DOWNLOADED FROM THE INTERNET")
     print("-" * 68)
 
-    if not var("natives.index.tsv"):
-        calistir("Native veritabani (internet)",
+    if not have("natives.index.tsv"):
+        run_step("Native database (internet)",
                  [PY, "scripts/build_index.py", "--fetch"], a.plan)
     else:
-        print("\n>>> Native veritabani  [zaten kurulu]")
+        print("\n>>> Native database  [already installed]")
 
-    dump_eksik = [f for f, k, _d, c in KATMANLAR if c == "DUMP" and not var(f)]
-    if dump_eksik:
-        # --fetch DAIMA verilir: var olan dosyalari atlar, EKSIK olani indirir.
-        # "klasor doluysa indirme" mantigi, kaynak listesine dosya eklendiginde
-        # sessizce eksik birakiyordu.
+    dump_missing = [f for f, k, _d, c in LAYERS if c == "DUMP" and not have(f)]
+    if dump_missing:
+        # --fetch is ALWAYS passed: it skips files that exist and downloads the
+        # MISSING ones. An "if the folder is full, do not download" rule silently
+        # left files missing whenever a file was added to the source list.
         cmd = [PY, "scripts/build_dumps.py", "--dump", dump, "--fetch"]
-        calistir(f"Dump katmanlari ({len(dump_eksik)} eksik)", cmd, a.plan)
+        run_step(f"Dump layers ({len(dump_missing)} missing)", cmd, a.plan)
     else:
-        print("\n>>> Dump katmanlari  [zaten kurulu]")
+        print("\n>>> Dump layers  [already installed]")
 
     if resources:
         if os.path.isdir(resources):
-            calistir("Framework indeksi (senin sunucun)",
+            run_step("Framework index (your server)",
                      [PY, "scripts/build_framework.py", "--resources", resources], a.plan)
         else:
-            print(f"\n>>> Framework indeksi  ATLANDI: klasor yok -> {resources}")
+            print(f"\n>>> Framework index  SKIPPED: folder does not exist -> {resources}")
     else:
-        print("\n>>> Framework indeksi  ATLANDI")
-        print("    Sebep : --resources verilmedi")
-        print("    Kur   : python scripts/setup.py --resources <sunucu>/resources")
-        print("    Kazanc: kurulu olmayan kaynaga giden export/event cagrilari yakalanir")
+        print("\n>>> Framework index  SKIPPED")
+        print("    Reason : --resources was not given")
+        print("    Install: python scripts/setup.py --resources <server>/resources")
+        print("    Gain   : export/event calls to a resource that is not installed are caught")
 
-    # --- AGIR KADEME ---
+    # --- HEAVY TIER ---
     print("\n" + "-" * 68)
-    # --- HIZLI YOL: depodan gelen tsv'den entities.db kur ---
-    # Klonlayan kullanicinin ilk karsilastigi eksik bu; CodeWalker'a hic
-    # gerek yok cunku kaynak tsv zaten depoda.
-    if var("entities.tsv.gz") and not var("entities.db"):
-        calistir("entities.db — entities.tsv.gz'den kuruluyor (CodeWalker gerekmez)",
+    # --- FAST PATH: build entities.db from the tsv that ships with the repository ---
+    # This is the first gap a user who clones meets; CodeWalker is not needed at
+    # all because the source tsv is already in the repository.
+    if have("entities.tsv.gz") and not have("entities.db"):
+        run_step("entities.db — building from entities.tsv.gz (no CodeWalker needed)",
                  "python scripts/build_entities_db.py", a.plan)
 
-    print("2) KENDI OYUNUNDAN URETILEN KATMANLAR  (varsayilan)")
+    print("2) LAYERS BUILT FROM YOUR OWN GAME  (default)")
     print("-" * 68)
     if not gta or not cw:
-        eksik = []
+        missing = []
         if not gta:
-            eksik.append("GTA V kurulumu")
+            missing.append("GTA V install")
         if not cw:
-            eksik.append("CodeWalker.Core.dll")
-        print(f"\n  ⛔ YOL GEREKIYOR — bulunamadi: {', '.join(eksik)}")
+            missing.append("CodeWalker.Core.dll")
+        print(f"\n  ⛔ PATH NEEDED — not found: {', '.join(missing)}")
         print()
-        print("  Vanilla katmanlarin cogu depoda GELIR; asagidakiler ise senin")
-        print("  oyun surumunden uretilmek istenirse ya da depoda yoksa gerekir.")
-        print("  Bu araci kullanan herkeste GTA V ve CodeWalker zaten vardir;")
-        print("  eksik olan sey veri degil, YOL bilgisidir.")
+        print("  Most vanilla layers COME with the repository; the ones below are")
+        print("  needed if you want them built from your game version or they are")
+        print("  not in the repository. Everyone who uses this tool already has")
+        print("  GTA V and CodeWalker; what is missing is not data but PATH information.")
         print()
-        print("  Yollari ver (bir kez; --save ile kaydedilir ve bir daha sorulmaz):")
+        print("  Give the paths (once; --save stores them and they are not asked again):")
         print()
         print("    python scripts/setup.py --save \\")
         print('      --gta "C:\\Program Files\\Epic Games\\GTAV" \\')
         print('      --codewalker "C:\\...\\CodeWalker\\CodeWalker.Core.dll"')
         print()
-        print("  CodeWalker.Core.dll: CodeWalker'i indirdigin klasorde, exe'nin yaninda.")
-    elif a.hafif_only:
-        agir_eksik = [f for f, k, *_ in KATMANLAR if k == "agir" and not var(f)]
-        print(f"\n  --hafif-only verildi, {len(agir_eksik)} agir katman atlandi.")
+        print("  CodeWalker.Core.dll: in the folder you downloaded CodeWalker to, next to the exe.")
+    elif a.light_only:
+        heavy_missing = [f for f, k, *_ in LAYERS if k == "heavy" and not have(f)]
+        print(f"\n  --light-only given, {len(heavy_missing)} heavy layers skipped.")
     else:
-        # AGIR KADEME ARTIK VARSAYILAN. Yol biliniyorsa kurulur; "opt-in" yapmak
-        # kullanicinin elindeki gercek veriyi bosa harcamakti.
-        agir_eksik = [(f, d, c) for f, k, d, c in KATMANLAR
-                      if k == "agir" and not var(f) and c != "(elle)"]
-        if not agir_eksik:
-            print("\n  Tum agir katmanlar kurulu.")
+        # THE HEAVY TIER IS NOW THE DEFAULT. If the path is known it is built;
+        # making it "opt-in" wasted the real data the user already has.
+        heavy_missing = [(f, d, c) for f, k, d, c in LAYERS
+                         if k == "heavy" and not have(f) and c != "(manual)"]
+        if not heavy_missing:
+            print("\n  All heavy layers are installed.")
         else:
-            print(f"\n  {len(agir_eksik)} agir katman uretilecek (GTA V: {gta})")
-            print("  Bu islem birkac dakika surer (klipler ~3 dk, iskeletler daha uzun).")
-            for f, d, c in agir_eksik:
-                calistir(f"{f} — {d}", c, a.plan)
+            print(f"\n  {len(heavy_missing)} heavy layers will be built (GTA V: {gta})")
+            print("  This takes a few minutes (clips ~3 min, skeletons longer).")
+            for f, d, c in heavy_missing:
+                run_step(f"{f} — {d}", c, a.plan)
 
-    # --- RAPOR ---
+    # --- REPORT ---
     print("\n" + "=" * 68)
-    print("DURUM")
+    print("STATE")
     print("=" * 68)
-    kurulu = eksik = 0
-    for f, k, d, c in KATMANLAR:
-        if var(f):
-            kurulu += 1
-            print(f"  [VAR] {f:<26} {d}")
+    installed = missing = 0
+    for f, k, d, c in LAYERS:
+        if have(f):
+            installed += 1
+            print(f"  [OK]  {f:<26} {d}")
         else:
-            eksik += 1
-            print(f"  [YOK] {f:<26} {d}")
+            missing += 1
+            print(f"  [--]  {f:<26} {d}")
             print(f"        -> {c}")
-    print(f"\n  {kurulu}/{kurulu + eksik} katman kurulu")
-    if eksik:
-        print("\n  ⚠ Eksik katmani kullanan sorgu EXIT 2 doner ve HICBIR SEY iddia etmez.")
-        print("    Bunu 'asset yok' diye okuma — 1 (ad yok) ile 2 (katman yok) farklidir.")
-    print("\n  Dogrula: python scripts/assetdb.py stats")
-    return 0 if kurulu else 2
+    print(f"\n  {installed}/{installed + missing} layers installed")
+    if missing:
+        print("\n  ⚠ A query that uses a missing layer returns EXIT 2 and claims NOTHING.")
+        print("    Do not read that as 'asset not found' — 1 (no such name) and 2 (no layer) differ.")
+    print("\n  Verify: python scripts/assetdb.py stats")
+    return 0 if installed else 2
 
 
 if __name__ == "__main__":

@@ -1,67 +1,66 @@
-# Yıkım / çökme / koreografili sahne — RayFire `des_*`
+# Destruction / collapse / choreographed scene — RayFire `des_*`
 
-**Ne zaman okunur:** bir bina, köprü, yol, kule, iskele çöksün; "sağlam → animasyonlu çöküş → enkaz"; patlama sonrası kalıcı enkaz; collision'ın koreografiyle hareket etmesi.
-**When to read:** destruction, collapse or a choreographed scene — RayFire `des_*` composites, road/bridge/building coming down.
-**Kaynak:** `rayfire-des-uretim.md` (tamamı, 2026-08/09) · **Ölçüm:** vanilla `des_stilthouse` alan alan; `des_mytest`, `des_crane`, `des_kopru` oyunda
-**Önce:** `branches/map/_branch.md` · gövde › `trunk/flags.md`, `trunk/tool-pitfalls.md`
+**When to read:** destruction, collapse or a choreographed scene — a building, bridge, road, tower or scaffold should come down; "intact → animated collapse → debris"; permanent debris after an explosion; collision that moves with the choreography; RayFire `des_*` composites.
+**Source:** the former RayFire reference (2.5.0, in full, 2026-08/09) · **Measured:** vanilla `des_stilthouse` field by field; `des_mytest`, `des_crane`, `des_bridge` in game
+**Read first:** `branches/map/_branch.md` · trunk › `trunk/flags.md`, `trunk/tool-pitfalls.md`
 
 ---
 
-⛔ **Yol seçimi önce:** bu yaprak bina/kule/yol/köprü çöküşü içindir. Tek prop'un kapağı/kolu ya da motor sürücüsü (saat, bariyer) başka reçetedir ve bu sürümde yok. İki reçetenin melezi hiç çalışmadı.
+⛔ **Path choice first:** this leaf is for the collapse of a building/tower/road/bridge. A single prop's lid/lever, or an engine-driven mover (clock, barrier), is a different recipe and is not in this version. A hybrid of the two recipes never worked.
 
 
-**Ne zaman:** bir bina, kule, ağaç, iskele ya da herhangi bir harita
-yapısının **koreografili** yıkılması istendiğinde. Fragment kırılması
-(`prop_*` cam/tahta parçalanması) DEĞİL — o başka sistem. Buradaki sistem
-"sağlam hal → oynatılan çöküş animasyonu → enkaz hali" üçlüsüdür.
+**When:** a **choreographed** destruction of a building, tower, tree,
+scaffold or any other map structure is wanted. NOT fragment breaking
+(`prop_*` glass/wood shattering) — that is a different system. The system here
+is the trio "intact state → played collapse animation → debris state".
 
-Kaynak: vanilla `des_stilthouse` **alan alan** açıldı (ytyp, ycd, 8 ydr,
-3 ymap, 6 ybn, yerleştirici ymap) ve birebir kopyası (`des_mytest`)
-üretilip oyunda çalıştığı doğrulandı. Buradaki sayıların hiçbiri tahmin
-değildir. Çapraz kontrol: `des_protree`, `des_apartmentblock`,
+Source: vanilla `des_stilthouse` was opened **field by field** (ytyp, ycd, 8 ydr,
+3 ymap, 6 ybn, placer ymap), and an exact copy (`des_mytest`) was
+built and verified working in game. None of the numbers here are
+guesses. Cross-checked against: `des_protree`, `des_apartmentblock`,
 `des_tvsmash`, `des_farmhouse`.
 
-Sorgu: `assetdb.py show des_*` · `res_to_xml.ps1`
+Query: `assetdb.py search des_` · `res_to_xml.ps1`
 
 ---
 
-## 1. Zihinsel model: composite bir OBJE değil, bir YÖNETMEN
+## 1. Mental model: a composite is not an OBJECT, it is a DIRECTOR
 
-`des_X` diye bir arketip **yoktur**. Var olan şey `.ytyp` içindeki ikinci
-bir blok — `compositeEntityTypes` — ve o blok motora şunu söyler:
+There **is no** archetype called `des_X`. What exists is a second
+block inside the `.ytyp` — `compositeEntityTypes` — and that block tells the engine:
 
-| alan | anlamı |
+| field | meaning |
 |---|---|
-| `StartImapFile` | sağlam halin bulunduğu ymap |
-| `EndImapFile` | enkaz halinin bulunduğu ymap |
-| `Animations[i].AnimatedModel` | çöküş sırasında **motorun yaratacağı** drawable |
-| `Animations[i].AnimDict` / `AnimName` | o drawable'da oynatılacak klip |
-| `punchInPhase` / `punchOutPhase` | klibin hangi faz aralığında oynatılacağı (vanilla 0 → 1) |
+| `StartImapFile` | the ymap holding the intact state |
+| `EndImapFile` | the ymap holding the debris state |
+| `Animations[i].AnimatedModel` | the drawable **the engine creates** during the collapse |
+| `Animations[i].AnimDict` / `AnimName` | the clip played on that drawable |
+| `punchInPhase` / `punchOutPhase` | the phase range of the clip that is played (vanilla 0 → 1) |
 
-Tetiklendiğinde motorun sırası:
+When triggered, the engine's order:
 
-1. `StartImapFile` kapanır → sağlam bina kaybolur
-2. `AnimatedModel`'deki drawable **motor tarafından yaratılır**
-3. Klip `punchIn`→`punchOut` arası oynatılır
-4. Klip biter, drawable silinir, `EndImapFile` açılır → enkaz belirir
+1. `StartImapFile` turns off → the intact building disappears
+2. The drawable in `AnimatedModel` **is created by the engine**
+3. The clip plays from `punchIn` to `punchOut`
+4. The clip ends, the drawable is deleted, `EndImapFile` turns on → the debris appears
 
-**Sonuç: görünen üç ayrı varlıktır, tek arketip değil.** Sağlam hal ayrı
-bir prop, enkaz ayrı bir prop, aradaki hareket üçüncü bir drawable.
-"Tek objeyi hem animasyonlu hem collision'lı yapmak" bu sistemde yanlış
-sorudur ve saatler yakar.
+**Result: what you see is three separate assets, not one archetype.** The intact state is a separate
+prop, the debris is a separate prop, the motion in between is a third drawable.
+"Making one object both animated and with collision" is the wrong
+question in this system and burns hours.
 
-### ⛔ Animasyonlu drawable HİÇBİR ymap'te yer almaz
+### ⛔ The animated drawable is in NO ymap
 
-Ölçüldü: `des_stilthouse`'un 8 `rootN` arketipi `imapstart`, `imapend` ve
-`rebuild` ymap'lerinin **hiçbirinde** entity olarak geçmez. Onları composite
-yaratır. `CreateObject` / `rfspawn` ile elle çağırmak sistemin dışına
-çıkmaktır ve gördüğün şey artık RayFire değildir.
+Measured: the 8 `rootN` archetypes of `des_stilthouse` appear as entities in **none** of the
+`imapstart`, `imapend` and `rebuild` ymaps. The composite
+creates them. Calling them by hand with `CreateObject` / `rfspawn` steps outside
+the system, and what you see is no longer RayFire.
 
-### Composite'in KENDİSİ sıradan bir entity olarak konur
+### The composite ITSELF is placed as an ordinary entity
 
-Yerleştirici, normal bir ymap'teki normal bir `CEntityDef`'tir ve
-`archetypeName` = `joaat(composite adı)`'dır. Bu entity yoksa
-`GetRayfireMapObject` hiçbir şey bulamaz.
+The placer is a normal `CEntityDef` in a normal ymap, and
+`archetypeName` = `joaat(composite name)`. Without this entity
+`GetRayfireMapObject` finds nothing.
 
 Vanilla (`ch2_09b_strm_1.ymap`, contentFlags 65):
 ```
@@ -69,853 +68,853 @@ archetypeName = des_stilthouse   flags 1572864   parentIndex -1
 lodLevel LODTYPES_DEPTH_ORPHANHD   lodDist 100   priorityLevel PRI_REQUIRED
 ```
 
-### İki desen var — karıştırma
+### There are two patterns — do not mix them
 
-- **A · imap takası** (`des_stilthouse`, `des_protree`, `des_apartmentblock`):
-  `StartModel`/`EndModel` **boş**, `StartImapFile`/`EndImapFile` dolu.
-  Bina/yapı yıkımı bunu kullanır.
-- **B · model takası** (`des_tvsmash`): `StartModel`/`EndModel` dolu.
-  Tek prop'un yerine enkaz prop'u geçer. İç mekân ufaklıkları içindir.
+- **A · imap swap** (`des_stilthouse`, `des_protree`, `des_apartmentblock`):
+  `StartModel`/`EndModel` **empty**, `StartImapFile`/`EndImapFile` filled.
+  Building/structure destruction uses this.
+- **B · model swap** (`des_tvsmash`): `StartModel`/`EndModel` filled.
+  A debris prop replaces a single prop. It is for small interior items.
 
 ---
 
-## 2. `.ytyp` — ölçülmüş alanlar
+## 2. `.ytyp` — measured fields
 
-### Animasyonlu kök arketip (`des_X_root`)
+### Animated root archetype (`des_X_root`)
 
 ```
-assetType          ASSET_TYPE_DRAWABLE      <- .ydr, FRAGMENT DEĞİL
+assetType          ASSET_TYPE_DRAWABLE      <- .ydr, NOT A FRAGMENT
 flags              536871424                = Has Anim(512) + Use Ambient Scale
 lodDist            100
 hdTextureDist      5
-clipDictionary     <ytyp adı>               (= composite adı)
-textureDictionary  <txd adı>
-drawableDictionary BOŞ
-physicsDictionary  BOŞ                      <- animasyonda collision yok
+clipDictionary     <ytyp name>              (= composite name)
+textureDictionary  <txd name>
+drawableDictionary EMPTY
+physicsDictionary  EMPTY                    <- no collision during the animation
 specialAttribute   0
-extensions         CExtensionDefParticleEffect (fxType 6) — toz/moloz, opsiyonel
+extensions         CExtensionDefParticleEffect (fxType 6) — dust/rubble, optional
 ```
 
-`des_stilthouse`'un 8 kök arketipinin **tamamı** bu kalıbın birebir aynısıdır;
-tek fark ad, kutu ve partikül sayısı.
+**All** 8 root archetypes of `des_stilthouse` are exact copies of this template;
+the only differences are the name, the box and the particle count.
 
-### `compositeEntityTypes` (tek Item)
+### `compositeEntityTypes` (single Item)
 
 ```
 flags              536870912
 lodDist            -1
 specialAttribute   0
-bsRadius           yapının küresel yarıçapı (stilthouse 44.66)
-StartModel/EndModel  BOŞ  (desen A)
+bsRadius           spherical radius of the structure (stilthouse 44.66)
+StartModel/EndModel  EMPTY  (pattern A)
 StartImapFile      des_X_imapstart
 EndImapFile        des_X_imapend
-PtFxAssetName      <.ypt adı>  — partikül yoksa BOŞ
+PtFxAssetName      <.ypt name>  — EMPTY if there are no particles
 Animations[N]:
-   AnimDict        = ytyp adı
-   AnimName        = AnimatedModel = arketip adı   <- ÜÇÜ AYNI
+   AnimDict        = ytyp name
+   AnimName        = AnimatedModel = archetype name   <- ALL THREE THE SAME
    punchInPhase    0
    punchOutPhase   1
-   effectsData     partikül tetik listesi (0..19 arası, opsiyonel)
+   effectsData     particle trigger list (between 0..19, optional)
 ```
 
-Çok parçalı yıkımlarda `Animations` birden fazla olur (stilthouse 8) — her
-biri kendi drawable'ını kendi klibiyle sürer, hepsi eşzamanlı oynar.
+In multi-part destruction there is more than one `Animations` entry (stilthouse 8) — each
+drives its own drawable with its own clip, all play at the same time.
 
 ---
 
-## 3. `.ydr` — mesh nasıl kımıldıyor
+## 3. `.ydr` — how the mesh moves
 
-**Rijit skinning.** Tek `DrawableModel`, `HasSkin=1`, `BoneIndex=0`,
-vertex başına tek kemik:
+**Rigid skinning.** A single `DrawableModel`, `HasSkin=1`, `BoneIndex=0`,
+one bone per vertex:
 
 ```
 Layout (GTAV1): Position, BlendWeights, BlendIndices, Normal, Colour0, TexCoord0
-BlendWeights    0 0 255 0      <- tek kemiğe %100
-BlendIndices    0 0 20 0       <- Geometry/BoneIDs paletindeki indeks
-Unknown1        = kemik sayısı
-Bounds          YOK            <- animasyon sırasında collision yoktur
+BlendWeights    0 0 255 0      <- 100% to a single bone
+BlendIndices    0 0 20 0       <- index into the Geometry/BoneIDs palette
+Unknown1        = bone count
+Bounds          NONE           <- there is no collision during the animation
 LodDistHigh     9998
 FlagsHigh       15
 ```
 
-### Kemik hiyerarşisi DÜZDÜR
+### The bone hierarchy is FLAT
 
-Ölçüldü: `des_stilthouse_root` 102 kemik, **101'inin de parent'ı 0**. Zincir
-yok. Kemik[0] = `DES_StiltHouse_ROOT_bone`, `parent -1`, flags'inde `Unk0`
-var. Her parça kendi kemiğine kilitlidir; kemik nereye giderse parça oraya
-gider. Bu yüzden ağırlık boyama, yumuşak geçiş, Laplacian düzeltme vs.
-**gerekmez** — istenmez de.
+Measured: `des_stilthouse_root` has 102 bones, **the parent of all 101 others is 0**. No
+chain. Bone[0] = `DES_StiltHouse_ROOT_bone`, `parent -1`, with `Unk0`
+in its flags. Every part is locked to its own bone; wherever the bone goes, the part
+goes. That is why weight painting, soft blending, Laplacian smoothing etc.
+are **not needed** — and not wanted.
 
-### `Tag`'ler keyfidir
+### `Tag`s are arbitrary
 
-`des_stilthouse` tag'leri 0, 743, 3793, 4289, 16689, 17738… — ne sıralı
-ne formülle üretilmiş. Önemli olan tek şey `.ycd`'nin aynı sayıları
-kullanmasıdır (§5 Bağ A).
+`des_stilthouse` tags are 0, 743, 3793, 4289, 16689, 17738… — neither ordered
+nor produced by a formula. The only thing that matters is that the `.ycd` uses
+the same numbers (§5 Link A).
 
 ---
 
-## 4. `.ycd` — ölçülmüş sözleşme
+## 4. `.ycd` — the measured contract
 
 ```
-Klip:
-  Hash            = arketip adı            (des_stilthouse_root)
-  Name            = pack:/<ad>.clip        (TEK pack:/ öneki)
+Clip:
+  Hash            = archetype name         (des_stilthouse_root)
+  Name            = pack:/<name>.clip      (SINGLE pack:/ prefix)
   Type            Animation
   Unknown30       1
-  Tags            boş ama VAR
+  Tags            empty but PRESENT
   Properties      1 Item: NameHash hash_BF6A5D60 / UnkHash hash_996C3B27
                   Attributes: hash_BF6A5D60, Int, 32
   AnimationHash   = Hash
-  StartTime 0 · EndTime (kare-1)/30 · Rate 1
+  StartTime 0 · EndTime (frames-1)/30 · Rate 1
 
-Animasyon:
-  Hash            = klip Hash ile aynı
+Animation:
+  Hash            = same as the clip Hash
   Unknown10       1
   FrameCount      579   (stilthouse)
-  Duration        (kare-1)/30 = 19.266666
-  BoneIds         kemik x 3  — Track 0 (ötelem), 1 (dönüş), 2 (ölçek), HEPSİ
-  SequenceFrameLimit 303 -> 579 kare 2 sequence'e bölünür (304 + 276)
+  Duration        (frames-1)/30 = 19.266666
+  BoneIds         bones x 3  — Track 0 (translation), 1 (rotation), 2 (scale), ALL
+  SequenceFrameLimit 303 -> 579 frames split into 2 sequences (304 + 276)
 ```
 
-- **Track 2 boş bırakılmaz.** Vanilla ölçek kanalını `StaticVector3(1,1,1)`
-  ile açık yazar. Sürülmeyen kanal rest'e dönmez, **önceki animasyonun
-  pozunda kalır**.
-- **Sequence bölünmesi 1 kare bindirmelidir**: `seq0 = limit+1`,
-  `seq1 = toplam - limit`, toplam = kare+1. 121 karelik bir klipte
-  bölünme gerekmez (Sollumz'un `kare+30` limiti zaten böler değil).
-- ⛔ **KÖK KEMİK (tag 0) DAHİL, İSKELETİN TAMAMI yazılır.** Sollumz köke
-  kanal yazmaz. Ölçüm: `des_crane.ycd` 51 kemiğin 51'ini de yazıyor, kök
-  her track grubunun **başında** (indeks 0, 51, 102). Kök kanalları rest
-  değerleridir: Track 0 `StaticVector3`(kökün rest konumu), Track 1
-  `StaticQuaternion`(rest dönüşü), Track 2 `StaticVector3(1,1,1)`.
-- ⛔ **`BoneIds` sayısının ölçütü dosyanın kendi tutarlılığı DEĞİLDİR.**
-  Ölçüt `iskelet kemik sayısı × 3`. Bu yaşandı: `330 = 110×3` kendi içinde
-  tutarlı olduğu için "doğrulandı" sanıldı, oysa iskelette **111** kemik
-  vardı ve kök eksikti. Doğrulama daima `.ydr`'nin kemik sayısına ve
-  **çalışan bir referans dosyaya** karşı yapılır.
+- **Track 2 is not left empty.** Vanilla writes the scale channel explicitly with
+  `StaticVector3(1,1,1)`. A channel that is not driven does not return to rest, it **stays in the pose
+  of the previous animation**.
+- **The sequence split must overlap by 1 frame**: `seq0 = limit+1`,
+  `seq1 = total - limit`, total = frames+1. A 121-frame clip
+  needs no split (Sollumz's `frames+30` limit does not split it anyway).
+- ⛔ **THE WHOLE SKELETON IS WRITTEN, ROOT BONE (tag 0) INCLUDED.** Sollumz writes no
+  channel for the root. Measured: `des_crane.ycd` writes all 51 of 51 bones, the root
+  at the **start** of every track group (index 0, 51, 102). The root channels are rest
+  values: Track 0 `StaticVector3`(root rest position), Track 1
+  `StaticQuaternion`(rest rotation), Track 2 `StaticVector3(1,1,1)`.
+- ⛔ **The benchmark for the `BoneIds` count is NOT the file's own consistency.**
+  The benchmark is `skeleton bone count × 3`. This happened: `330 = 110×3` was
+  consistent in itself, so it was taken as "verified", while the skeleton had **111**
+  bones and the root was missing. Verification is always done against the bone count of the `.ydr` and
+  **a working reference file**.
 
-### Üretim hattı — Sollumz çıktısı DOĞRUDAN kullanılmaz
+### Production pipeline — Sollumz output is NOT used DIRECTLY
 
-> Bu public sürümde aşağıdaki `.ycd` yama betikleri **yoktur**; hat yalnız sözleşmeyi anlatır.
+> The `.ycd` patch scripts below are **not** in this public version; the pipeline only describes the contract.
 
 ```
-Sollumz .ycd export (XML cikar)
-  -> fix_ycd_xml.py          bos <Hash> kalmissa doldurur (ag; doluysa 0 ekler)
-  -> ycd_track2_ekle.py      Track 2 (olcek) grubu eksik
-  -> ycd_kok_kemik_ekle.py   tag 0, uc track'in de BASINA
-  -> yama_ycd.py             bes alanlik vanilla sozlesmesi (asagida)
+Sollumz .ycd export (writes XML)
+  -> fix_ycd_xml.py          fills any empty <Hash> left (safety net; adds 0 if filled)
+  -> add-Track-2 step        Track 2 (scale) group is missing
+  -> add-root-bone step      tag 0, at the START of all three tracks
+  -> ycd patch step          five-field vanilla contract (below)
   -> xml_to_ycd.ps1          binary
-  -> GERI OKU ve calisan referansla alan alan karsilastir
+  -> READ BACK and compare field by field with a working reference
 ```
 
-Yama adımının ölçtüğü beş alan (5 vanilla sözlük / 27 klip, **istisna
-yok**): `anim.Hash` = klip adı · `clip.Name` = `pack:/<ad>.clip` ·
-`clip.Unknown30` = 1 · `anim.Unknown10` = 1 · `clip.Properties` = tek öge.
-⛔ Bu adım hattın parçasıdır; "elle hizalarım" deyip atlanınca
-`clip.Properties` eksik kaldı ve bir tur kaybedildi.
+The five fields the patch step measures (5 vanilla dictionaries / 27 clips, **no
+exceptions**): `anim.Hash` = clip name · `clip.Name` = `pack:/<name>.clip` ·
+`clip.Unknown30` = 1 · `anim.Unknown10` = 1 · `clip.Properties` = a single item.
+⛔ This step is part of the pipeline; when it was skipped with "I'll align it by hand",
+`clip.Properties` stayed missing and a round was lost.
 
-`Unknown1C` **türetilmez** — crane'de `anim.Hash+1`, stilthouse'ta ilgisiz.
-Kural çıkarılamadı, olduğu gibi bırakılır.
+`Unknown1C` **is not derived** — on the crane it is `anim.Hash+1`, on stilthouse unrelated.
+No rule could be found; leave it as it is.
 
 ---
 
-## 5. Sessiz kıran DÖRT BAĞ
+## 5. The FOUR LINKS that break silently
 
-Dördü de hata vermez. Dosya derlenir, doğrulama "1 klip" der, oyunda
-**hiçbir şey olmaz**.
+None of the four gives an error. The file compiles, verification says "1 clip", and in game
+**nothing happens**.
 
-**Bağ A — `.ycd` `BoneId` = iskelet `Tag`.**
-Eşleşmezse kanal sessizce düşürülür, kemik rest'te kalır. Sollumz'un
-otomatik tag formülü vanilla tag'leri üretmez → kemiğin
-`Bone Properties → Sollumz → Tag` alanını **elle yaz**
+**Link A — `.ycd` `BoneId` = skeleton `Tag`.**
+If they do not match, the channel is silently dropped and the bone stays at rest. Sollumz's
+automatic tag formula does not produce vanilla tags → **write** the bone's
+`Bone Properties → Sollumz → Tag` field **by hand**
 (`use_manual_tag = True` + `manual_tag`).
 
-**Bağ B — klip adı = model adı = arketip adı.**
-RayFire'da üçü **aynıdır**. `.yed`/expression reçetesindeki *"klip adı model
-adıyla AYNI OLMAMALI"* kuralı **buraya ait değildir** — o kural fragment +
-expression yoluna aittir. Bu iki kuralı karıştırmak bir kez tur boyu yanlış
-teşhise yol açtı.
+**Link B — clip name = model name = archetype name.**
+In RayFire all three **are the same**. The rule *"the clip name must NOT BE THE SAME as
+the model name"* from the `.yed`/expression recipe **does not belong here** — that rule belongs
+to the fragment + expression path. Mixing these two rules once led to a wrong
+diagnosis that lasted a whole round.
 
-**Bağ C — bbox animasyonun TAMAMINI kapsamalı. İKİ AYRI YERDE.**
-Sollumz rest pozunun kutusunu yazar. Vanilla `des_stilthouse_root` kutusu
-(−16.96, −5.76, −7.68)…(22.92, 26.67, 11.20) — evin kendisinden çok daha
-geniş, çünkü çöküş oraya kadar gidiyor. Rest kutusu bırakılırsa obje uzakta
-titrer ve kaybolur.
+**Link C — the bbox must cover the WHOLE animation. IN TWO SEPARATE PLACES.**
+Sollumz writes the box of the rest pose. The vanilla `des_stilthouse_root` box is
+(−16.96, −5.76, −7.68)…(22.92, 26.67, 11.20) — much wider than the house itself,
+because the collapse reaches that far. Leave the rest box and the object flickers
+and disappears at distance.
 
-⛔ **Kutu iki ayrı yerde durur ve İKİSİ de düzeltilir:**
+⛔ **The box sits in two separate places and BOTH are fixed:**
 ```
-.ydr  Drawable/BoundingBoxMin,Max + BoundingSphereCenter,Radius   <- Sollumz rest yazar
-.ytyp arketip bbMin,bbMax + bsCentre,bsRadius                     <- ayri alan
+.ydr  Drawable/BoundingBoxMin,Max + BoundingSphereCenter,Radius   <- Sollumz writes rest
+.ytyp archetype bbMin,bbMax + bsCentre,bsRadius                   <- separate field
 ```
-Bu yaşandı: köprüde yalnız `ytyp` düzeltildi, drawable'ınki rest kaldı
-(`x` −44.75 iken animasyon −53.38'e gidiyordu) ve kusur sürdü. Crane
-hattında ikisi de yazılmış. Uzanım Blender'da kare taranarak ölçülür,
-üstüne ~0.6 m pay konur.
+This happened: on the bridge only the `ytyp` was fixed, the drawable's stayed rest
+(`x` was −44.75 while the animation went to −53.38) and the defect remained. In the crane
+pipeline both are written. The reach is measured in Blender by scanning the frames,
+with a ~0.6 m margin on top.
 
-**Bağ D — ⛔ KEMİK BAYRAKLARI. Sollumz `Flags` alanını YAZMAZ, sıfır bırakır.**
-Bayrağı sıfır olan kemik **hiçbir dönüşüm kabul etmez**; klip oynar, kemik
-kımıldamaz.
+**Link D — ⛔ BONE FLAGS. Sollumz does NOT WRITE the `Flags` field, it leaves it zero.**
+A bone whose flag is zero **accepts no transform**; the clip plays, the bone
+does not move.
 
-| dosya | dağılım |
+| file | distribution |
 |---|---|
-| vanilla `des_stilthouse_root` | `119`×55, `1911`×42, `7`×4, kök `4215` |
-| `des_crane_root` (çalışıyor) | `119`×50, kök `4215` |
-| **Sollumz çıktısı (bozuk)** | **`0`×N, kök `4096`** |
+| vanilla `des_stilthouse_root` | `119`×55, `1911`×42, `7`×4, root `4215` |
+| `des_crane_root` (works) | `119`×50, root `4215` |
+| **Sollumz output (broken)** | **`0`×N, root `4096`** |
 
-### ⛔ `119` BİR SABİT DEĞİL, BİR İZİN KÜMESİDİR — klibin sürdüğü track'e göre seçilir
+### ⛔ `119` IS NOT A CONSTANT, IT IS A PERMISSION SET — pick it by the tracks the clip drives
 
-Bit tablosu (Sollumz `flags_enum`'dan okundu, tahmin değil):
+Bit table (read from Sollumz `flags_enum`, not guessed):
 
 | bit | 1 | 2 | 4 | 16 | 32 | 64 | 256 | 512 | 1024 | 4096 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| ad | RotX | RotY | RotZ | TransX | TransY | TransZ | ScaleX | ScaleY | ScaleZ | Unk0 |
+| name | RotX | RotY | RotZ | TransX | TransY | TransZ | ScaleX | ScaleY | ScaleZ | Unk0 |
 
-- `119` = `Rot*|Trans*` → **Scale biti YOK**
-- `1911` = `119 | Scale*` → üçü de serbest
-- `4215` = `119 | Unk0`, `6007` = `1911 | Unk0` → kök kemiğe `Unk0` eklenir
+- `119` = `Rot*|Trans*` → **NO Scale bit**
+- `1911` = `119 | Scale*` → all three free
+- `4215` = `119 | Unk0`, `6007` = `1911 | Unk0` → the root bone gets `Unk0` added
 
-Klip track'i ile bayrak eşleşmek zorundadır: **Track 0 = translation,
-Track 1 = rotation, Track 2 = scale.** Bayrağın izin vermediği track
-**sessizce atılır** — dosya sağlam, klip oynuyor, hata yok, o kemik durur.
+The clip track and the flag must match: **Track 0 = translation,
+Track 1 = rotation, Track 2 = scale.** A track the flag does not permit
+**is silently discarded** — the file is fine, the clip plays, no error, that bone stands still.
 
-⛔ **BU MADDE BİR TUR YAKTI, SEBEBİ TAM OLARAK BU ÖZETİN KENDİSİYDİ.**
-Yukarıdaki tabloda vanilla `des_stilthouse_root`'un **`1911`×42** taşıdığı
-yazılıydı; buna rağmen "kök 4215, diğerleri 119" özeti okundu ve bir
-jumpscare drawable'ına 119 yazıldı. O klibin tamamı **bone scale** ile
-sürülüyordu (84 sarmaşık kemiği 0.001→1). Sonuç: kapılar (rotasyon)
-oynadı, sarmaşıklar (scale) **hiç** oynamadı, konsolda hata çıkmadı.
-Otomatik düzeltme aracı da 119 yazdığı için kendisi
-kusurun **kaynağı** oldu.
+⛔ **THIS ITEM BURNED A ROUND, AND THE CAUSE WAS EXACTLY THIS SUMMARY ITSELF.**
+The table above said vanilla `des_stilthouse_root` carries **`1911`×42**;
+even so the summary "root 4215, the others 119" was read and 119 was written to a
+jumpscare drawable. That whole clip was driven by **bone scale**
+(84 vine bones 0.001→1). Result: the doors (rotation)
+played, the vines (scale) did **not** play **at all**, no error in the console.
+Because the automatic fix tool also wrote 119, it became
+the **source** of the defect itself.
 
-**Kural: bayrağı klipten türet, tablodan kopyalama.** Klip hangi
-track'leri kullanıyorsa o bitler açık olmalı; emin değilsen `1911`
-(kök `6007`) yaz — fazladan izin zararsızdır, eksik izin sessizdir.
+**Rule: derive the flag from the clip, do not copy it from the table.** Whatever
+tracks the clip uses, those bits must be on; if you are not sure write `1911`
+(root `6007`) — extra permission is harmless, missing permission is silent.
 
-**Kapı:** bir denetim adımı (betiği public sürümde yok)
-`.ycd`'nin kullandığı her track'i iskelet bayrağına karşı denetler ve
-"N kemikte scale kanalı var ama BAYRAK İZİN VERMİYOR" der. Negatif testle
-doğrulandı.
+**Gate:** an audit step (its script is not in the public version)
+checks every track the `.ycd` uses against the skeleton flag and says
+"scale channel on N bones but THE FLAG DOES NOT PERMIT IT". Verified with a negative
+test.
 
-**Bu, katalogdaki en yanıltıcı belirtidir** ve bir günü yakmıştır:
+**This is the most misleading symptom in the catalogue** and it burned a day:
 ```
-PlayEntityAnim        -> 1          klip BULUNDU
-animTime              0 -> 0.994    klip OYNUYOR
-GetRayfireMapObjectAnimPhase ilerliyor
-mesh                  REST POZUNDA  hicbir kemik kimildamiyor
-konsolda hata         YOK
+PlayEntityAnim        -> 1          clip FOUND
+animTime              0 -> 0.994    clip PLAYING
+GetRayfireMapObjectAnimPhase advancing
+mesh                  IN REST POSE  no bone moves
+console error         NONE
 ```
-Oyunda görünen şey: sağlam hâl → (hiçbir şey) → enkaz. "Animasyon
-oynamıyor" diye okunur ama klip kusursuz çalışmaktadır.
+What you see in game: intact state → (nothing) → debris. It reads as "the animation
+does not play", but the clip is working flawlessly.
 
-**Kural: her animasyonlu `.ydr` export'undan sonra bayrak denetlenir.**
-Denetim ve otomatik düzeltme betiği public sürümde yok.
+**Rule: the flags are checked after every animated `.ydr` export.**
+The audit and automatic fix script are not in the public version.
 
 ---
 
-## 5b. Oyunda teşhis merdiveni — "animasyon oynamıyor" dendiğinde
+## 5b. In-game diagnosis ladder — when "the animation does not play" is reported
 
-Sırayla, ve **her basamağı atlamadan**. Bu merdiven olmadan alan alan diff
-çekmek turlarca kaybettirir (yaşandı: sekiz tur).
+In order, and **without skipping a step**. Without this ladder, running field-by-field
+diffs costs rounds (it happened: eight rounds).
 
-**1. Çalışan bir referansı tetikle** (`rfyik crane` / `rfyik stilthouse`).
-Oynuyorsa composite yolu, ytyp kaydı, imap takası, sunucu tarafı **sağlam**;
-kusur senin `.ydr`/`.ycd` ikilindedir. Oynamıyorsa asset'i kurcalama, ortama
-bak. — ⛔ *Dosyaların diskte durması çalıştığı anlamına gelmez; "referans"
-diye kullanacağın asset'in oyunda oynadığı **doğrulanmış** olmalı.*
+**1. Trigger a working reference** (`rfyik crane` / `rfyik stilthouse`).
+If it plays, the composite path, ytyp registration, imap swap and server side are **fine**;
+the defect is in your `.ydr`/`.ycd` pair. If it does not play, do not tinker with the asset, look at
+the environment. — ⛔ *Files sitting on disk do not mean they work; the asset you use
+as "reference" must be **verified** to play in game.*
 
-**2. `rfmanuel <hedef>`** — composite'i devre dışı bırakıp modeli spawn eder,
-klibi `PlayEntityAnim` ile oynatır. Çıktıyı şöyle oku:
+**2. `rfmanuel <target>`** — disables the composite and spawns the model,
+plays the clip with `PlayEntityAnim`. Read the output like this:
 
-| `animTime` | mesh | teşhis |
+| `animTime` | mesh | diagnosis |
 |---|---|---|
-| 0.000'da çakılı | — | klip BULUNAMADI → Bağ A/B, dict adı, `.ycd` hash'leri |
-| ilerliyor | **kımıldamıyor** | **Bağ D (kemik bayrağı) ya da Bağ C (bbox)** |
-| ilerliyor | kımıldıyor | ikili sağlam → kusur composite/ytyp/imap tarafında |
+| stuck at 0.000 | — | clip NOT FOUND → Link A/B, dict name, `.ycd` hashes |
+| advancing | **not moving** | **Link D (bone flag) or Link C (bbox)** |
+| advancing | moving | the pair is fine → the defect is on the composite/ytyp/imap side |
 
-**3. ⛔ İki sayıya teşhis dayandırma.**
-`GetRayfireMapObjectAnimPhase` **bir sayaçtır** — klip yüklü olmasa bile
-ilerler. `animTime` ilerlemesi de yalnız klibin *bulunduğunu* söyler,
-kemikleri sürdüğünü **söylemez**. Bu iki yanlış çıkarımın ikisi de yapıldı.
+**3. ⛔ Do not base a diagnosis on two numbers.**
+`GetRayfireMapObjectAnimPhase` **is a counter** — it advances even when the clip is not
+loaded. `animTime` advancing only says the clip was *found*,
+it does **not** say it drives the bones. Both of these wrong inferences were made.
 
-**4. Durum makinesi basamak atlatmaz.** Durum `3` iken doğrudan `6` yazmak
-**reddedilir** (okunan `3`'te kalır, faz 0.000). Doğrusu: `4` yaz →
-durumun **oturmasını bekle** (sabit 100 ms değil, değişimi gözle) → `6`.
-Motor `7`'ye alır. Tetiklemeden önce `RequestAnimDict` şart; sözlük yüklü
-değilse model rest pozunda kalır ve belirti Bağ D ile birebir aynı görünür.
+**4. The state machine does not skip steps.** Writing `6` directly while the state is `3`
+**is rejected** (the read value stays `3`, phase 0.000). The right way: write `4` →
+**wait for the state to settle** (not a fixed 100 ms, watch for the change) → `6`.
+The engine moves it to `7`. `RequestAnimDict` is required before triggering; if the dictionary is not
+loaded the model stays in rest pose and the symptom looks exactly like Link D.
 
 ---
 
-## 6. Collision — durum tabanlıdır, animasyonu TAKİP ETMEZ
+## 6. Collision — it is state based, it does NOT FOLLOW the animation
 
-- Animasyonlu `.ydr`'de `Bounds` düğümü **yoktur**. Düşerken çarpışma yoktur.
-- Collision **duruma** aittir: sağlam halin kendi bound'u, enkazın kendi
-  bound'u. Vanilla bunu ymap başına dünya-uzayı `.ybn` ile taşır
+- The animated `.ydr` **has no** `Bounds` node. There is no collision while it falls.
+- Collision belongs to the **state**: the intact state's own bound, the debris's own
+  bound. Vanilla carries this as a world-space `.ybn` per ymap
   (`imapstart_1.ybn`, `imapend_1.ybn` — Composite/GeometryBVH).
-- Custom üretimde daha az kırılgan eşdeğer yol: durum `.ydr`'lerine
-  **gömülü** Bound Composite (Sollumz'da composite'i drawable'ın çocuğu yap)
-  + arketipte `physicsDictionary = model adı`. Doğrulandı.
+- In custom production the less fragile equivalent: a Bound Composite **embedded** in the state `.ydr`s
+  (in Sollumz make the composite a child of the drawable)
+  + `physicsDictionary = model name` on the archetype. Verified.
 
-**Bu yüzden `SetEntityCollision` / `FreezeEntityPosition` /
-`DoorSystemSetOpenRatio` gibi script hileleri burada hep ters teper:**
-sistem zaten durum tabanlıdır, script'in kovalayacağı bir çarpışma yoktur.
+**That is why script tricks like `SetEntityCollision` / `FreezeEntityPosition` /
+`DoorSystemSetOpenRatio` always backfire here:**
+the system is already state based; there is no collision for a script to chase.
 
-### Gömülü bound üretimi — ölçülmüş sınırlar ve sıra
+### Building the embedded bound — measured limits and order
 
-Sollumz'da kurulum: `sollumz_bound_composite` (EMPTY, drawable'ın çocuğu)
-→ altına `sollumz_bound_geometry` (MESH). Mesh'i görsel mesh'in kopyası
-yapmak yeterli; ayrı collision modellemeye gerek yok.
+Setup in Sollumz: `sollumz_bound_composite` (EMPTY, child of the drawable)
+→ under it `sollumz_bound_geometry` (MESH). Making the mesh a copy of the visual mesh
+is enough; no need to model a separate collision.
 
-⛔ **`sollumz_bound_geometrybvh` KULLANMA.** Sollumz o tipte mesh'i okumuyor,
-export `Bound GeometryBVH 'x' has no geometry!` deyip çöküyor. Çalışan tip
+⛔ **DO NOT USE `sollumz_bound_geometrybvh`.** Sollumz does not read the mesh of that type,
+the export crashes with `Bound GeometryBVH 'x' has no geometry!`. The working type is
 `sollumz_bound_geometry`.
 
-⛔ **Sert vertex tavanları** (ikisi de export'ta hata olarak çıkar):
+⛔ **Hard vertex ceilings** (both come out as an export error):
 ```
-sollumz_bound_geometry (non-BVH)   max 16.383 vertex
-BVH bound                          max 32.767 vertex
+sollumz_bound_geometry (non-BVH)   max 16,383 vertices
+BVH bound                          max 32,767 vertices
 ```
-Ve dönüşüm oranı sezgisel değil: **bound vertex ≈ mesh vertex × 1.52**
-(ölçüldü: 11.396 mesh → 17.283 bound). 1.42 diye tahmin edip iki tur
-başarısız export aldım. Hedefi mesh tarafında **~9.500 vertex**'e kurmak
-güvenli bant veriyor (→ ~14.400 bound).
-Aşıyorsa `DECIMATE` modifier ile seyrelt — collision'da bu kayıp görünmez.
+And the conversion ratio is not intuitive: **bound vertices ≈ mesh vertices × 1.52**
+(measured: 11,396 mesh → 17,283 bound). I guessed 1.42 and got two
+failed exports. Setting the target on the mesh side to **~9,500 vertices** gives
+a safe band (→ ~14,400 bound).
+If it exceeds that, thin it with the `DECIMATE` modifier — the loss is invisible in collision.
 
-Materyal: `bpy.ops.sollumz.createcollisionmaterial()` bir `DEFAULT`
-materyali üretir (**seçili obje ister**, yoksa "No objects selected" deyip
-hiçbir şey yapmaz). Sonra `mat.collision_properties.collision_index` ile
-gerçek materyali seç (beton = **1**, tablo `collision_materials.tsv`).
-Tüm yüzleri tek collision materyaline indirmek yeterli.
+Material: `bpy.ops.sollumz.createcollisionmaterial()` creates a `DEFAULT`
+material (**it needs a selected object**, otherwise it says "No objects selected" and
+does nothing). Then pick the real material with `mat.collision_properties.collision_index`
+(concrete = **1**, table `collision_materials.tsv`).
+Reducing all faces to a single collision material is enough.
 
-⛔ **`physicsDictionary` boş kalırsa gömülü bound motora HİÇ bağlanmaz.**
-Arketipte model adının kendisi yazılır. Bound taşımayan arketipte ise boş
-bırakılır — var olmayan bir sözlüğü işaret etmek yeni bir hata kaynağıdır.
+⛔ **If `physicsDictionary` stays empty the embedded bound is NEVER bound to the engine.**
+Write the model name itself on the archetype. On an archetype that carries no bound, leave it
+empty — pointing at a dictionary that does not exist is a new source of errors.
 
-### ⛔ SIRA: önce KENDİ collision'ını koy, sonra vanilla'yı kes
+### ⛔ ORDER: first put in YOUR OWN collision, then cut the vanilla one
 
-Vanilla collision `physicsDict = 0` olan arketiplerde **dünya uzayı `.ybn`**
-içindedir; entity'yi ymap'ten silmek görüntüyü kaldırır ama **çarpışmayı
-bırakır** — çöküşten sonra havada yürünür. Kesmek gerekir, ama vanilla'yı
-önce kesersen sağlam hâl de delik olur ve içinden düşülür.
+On archetypes with `physicsDict = 0`, vanilla collision is inside a **world-space `.ybn`**;
+deleting the entity from the ymap removes the visual but **leaves the collision** —
+after the collapse you walk on air. It must be cut, but if you cut vanilla
+first, the intact state is holed too and you fall through it.
 
-Ölçülmüş dağılım (köprü dilimi, üçgen merkezi dilim içinde):
+Measured distribution (bridge slice, triangle centre inside the slice):
 ```
-hw1_rd_10.ybn   546 poligon  z 78..84   kopru tablasi + yol yuzeyi
-hw1_rd_9.ybn     44 poligon  z 80..84   dilimin kenari
-hw1_10_0.ybn     75 poligon  z >= 70    ayaklar/govde
-hw1_10_0.ybn    260 poligon  z 56..70   CUKUR ZEMINI -- DOKUNULMAZ
+hw1_rd_10.ybn   546 polygons  z 78..84   bridge deck + road surface
+hw1_rd_9.ybn     44 polygons  z 80..84   edge of the slice
+hw1_10_0.ybn     75 polygons  z >= 70    piers/body
+hw1_10_0.ybn    260 polygons  z 56..70   PIT FLOOR -- DO NOT TOUCH
 ```
-Not: `.ybn` içinde poligon ararken **üçgenin üç köşesi de** bölge içinde
-şartı koyma — tablanın büyük üçgenleri sınırı aşar ve sayım "deck collision
-yok" der. **Üçgen merkezini** kullan.
+Note: when searching for polygons in a `.ybn`, do not require **all three corners of the triangle**
+to be inside the area — the deck's large triangles cross the boundary and the count says "no deck collision".
+Use the **triangle centre**.
 
 ---
 
-## 7. ymap'ler
+## 7. ymaps
 
 ```
 des_X_imapstart : ymap flags 1  contentFlags 577 (HD 1 + Physics 64 + Critical 512)
 des_X_imapend   : ymap flags 1  contentFlags 65  (HD + Physics)
-yerleştirici    : ymap flags 0  contentFlags 65
+placer          : ymap flags 0  contentFlags 65
 
-entity kalıbı (üçünde de):
+entity template (in all three):
   flags 1572864 · parentIndex -1 · LODTYPES_DEPTH_ORPHANHD · PRI_REQUIRED
-  lodDist -1 (arketipinkini kullan)  — yerleştiricide 100
+  lodDist -1 (use the archetype's)  — 100 on the placer
 ```
 
-`des_stilthouse`'ta üçüncü bir ymap daha var: `_rebuild` (85 entity) —
-onarılmış hal. Zorunlu değildir.
+`des_stilthouse` has a third ymap as well: `_rebuild` (85 entities) —
+the repaired state. It is not required.
 
-`.ytyp` **kayıt edilmek zorundadır**, stream'e koymak yetmez:
+The `.ytyp` **must be registered**, putting it in stream is not enough:
 ```lua
 files { 'stream/des_X.ytyp' }
 data_file 'DLC_ITYP_REQUEST' 'stream/des_X.ytyp'
 ```
-Kaydolmazsa hem ymap entity'leri hem `compositeEntityTypes` **sessizce**
-hiç oluşmaz.
+If it is not registered, both the ymap entities and `compositeEntityTypes` are **silently**
+never created.
 
 ---
 
-## 8. Sollumz sapmaları ve yama listesi
+## 8. Sollumz deviations and the patch list
 
-Sollumz 2.9 ile ölçüldü. Export'tan sonra bunların hepsi düzeltilmelidir:
+Measured with Sollumz 2.9. After export all of these must be fixed:
 
-| # | Sollumz yazıyor | olması gereken |
+| # | Sollumz writes | should be |
 |---|---|---|
-| 1 | `pack:/pack:/x.clip` (çift önek) | `pack:/x.clip` |
+| 1 | `pack:/pack:/x.clip` (double prefix) | `pack:/x.clip` |
 | 2 | `Unknown30 = 0` | `1` |
-| 3 | `Tags` / `Properties` blokları **hiç yok** | `Properties` 1 Item (Int 32) |
+| 3 | `Tags` / `Properties` blocks **missing entirely** | `Properties` 1 Item (Int 32) |
 | 4 | `Unknown10 = 0` | `1` |
-| 5 | `BoneIds` yalnız Track 0+1 | Track 2 de (`StaticVector3 1,1,1`) |
-| 6 | bbox = rest pozu | animasyonun tam uzanımı |
+| 5 | `BoneIds` only Track 0+1 | Track 2 too (`StaticVector3 1,1,1`) |
+| 6 | bbox = rest pose | the full reach of the animation |
 
-Düzeltme adımları: klip alanları vanilla sırasıyla yeniden kurulur · Track 2
-blokları `SequenceData`'ya eklenir · kök kemiğin (tag 0) üç kanalı her track
-grubunun başına yazılır. Betikler public sürümde yok.
+Fix steps: the clip fields are rebuilt in vanilla order · Track 2
+blocks are added to `SequenceData` · the three channels of the root bone (tag 0) are written at the start
+of every track group. The scripts are not in the public version.
 
-### Diğer Sollumz tuzakları (hepsi yaşandı)
+### Other Sollumz pitfalls (all happened)
 
-- **`sz_lods.high.mesh` atanmamışsa export "has no Sollumz materials!" der
-  ve drawable'ı komple atlar.** Materyal aslında oradadır; Sollumz
-  materyalleri `child.sz_lods.get_lod(...)` üzerinden okur. Yeni oluşturulan
-  mesh objelerinde bu alan **None** kalır → `ob.sz_lods.high.mesh = ob.data`.
-- `bpy.ops.object.select_all(DESELECT)` MCP bağlamında seçimi sessizce
-  bozar → `bpy.context.temp_override(...)` kullan.
-- `pose_bone.matrix_basis`'i doğrudan hesaplarken kemik ekseni tuzağı:
-  Sollumz kemiklerinde local Y = head→tail yönüdür, dünya eksenleri değil.
-  Doğru formül: `basis = L.inverted() @ M @ L` — `M` istenen **dünya** rijit
-  dönüşümü, `L = bone.matrix_local`. `basis = L.inverted() @ M` yazmak
-  kemik başında bir dönüşe dönüşür ve kare 0'da bile geometriyi bozar.
+- **If `sz_lods.high.mesh` is not set, export says "has no Sollumz materials!"
+  and skips the drawable entirely.** The material is actually there; Sollumz
+  reads materials through `child.sz_lods.get_lod(...)`. On newly created
+  mesh objects this field stays **None** → `ob.sz_lods.high.mesh = ob.data`.
+- `bpy.ops.object.select_all(DESELECT)` silently breaks the selection in an MCP
+  context → use `bpy.context.temp_override(...)`.
+- Bone axis pitfall when computing `pose_bone.matrix_basis` directly:
+  in Sollumz bones local Y = the head→tail direction, not the world axes.
+  The right formula: `basis = L.inverted() @ M @ L` — `M` is the wanted **world** rigid
+  transform, `L = bone.matrix_local`. Writing `basis = L.inverted() @ M`
+  becomes a rotation about the bone head and breaks the geometry even at frame 0.
 
-### `.ytyp` / `.ymap` XML'ini ELLE YAZMA — üretici betik kullan
+### DO NOT WRITE `.ytyp` / `.ymap` XML BY HAND — use a generator script
 
-Bir `des_*` seti **bir ytyp + üç ymap** ister ve dördü birbirine guid/ad/
-extent üzerinden bağlıdır; elle yazınca bağlardan biri sessizce kopar.
-Depoda iki çalışan üretici var, ikisi de **desen A** (imap takası) içindir:
+A `des_*` set needs **one ytyp + three ymaps**, and all four are linked to each other through guid/name/
+extent; write them by hand and one of the links silently breaks.
+The repository has two working generators, both for **pattern A** (imap swap):
 
-| betik | ne üretir |
+| script | what it produces |
 |---|---|
-| `scripts/gen_crane_meta.py <klasör>` | `des_crane` — alanları `des_stilthouse`'tan ölçülmüş referans üretici |
-| `scripts/gen_bridge_meta.py <klasör>` | `des_kopru` — §11'deki **kalıcı geometri ayrımı** uygulanmış hâli (`_kalan` placer'da) |
+| `scripts/gen_crane_meta.py <folder>` | `des_crane` — reference generator with fields measured from `des_stilthouse` |
+| `scripts/gen_bridge_meta.py <folder>` | `des_bridge` — the version with the **permanent geometry split** of §11 applied (`_rest` on the placer) |
 
-Yeni bir `des_X` için bunlardan birini kopyala; konum, ad ve entity listesi
-dışında hiçbir alanı **değiştirme**. Çıktı XML'dir → `meta_xml_to_bin.ps1`.
+For a new `des_X`, copy one of them; **do not change** any field other than position, name and
+entity list. The output is XML → `meta_xml_to_bin.ps1`.
 
-### `.ytyp` / `.ymap` binary üretimi
+### Binary `.ytyp` / `.ymap` production
 
-Sollumz bunları binary yazamaz, `xml_to_res.ps1` de desteklemez. Kullan:
-`XmlMeta::GetData(doc, MetaFormat.RSC, folder)` (bkz. `meta_xml_to_bin.ps1`).
+Sollumz cannot write these as binary, and `xml_to_res.ps1` does not support them either. Use:
+`XmlMeta::GetData(doc, MetaFormat.RSC, folder)` (see `meta_xml_to_bin.ps1`).
 
-⛔ **İkisi de `MetaFormat.**RSC**` üzerinden yazılır — enum'da `ytyp`/`ymap`
-diye bir üye ARAMA.** Bu yaşandı: enum'da bulamayınca "CodeWalker bu yolu
-yazamıyor" sonucuna varıldı, composite terk edildi ve script tabanlı
-(`CreateObject` + `PlayEntityAnim`) yanlış yola geçilerek turlar kaybedildi.
-Araç zaten çalışıyordu.
+⛔ **Both are written through `MetaFormat.**RSC**` — do NOT LOOK for a member called
+`ytyp`/`ymap` in the enum.** This happened: not finding it in the enum led to the conclusion
+"CodeWalker cannot write this path", the composite was abandoned and a switch to the wrong
+script-based path (`CreateObject` + `PlayEntityAnim`) lost rounds.
+The tool was already working.
 
-⛔ **`YtypFile.Save()` `compositeEntityTypes` bloğunu SESSİZCE DÜŞÜRÜR**
-(ölçüldü: 925 → 836 bayt, composite 0). XML yolu düşürmez. Bir ytyp'i
-`Load` + `Save` ile "dokunmadan" yeniden yazmak composite'i yok eder.
-
----
-
-## 9. Oyuna girmeden ne test edilir
-
-Merdivenin tamamı: `trunk/verification-ladder.md`. Bu sisteme özgü kesişim:
-
-**Test edilebilir (saniyeler):**
-- Klibin kemikleri gerçekten sürdüğü — derlenmiş `.ycd`'yi CodeWalker.Core ile
-  faz başına değerlendirmek Bağ A'yı ve ölü kuyruğu yakalar (araç public sürümde yok).
-- Bağ A/B/C'nin üçü de dağıtılmış dosyalar üzerinde XML geri okumasıyla
-  denetlenir (tag kümesi eşitliği, klip Hash'i, bbox ⊇ animasyon kutusu).
-- Hareketin estetiği — Blender zaman çizelgesi / viewport render.
-
-**Test EDİLEMEZ (oyun şart):**
-- Composite durum makinesi, imap takası, `punchIn/Out` zamanlaması
-- Streaming, `DLC_ITYP_REQUEST` ile ytyp kaydı
-- Collision davranışı
-
-**Asset değiştikten sonra sunucudan tamamen ÇIKIP yeniden bağlan** —
-restart yetmez, yoksa bayat asset test edilir.
+⛔ **`YtypFile.Save()` SILENTLY DROPS the `compositeEntityTypes` block**
+(measured: 925 → 836 bytes, composite 0). The XML path does not drop it. Rewriting a ytyp
+"without touching it" with `Load` + `Save` destroys the composite.
 
 ---
 
-## 10. Hata kataloğu — yaşananlar
+## 9. What can be tested without entering the game
 
-1. **Fragment (`.yft`) ile denemek.** RayFire kökü `.ydr`'dir. `.yft`'te
-   `PlayEntityAnim` `animTime`'ı 0.000'da bırakır.
-2. **`compositeEntityTypes` bloğunu hiç yazmamak** → arketipler kaydolur,
-   composite yoktur, `GetRayfireMapObject` 0 döner.
-3. **`.yed` + Expression extension eklemek.** RayFire'da yoktur; o zincir
-   fragment/expression yolunun parçasıdır. Eklemek zarar verir.
-4. **Klip adını model adından farklı yapmak** (Bağ B'nin tersi).
-5. **`physicsDictionary`'yi doldurmak** — vanilla kökte boştur.
-6. **`rootN`'i ymap'e koymak / elle spawn etmek** → artık RayFire değil.
-7. **Reçeteleri karıştırmak.** Bir turda asset `des_stilthouse`'un skinned
-   mesh'i + `my_vauldr`'ın fragment ambalajı olmuştu; her iki reçete de
-   tek başına doğruydu, melez çalışmadı. **Bir reçete seç ve sonuna kadar
-   onu uygula.**
+The whole ladder: `trunk/verification-ladder.md`. The part specific to this system:
+
+**Testable (seconds):**
+- That the clip really drives the bones — evaluating the compiled `.ycd` per phase with
+  CodeWalker.Core catches Link A and a dead tail (the tool is not in the public version).
+- All three of Links A/B/C are checked by XML read back on the deployed files
+  (tag set equality, clip Hash, bbox ⊇ animation box).
+- The look of the motion — Blender timeline / viewport render.
+
+**NOT testable (needs the game):**
+- The composite state machine, imap swap, `punchIn/Out` timing
+- Streaming, ytyp registration with `DLC_ITYP_REQUEST`
+- Collision behaviour
+
+**After an asset changes, leave the server COMPLETELY and reconnect** —
+a restart is not enough, otherwise you test a stale asset.
 
 ---
 
-## 10b. Vanilla'yı kaldırma — gizleme DEĞİL, silme ya da taşıma
+## 10. Error catalogue — what happened
 
-Kendi yıkımını vanilla bir yapının yerine koyuyorsan vanilla entity
-kalkmalı; yoksa ikisi üst üste biner ve yıkım "hiç olmamış" görünür.
-**Bütün LOD katmanları + `hei_` ikizleri** yamalanır (`X_strm_N`, `X_long_N`,
-`X` içindeki `_lod`).
+1. **Trying it with a fragment (`.yft`).** The RayFire root is a `.ydr`. On a `.yft`
+   `PlayEntityAnim` leaves `animTime` at 0.000.
+2. **Not writing the `compositeEntityTypes` block at all** → the archetypes register,
+   there is no composite, `GetRayfireMapObject` returns 0.
+3. **Adding `.yed` + an Expression extension.** RayFire has none; that chain is
+   part of the fragment/expression path. Adding it does harm.
+4. **Making the clip name different from the model name** (the reverse of Link B).
+5. **Filling `physicsDictionary`** — it is empty on the vanilla root.
+6. **Putting `rootN` into a ymap / spawning it by hand** → it is no longer RayFire.
+7. **Mixing recipes.** In one round the asset had become `des_stilthouse`'s skinned
+   mesh + `my_vauldr`'s fragment packaging; each recipe was right
+   on its own, the hybrid did not work. **Pick one recipe and apply it
+   all the way through.**
 
-⛔ **Entity bayrağıyla gizleme (`bit22 Disable shadow` + `bit23 Disable
-entity`) KULLANILMAZ.** Ölçüldü: HD entity gizlenince motor onun **LOD
-kabuğunu** çizmeye başlar — ekranda dokusuz, düz, tek renk üçgen yüzeyler
-belirir ve bu "modelimiz bozuk" diye okunur. Kabuk zaten kaba geometridir.
+---
 
-İki doğru yol var:
+## 10b. Removing vanilla — NOT hiding, but deleting or moving
 
-| yol | ne yapar | ne zaman |
+If you put your own destruction in place of a vanilla structure, the vanilla entity
+must go; otherwise the two overlap and the destruction looks like it "never happened".
+**All LOD levels + the `hei_` twins** are patched (`X_strm_N`, `X_long_N`,
+the `_lod` in `X`).
+
+⛔ **Hiding with entity flags (`bit22 Disable shadow` + `bit23 Disable
+entity`) IS NOT USED.** Measured: when the HD entity is hidden, the engine starts drawing its
+**LOD shell** — flat, single-colour, untextured triangle surfaces
+appear on screen, and this reads as "our model is broken". The shell is coarse geometry anyway.
+
+There are two right ways:
+
+| way | what it does | when |
 |---|---|---|
-| **sil** | entity'yi `entities`'ten çıkar, **`parentIndex`** kaydır ve ebeveynin **`numChildren`**'ını düşür | kalıcı temizlik |
-| **taşı** | entity'yi 600 m aşağı al | indeksleri hiç bozmaz, geri alınabilir |
+| **delete** | remove the entity from `entities`, shift **`parentIndex`** and decrement the parent's **`numChildren`** | permanent cleanup |
+| **move** | take the entity 600 m down | never breaks indices, reversible |
 
-### ⛔ SİLMEDEN ÖNCE İKİ SORU — üçü de yaşandı, üçü de dünyada delik açtı
+### ⛔ TWO QUESTIONS BEFORE DELETING — all three happened, all three opened a hole in the world
 
-**1. Entity'nin kapsamı senin modelinin AYAK İZİNİN içinde mi?**
-*"Bu vanilla objeyi modelimize birleştirdik"* demek *"tamamını kapsıyoruz"*
-demek **değildir** — birleştirme sırasında yalnız kesişen kısım alınmış olur.
-Ölçüt tek satır: `pozisyon + arketip bbMin/bbMax` senin kapsamının içinde mi.
+**1. Is the entity's extent inside YOUR model's FOOTPRINT?**
+Saying *"we merged this vanilla object into our model"* does **not** mean
+*"we cover all of it"* — during the merge only the intersecting part was taken.
+The criterion is one line: is `position + archetype bbMin/bbMax` inside your coverage.
 
-Ölçülmüş vaka (köprü, kapsam `x 664…869, y −113…41`):
+Measured case (bridge, coverage `x 664…869, y −113…41`):
 ```
-fwy_04_splita03   y −322 … −143   DISARI   -> silinince otoyol yok oldu
-fwy_04_splita02   y  +60 … +178   DISARI
-fwy_04_splita     y  −50 …  +85   DISARI
-hw1_rd_02_17      x 664 …  784    icinde   -> silinmesi guvenli
+fwy_04_splita03   y −322 … −143   OUTSIDE  -> deleting it removed the freeway
+fwy_04_splita02   y  +60 … +178   OUTSIDE
+fwy_04_splita     y  −50 …  +85   OUTSIDE
+hw1_rd_02_17      x 664 …  784    inside   -> safe to delete
 ```
-Dışarı taşan **yapısal** geometri silinmez; ya bırakılır ya da vanilla'nın
-kalan kısmı kendi drawable'ın olarak üretilir (crane'deki "yol eksi çöken
-dilim" yöntemi).
+**Structural** geometry that spills outside is not deleted; either leave it or produce the
+remaining part of vanilla as your own drawable (the "road minus the collapsing
+slice" method on the crane).
 
-**2. Bu entity yapı mı taşıyor, yoksa yalnızca decal mi?**
-`_ovly` / decal entity'leri **her durumda silinebilir** — eksikliği delik
-değil, yalnız leke/çizgi eksikliğidir. Ölçüldü: 4 `fwy_04_rd_*_ovly` hepsi
-`parentIndex = −1` (öksüz, LOD ebeveyni yok) ve `lodDist` 62–89.
-Ama dikkat: aynı decal **yol çizgilerini de** taşıyabilir
-(`im_roadmarkings*`, `im_roadblends*`) — silince yol yamalı görünür.
+**2. Does this entity carry structure, or only a decal?**
+`_ovly` / decal entities **can always be deleted** — their absence is not a hole,
+only a missing stain/line. Measured: 4 `fwy_04_rd_*_ovly`, all
+`parentIndex = −1` (orphan, no LOD parent) and `lodDist` 62–89.
+But careful: the same decal can **also carry road markings**
+(`im_roadmarkings*`, `im_roadblends*`) — delete it and the road looks patched.
 
-**3. Çocuğu kalmayan LOD'u yerinde bırakma.**
-HD entity silinince ebeveyni `numChildren = 0` kalır ve o LOD **her mesafede
-çizilmeye başlar**. Belirti: "yol/zemin hâlâ duruyor" ya da dokusuz düz
-yüzeyler. Ölçülmüş: `fwy_04[53,56,58,68]`, `hw1_rd[237,238]`,
-`hw1_10[3,4]` — hepsi `LODTYPES_DEPTH_LOD`, `lodDist` 350–500.
-Ve ayrı bir tuzak: `hw1_10_land03_a` gibi `_a` sonekli **orta mesafe**
-varyantlar zeminin **pişmiş kir dokusunu** taşır; "zemin" diye etiketleyip
-geçme, ne çizdiğine bak.
+**3. Do not leave a LOD with no children in place.**
+When the HD entity is deleted, its parent is left with `numChildren = 0`, and that LOD **starts
+drawing at every distance**. Symptom: "the road/ground is still there", or flat untextured
+surfaces. Measured: `fwy_04[53,56,58,68]`, `hw1_rd[237,238]`,
+`hw1_10[3,4]` — all `LODTYPES_DEPTH_LOD`, `lodDist` 350–500.
+And a separate pitfall: **mid-distance** variants with an `_a` suffix like `hw1_10_land03_a`
+carry the ground's **baked dirt texture**; do not label them "ground" and
+move on, look at what they draw.
 
-### ⛔ ymap YAZMANIN İKİ YOLU VAR VE HANGİSİNİN KAYIPSIZ OLDUĞU DOSYAYA GÖRE DEĞİŞİR
+### ⛔ THERE ARE TWO WAYS TO WRITE A ymap AND WHICH ONE IS LOSSLESS DEPENDS ON THE FILE
 
-| yol | ne zaman |
+| way | when |
 |---|---|
-| `XmlMeta.GetData` (XML turu) | çoğu ymap'te kayıpsız, **ama hepsinde değil** |
-| `YmapFile.RemoveEntity` + `YmapFile.Save()` | binary üzerinde, ölçülen vakada kayıpsız |
+| `XmlMeta.GetData` (XML round trip) | lossless on most ymaps, **but not on all** |
+| `YmapFile.RemoveEntity` + `YmapFile.Save()` | on the binary, lossless in the measured case |
 
-Ölçüldü — `hw1_rd_critical_1.ymap`, **dosyaya hiç dokunmadan** yapılan XML
-turu: **457 entity → 128**. Aynı dosyada `Save()` turu: **457 → 457**.
-Dağıtılsaydı bölgedeki **325 obje** (ağaç, tabela, trafik ışığı, çöp kutusu)
-sessizce yok olurdu; araç hata vermiyor, "başarılı" diyor.
+Measured — `hw1_rd_critical_1.ymap`, an XML round trip **without touching the file
+at all**: **457 entities → 128**. A `Save()` round trip on the same file: **457 → 457**.
+Had it been deployed, **325 objects** in the area (trees, signs, traffic lights, bins)
+would have silently vanished; the tool gives no error, it says "success".
 
-**Kural: her ymap yazımından sonra kaynak entity sayısıyla karşılaştır.**
-`meta_xml_to_bin.ps1` artık bunu kendisi yapıyor ve tutmazsa çıktıyı siler.
+**Rule: after every ymap write, compare with the source entity count.**
+`meta_xml_to_bin.ps1` now does this itself and deletes the output if it does not match.
 
-### ⛔ Vanilla prop'u kendi modeline GÖMME
+### ⛔ DO NOT EMBED a vanilla prop in your own model
 
-Sokak lambası, çöp kutusu gibi vanilla prop'ları `.ydr`'ine katmak dokuyu
-bozar: dokuları kendi `.ytd`'lerindedir (`prop_streetlight_01.ytd`), modele
-gömerken o sözlük gelmez ve materyaller yanlış dokulara düşer — ölçülen
-vakada lamba kırmızı-beyaz çizgili çıktı. Prop'a ihtiyacın varsa
-**vanilla entity'yi olduğu yerde bırak** ya da **ymap'ten sil**; geometrisini
-kopyalama.
+Adding vanilla props such as a street lamp or a bin into your `.ydr` breaks
+the textures: their textures are in their own `.ytd`s (`prop_streetlight_01.ytd`); that dictionary does not
+come along when you embed them and the materials fall onto the wrong textures — in the measured
+case the lamp came out red-and-white striped. If you need the prop,
+**leave the vanilla entity where it is** or **delete it from the ymap**; do not copy its
+geometry.
 
-Silerken indeks onarımı zorunludur: üst ymap'ten bir entity çıkınca çocuk
-ymap'lerdeki `parentIndex` değerleri **bir kayar** ve sessizce yanlış
-entity'yi gösterir. Ölçülmüş örnek (`hw1_10`):
+When deleting, index repair is mandatory: when an entity leaves the parent ymap, the
+`parentIndex` values in the child ymaps **shift by one** and silently point at the wrong
+entity. Measured example (`hw1_10`):
 ```
-hw1_10.ymap[9]  = hw1_10_bridge01_lod   silindi
-                  -> ebeveyn[0].numChildren 6 -> 5
-hw1_10_strm_0   parentIndex > 9 olan 3 entity  -> -1
-hw1_10_long_0   parentIndex > 9 olan 1 entity  -> -1
+hw1_10.ymap[9]  = hw1_10_bridge01_lod   deleted
+                  -> parent[0].numChildren 6 -> 5
+hw1_10_strm_0   3 entities with parentIndex > 9  -> -1
+hw1_10_long_0   1 entity with parentIndex > 9    -> -1
 ```
-Doğrulama: her ymap'te entity sayısı korunmalı (silinen hariç) ve hedef
-arketip hash'i **0 kez** geçmeli.
+Verification: the entity count of every ymap must be kept (except the deleted one) and the target
+archetype hash must appear **0 times**.
 
-⛔ **Extent'e dokunma** (§1.6): entity çıkarmak extent'i değiştirmez.
+⛔ **Do not touch the extent** (§1.6): removing an entity does not change the extent.
 
 ---
 
-## 10c. ⛔ ÖLÇÜM TUZAKLARI — hepsi bu sistemde yaşandı, hepsi SESSİZ
+## 10c. ⛔ MEASUREMENT PITFALLS — all happened in this system, all SILENT
 
-Bu bölümdeki her madde bir turu, bazıları bir günü yaktı. Ortak yanları:
-araç hata vermiyor, makul görünen **yanlış bir sayı** dönüyor.
+Every item in this section burned a round, some burned a day. What they share:
+the tool gives no error, it returns a plausible-looking **wrong number**.
 
-**`MetaHash` ≠ `UInt32`.** `entity._CEntityDef.archetypeName` bir `MetaHash`'tir;
-`UInt32` anahtarlı bir hashtable'da `ContainsKey($archetypeName)` **hiçbir zaman
-eşleşmez** ve "kalıntı 0" diye okunur. Açık çevrim şart:
-`[uint32]$en._CEntityDef.archetypeName`. Bir doğrulama turunu bu yüzden
-tamamen boşa harcadım — "temiz" dediğim dosyalar ölçülmemişti.
+**`MetaHash` ≠ `UInt32`.** `entity._CEntityDef.archetypeName` is a `MetaHash`;
+in a hashtable keyed by `UInt32`, `ContainsKey($archetypeName)` **never
+matches** and reads as "0 left". An explicit cast is required:
+`[uint32]$en._CEntityDef.archetypeName`. I wasted a whole verification round
+because of this — the files I called "clean" had not been measured.
 
-**PowerShell değişkenleri büyük/küçük harf DUYARSIZ.** Döngüde kullanılan
-`$y` (YmapFile), yedek klasörü değişkeni `$Y`'yi ezdi ve yedek yanlış yola
-yazılmaya çalışıldı. Kısa değişken adı + döngü = bu hata.
+**PowerShell variables are case-INSENSITIVE.** The `$y` (YmapFile) used in a loop
+overwrote the backup folder variable `$Y`, and the backup was written to the wrong path.
+Short variable name + loop = this bug.
 
-**`"$S\$n.ymap"` yanlış yol üretir** — PowerShell `$n.ymap`'i property erişimi
-sanar, boş döner. `"$($n).ymap"` ya da `Join-Path` kullan.
+**`"$S\$n.ymap"` produces a wrong path** — PowerShell takes `$n.ymap` for a property access
+and it returns empty. Use `"$($n).ymap"` or `Join-Path`.
 
-**`@(@(x,y))` tek elemanlıysa DÜZLEŞİR.** Tek koordinatlık liste `@(x,y)`'ye
-dönüşür, `$k[0]`/`$k[1]` saçmalar ve eşleşme sessizce kaçar. Ölçülen vakada
-silinecek çöp kutusu 1.1 m ötede duruyordu, "0 silindi" dendi.
+**`@(@(x,y))` FLATTENS when it has a single element.** A one-coordinate list turns into
+`@(x,y)`, `$k[0]`/`$k[1]` go haywire and the match silently misses. In the measured case
+the bin to be deleted was 1.1 m away, and "0 deleted" was reported.
 
-**`bpy` `bound_box` BAYAT olabilir.** `mesh.transform()` sonrası
-`ob.bound_box` eski değeri döndürür; dönüşüm uygulanmış olsa bile
-"uygulanmamış" gibi görünür. Kutuyu **vertex'lerden** hesapla.
+**`bpy` `bound_box` can be STALE.** After `mesh.transform()`,
+`ob.bound_box` returns the old value; even when the transform was applied it
+looks "not applied". Compute the box **from the vertices**.
 
-**Izgara örneklemesi yanlış soruyu sorabilir.** "Zemin var mı" diye 20 m
-adımlı ızgara attım, 100/100 nokta doldu ve "boşluk yok" dedim — oysa ızgara
-noktalarının hepsi yol/köprü yüzeyine denk gelmişti, zeminin olmadığı yerler
-hiç örneklenmemişti. Ölçüm doğruydu, **soru yanlıştı**.
+**Grid sampling can ask the wrong question.** To check "is there ground" I cast a grid with 20 m
+steps, 100/100 points hit and I said "no gaps" — but all the grid
+points had landed on the road/bridge surface, and the places without ground were
+never sampled. The measurement was right, **the question was wrong**.
 
-**⛔ Ve en pahalısı: EKRAN GÖRÜNTÜSÜ ÖLÇÜM DEĞİLDİR.** Bu oturumda üç kez
-karelere bakıp yanlış teşhis koydum (bir kez "boşluk var" dedim, yoktu; bir
-kez "boşluk yok" dedim, vardı). Bir şeyin bozuk olduğunu söylemeden önce
-**oku**: dosyayı, entity sayısını, geri okumayı.
+**⛔ And the most expensive one: A SCREENSHOT IS NOT A MEASUREMENT.** In this session I looked at frames
+three times and made a wrong diagnosis (once I said "there is a gap", there was none; once
+I said "no gap", there was one). Before saying something is broken,
+**read**: the file, the entity count, the read back.
 
 ---
 
-## 11. Kalıcı geometri ile durum geometrisini AYIR
+## 11. SEPARATE permanent geometry from state geometry
 
-Bir `des_*` işinde çoğu zaman üç ayrı şey vardır:
+A `des_*` job usually has three separate things:
 
-| ne | nereye | neden |
+| what | where | why |
 |---|---|---|
-| sağlam hâl | `StartImapFile` | durum makinesi kapatır |
-| enkaz | `EndImapFile` | durum makinesi açar |
-| **kalıcı zemin / çevre** | **placer ymap'i** (composite'in yanına) | hiçbir duruma ait değil |
+| intact state | `StartImapFile` | the state machine turns it off |
+| debris | `EndImapFile` | the state machine turns it on |
+| **permanent ground / surroundings** | **the placer ymap** (next to the composite) | belongs to no state |
 
-⛔ **`start` imap'ine SADECE çöken dilim konur, tüm yapı değil.**
-İkinci kez yaşandı, bu sefer daha büyük ölçekte: `start`'a 205 × 154 m'lik
-**köprünün tamamı** konmuştu, `end`'de ise yalnız 82 × 69 m'lik enkaz vardı.
-Tetiklenince `start` kapanıyor ve o 205 metrenin **hepsi** yok oluyor; geri
-gelen sadece enkaz. Belirtiler tek tek şikâyet olarak geldi ve hiçbiri
-birbirine benzemiyordu:
+⛔ **ONLY the collapsing slice goes into the `start` imap, not the whole structure.**
+It happened a second time, this time at a larger scale: `start` held **the whole
+bridge** of 205 × 154 m, while `end` held only 82 × 69 m of debris.
+On trigger `start` turns off and **all** of those 205 metres vanish; only the
+debris comes back. The symptoms arrived as separate complaints and none of them
+looked alike:
 ```
-korkuluklar kayboldu · yolda delik acildi · decal'lar havada kaldi
+railings vanished · a hole opened in the road · decals left hanging in the air
 ```
-Hepsinin tek sebebi buydu. Doğru bölme:
+All of them had this single cause. The right split:
 ```
-placer (HEP ACIK)   composite  +  <ad>_kalan     yikilmayan her sey
-start  (kapanir)    <ad>_saglam                  cöken dilimin saglam hali
-end    (acilir)     <ad>_enkaz                   enkaz
+placer (ALWAYS ON)  composite  +  <name>_rest    everything that does not collapse
+start  (turns off)  <name>_intact                intact state of the collapsing slice
+end    (turns on)   <name>_debris                debris
 ```
-`_saglam` = animasyonun **kare 0'ının statik export'u** (crane'de de öyle).
-`_kalan` = birleştirilmiş modelin, çöken dilim **çıkarılmış** hâli.
+`_intact` = **a static export of frame 0** of the animation (the same on the crane).
+`_rest` = the merged model with the collapsing slice **removed**.
 
-⛔ **Kalıcı geometriyi durum imap'lerine koyma.** Yolun yıkılmayan kalanını
-`start` ve `end`'in ikisine birden koymuştum; `start` kapanıp `end` henüz
-açılmadığı anda **ortada yol kalmıyor**, altından gökyüzü görünüyor.
-Belirti: bölgenin tamamı boşluk. Doğru yeri her zaman açık olan placer.
+⛔ **Do not put permanent geometry into the state imaps.** I had put the part of the road
+that does not collapse into both `start` and `end`; at the moment `start` has turned off and `end`
+has not yet turned on, **there is no road left**, and the sky shows underneath.
+Symptom: the whole area is a hole. The right place is always the placer, which is always on.
 
 ```
-des_crane_start    ['des_crane_saglam']
-des_crane_end      ['des_crane_enkaz']
-des_crane_placer   ['des_crane', 'des_crane_yol', 'des_crane_ov']   <- kalici
-```
-
-### ⛔ imap EXTENT'İNİ HESAPLA
-
-Kendi ürettiğin ymap'te extent elle yazılmış bir kutudan gelmemeli;
-**entity'lerin birleşiminden** hesaplanmalı. Extent içinde kalmayan entity
-**sessizce hiç görünmez**, hata da vermez.
-
-Ölçüldü:
-```
-des_crane_start  beyan z 28.6..43.8   gercek z 28.6..108.9  -> saglam vincin 65 m'si DISARIDA
-des_crane_end    beyan z 28.6..43.8   gercek z 28.6.. 48.8  -> enkazin 5 m'si DISARIDA
+des_crane_start    ['des_crane_intact']
+des_crane_end      ['des_crane_debris']
+des_crane_placer   ['des_crane', 'des_crane_road', 'des_crane_ov']   <- permanent
 ```
 
-Aynı şey arketip kutusu için de geçerli: `des_X_root`'un kutusu
-**animasyonun tamamını** kapsamalı (tüm karelerde tüm parçaların birleşimi),
-yalnız rest hâlini değil.
+### ⛔ COMPUTE the imap EXTENT
 
-### guid deterministik olsun
+In a ymap you generate, the extent must not come from a box written by hand;
+it must be computed **from the union of the entities**. An entity that is not inside the extent
+**is silently never visible**, and there is no error either.
 
-`abs(hash(ad))` kullanma — Python'un string hash'i süreç başına rastgele
-tohumlanır, her üretimde başka guid yazar. Jenkins kullan.
+Measured:
+```
+des_crane_start  declared z 28.6..43.8   actual z 28.6..108.9  -> 65 m of the intact crane OUTSIDE
+des_crane_end    declared z 28.6..43.8   actual z 28.6.. 48.8  -> 5 m of the debris OUTSIDE
+```
+
+The same holds for the archetype box: the box of `des_X_root` must cover
+**the whole animation** (the union of all parts over all frames),
+not only the rest state.
+
+### Make the guid deterministic
+
+Do not use `abs(hash(name))` — Python's string hash is seeded randomly per process,
+so every build writes a different guid. Use Jenkins.
 
 ---
 
-## 12. Bind pozu ve iskelet bağı — kurtarma reçetesi
+## 12. Bind pose and skeleton link — recovery recipe
 
-### Bind pozu = dünya rest − ORIGIN
+### Bind pose = world rest − ORIGIN
 
-Animasyonlu `.ydr`'nin içindeki vertex'ler **sağlam hâlin** koordinatlarıdır
-(drawable uzayında). Hareketi oyunda `.ycd` sürer. Yani:
+The vertices inside the animated `.ydr` are the coordinates of **the intact state**
+(in drawable space). In game the `.ycd` drives the motion. So:
 
-- `des_X_saglam` ve `des_X_root` **aynı geometriyi** taşır
-- `des_X_enkaz` = aynı geometri, parça başına son kare dönüşümü uygulanmış
+- `des_X_intact` and `des_X_root` carry **the same geometry**
+- `des_X_debris` = the same geometry with the last-frame transform applied per part
 
-### ⛔ Parça hareketini `pose_bone.matrix`'ten TÜRETME
+### ⛔ DO NOT DERIVE part motion from `pose_bone.matrix`
 
-Sollumz kemiklerinde yerel Y = head→tail'dir; poz matrisinin **dönüşü
-parçanın dünya dönüşü değildir**. Ölçüldü: `Translation(ORIGIN) @ pose.matrix`
-parçanın **konumunu doğru**, **oryantasyonunu 90° yanlış** verir. Oyunda
-direk yatay, kol dikey çıktı.
+In Sollumz bones local Y = head→tail; **the rotation of the pose matrix is not
+the world rotation of the part**. Measured: `Translation(ORIGIN) @ pose.matrix`
+gives the part's **position right** and its **orientation 90° wrong**. In game
+the mast came out horizontal and the jib vertical.
 
-⛔ **bbox kapısı bu hatayı YAKALAMAZ** — parçalar kendi merkezleri etrafında
-döndüğü için birleşim kutusu makul görünür. Kapıyı **oryantasyona** kur:
-bilinen bir parçanın bilinen bir kenarının yönünü ölç, ya da §12'deki
-kemik-merkezi karşılaştırmasını yap.
+⛔ **The bbox gate does NOT CATCH this error** — since the parts rotate around their own centres,
+the union box looks plausible. Build the gate on **orientation**:
+measure the direction of a known edge of a known part, or do the
+bone-centre comparison in §12.
 
-### Blender'ın armature modifier'ı bozuk olabilir — dosya bozuk demek değil
+### Blender's armature modifier can be broken — that does not mean the file is broken
 
-Ölçüldü: aynı sahnede `pose @ bone.matrix_local⁻¹` elle uygulandığında
-bind ve çökmüş kutuların **ikisi de birebir** çıkıyor, ama armature
-modifier'ının çıktısı 500+ m saçılıyor. Oyunda çalışan `.ycd` sağlamdı.
+Measured: in the same scene, applying `pose @ bone.matrix_local⁻¹` by hand gives
+**both** the bind and collapsed boxes exactly, but the armature
+modifier's output scatters 500+ m. The `.ycd` working in game was fine.
 
-**Ders:** viewport'a değil, **elle hesaba ve dağıtılmış dosyaya** güven.
-Elle dönüşüm doğru sonucu veriyorsa asset üretilebilir; modifier'ı düzeltmeye
-uğraşmak gereksiz.
+**Lesson:** trust **the hand calculation and the deployed file**, not the viewport.
+If the manual transform gives the right result the asset can be built; trying to fix the modifier
+is unnecessary.
 
-### Doğru grup→kemik eşlemesini ÇALIŞAN `.ydr`'den kurtar
+### Recover the right group→bone mapping from the WORKING `.ydr`
 
-Ağırlıklar mesh'te grup **indeksiyle** saklanır; objenin grup listesi
-yeniden yaratılırsa isimler indekslere yanlış oturur ve parçalar birbirinin
-hareketini alır. Kurtarma:
+Weights are stored in the mesh by group **index**; if the object's group list is
+recreated, the names land on the wrong indices and parts take each other's
+motion. Recovery:
 
-1. Çalışan `.ydr`'yi XML'e dök; `BlendIndices` + `Position` oku.
-2. Kemik indeksi başına **vertex merkezi** çıkar (iskelet sırası = indeks).
-3. Blender'da her grubun vertex merkezini hesapla, en yakın kemikle eşle.
-4. İki aşamalı yeniden adlandır (önce `__t_` öneki, sonra gerçek ad).
+1. Dump the working `.ydr` to XML; read `BlendIndices` + `Position`.
+2. Compute the **vertex centre** per bone index (skeleton order = index).
+3. In Blender compute the vertex centre of each group, match it to the nearest bone.
+4. Rename in two stages (first a `__t_` prefix, then the real name).
 
-Ölçüm: eşleşme medyanı **0.093 m**, 50/50 grup 0.5 m altında.
+Measured: match median **0.093 m**, 50/50 groups under 0.5 m.
 
-**Kapı:** yeni `.ydr` ile çalışan `.ydr`'nin kemik başına vertex merkezlerini
-karşılaştır. Vinç kemiklerinde sapma medyan **0.040 m** çıktı; geometrisini
-bilerek değiştirdiğim plakalarda sapma büyük olması normaldir.
+**Gate:** compare the per-bone vertex centres of the new `.ydr` with those of the working `.ydr`.
+On the crane bones the deviation came out at a median of **0.040 m**; on the plates whose geometry
+I changed on purpose a large deviation is normal.
 
-### ⛔ Vertex grubunu silmek ağırlığı siler
+### ⛔ Deleting a vertex group deletes the weights
 
-`km.data = yeni_mesh` sonrası `vertex_groups.remove(...)` yaparsan mesh'in
-ağırlık verisi gider. Export "42586 vertex hiçbir gruba ağırlıklı değil"
-uyarısı verir. Mesh'i ata, grupları **silme**.
+If you do `vertex_groups.remove(...)` after `km.data = new_mesh`, the mesh's
+weight data is gone. Export warns "42586 vertices are not weighted to any
+group". Assign the mesh, **do not delete** the groups.
 
 ---
 
-## 13. İş disiplini — bu turda en pahalı iki ders
+## 13. Work discipline — the two most expensive lessons of this round
 
-### ⛔ BLEND'İ KAYDET
+### ⛔ SAVE THE BLEND
 
-Bir günlük Blender çalışması yalnızca export edilmiş `.ydr`'lerde vardı;
-`.blend` diskte **26 saat eskiydi**. Blender kapanınca hafızadaki hareket
-tabloları (`_hedef`, `_sim_M0`) da gitti ve iş baştan kuruldu — üstelik
-yanlış kuruldu (§12). Her export'tan sonra `bpy.ops.wm.save_mainfile()`.
+A day of Blender work existed only in the exported `.ydr`s;
+the `.blend` on disk was **26 hours old**. When Blender closed, the motion tables held
+in memory (`_target`, `_sim_M0`) were gone too and the work was rebuilt from scratch — and
+rebuilt wrong (§12). After every export, `bpy.ops.wm.save_mainfile()`.
 
-Hafızada tutulan ara veri (`bpy._X`) kalıcı değildir. Kalıcı olması
-gerekenler ya `.blend`'e ya diske yazılır.
+Intermediate data held in memory (`bpy._X`) is not persistent. What has to persist
+is written either to the `.blend` or to disk.
 
-### Son çalışan çıktıyı SAKLA
+### KEEP the last working output
 
-`cikti2/` klasöründeki dün akşamki `.ydr`'ler yüzünden bozuk dağıtımdan
-tek komutla dönülebildi. Her doğrulanmış sürümü tarihli bir klasöre kopyala;
-geri dönüş yolu olmadan üretim yapma.
+Thanks to last night's `.ydr`s in the `out2/` folder, a broken deployment could be
+rolled back with one command. Copy every verified version into a dated folder;
+do not build without a way back.
 
-### Ekran görüntüsü teşhis değildir
+### A screenshot is not a diagnosis
 
-Bu turda üç kez ekrandaki desene bakıp yanlış teşhis kondu (çakışan
-plakalar sanıldı → aslında dönük eksen hizalı kutuların doğal örtüşmesiydi;
-çözülemeyen doku sanıldı → aslında `cpv_only`; materyal sanıldı → aslında
-normal). Belirti nereye bakılacağını söyler, **sebebi ölçüm söyler**.
+In this round a wrong diagnosis was made three times by looking at the pattern on screen (thought to be
+overlapping plates → actually the natural overlap of rotated axis-aligned boxes;
+thought to be an unresolved texture → actually `cpv_only`; thought to be the material → actually
+the normals). A symptom tells you where to look, **a measurement tells you the cause**.
 
-## 14. Parçalama — yıkımın "yıkım gibi" görünmesini belirleyen üç ölçü
+## 14. Fracturing — the three measures that decide whether destruction "looks like destruction"
 
-Bir yapıyı hücrelere bölüp her hücreye rijit dönüşüm vermek doğru yöntem,
-ama **hücre boyutu ve katman ayrımı sonucu belirler.** Üçü de ölçüldü
-(115 × 72 m'lik bir köprü bölgesi, 20 bin yüz).
+Splitting a structure into cells and giving each cell a rigid transform is the right method,
+but **cell size and layer separation decide the result.** All three were measured
+(a bridge area of 115 × 72 m, 20 thousand faces).
 
-### a. Zeminden kaldırma kelepçesi çöküşü İPTAL EDER
+### a. A lift-off-the-ground clamp CANCELS the collapse
 
-Parçalara "yere batmasın" diye `if zmin < TABAN: yukarı taşı` kelepçesi
-konulduğunda ve bir parça hem **güverteyi hem ayağı** içeriyorsa, ayağın
-tabanı zaten zemine yakın olduğu için kelepçe parçanın tamamını geri
-kaldırır. Ölçülen sonuç: üst yüzey düşüşü **medyan 4.1 m**, 24 parçanın
-17'si 8 m'den az düştü, ikisi **yükseldi**. Gözle "köprü yıkılmıyor".
+When a clamp `if zmin < FLOOR: move up` is put on the parts "so they do not sink into the ground",
+and a part contains **both deck and pier**, the pier's
+base is already near the ground, so the clamp lifts the whole part back
+up. Measured result: top surface drop **median 4.1 m**, 17 of 24 parts
+dropped less than 8 m, two **rose**. To the eye: "the bridge does not collapse".
 
-**Doğrusu yatay bir düzlemle katmanlara ayırmaktır** (burada z=77):
-güverte katmanı serbestçe **18-20 m** düşer, altyapı katmanı **düşmez,
-devrilir** (25-60° eğim, 2-8 m). Ayak batmaz — ayak *devrilir*.
-Ölçüm: medyan düşüş 4.1 → **18.9 m**, en az düşen parça 12.1 m.
+**The right way is to split into layers with a horizontal plane** (here z=77):
+the deck layer drops freely **18-20 m**, the substructure layer **does not drop,
+it topples** (25-60° tilt, 2-8 m). A pier does not sink — a pier *topples*.
+Measured: median drop 4.1 → **18.9 m**, the part that dropped least 12.1 m.
 
-### b. Görünen "yırtılma"nın ölçütü kenar uzunluğudur, üçgen oranı değil
+### b. The measure of visible "tearing" is edge length, not the triangle ratio
 
-Gerilmiş üçgen **oranına** bakmak yanıltır: vanilla köprünün kendisi de
-%14 çıkar, "sorun yok" denir. Rijit parçada gerilme matematiksel olarak
-zaten imkânsızdır; gözle görülen şey **parçanın kendi içindeki uzun
-kenarın dönerken süpürdüğü alandır**.
+Looking at the **ratio** of stretched triangles misleads: the vanilla bridge itself also comes out
+at 14%, and "no problem" is concluded. On a rigid part stretching is mathematically
+impossible anyway; what the eye sees is **the area a long edge inside
+the part sweeps as it rotates**.
 
-| ızgara | parça çapı (medyan) | en uzun kenar | >30 m parça |
+| grid | part diameter (median) | longest edge | parts >30 m |
 |---|---|---|---|
-| 23 m hücre (44 parça) | 30.7 m | 16.2 m (maks 25.5) | 23/44 |
-| **11 m hücre (88 parça)** | **21.8 m** | **7.3 m** (maks 19.2) | **2/88** |
+| 23 m cells (44 parts) | 30.7 m | 16.2 m (max 25.5) | 23/44 |
+| **11 m cells (88 parts)** | **21.8 m** | **7.3 m** (max 19.2) | **2/88** |
 
-Hedef: en uzun kenar **medyan < 8 m**. Hücre sınırlarında `bisect_plane`
-ile kesmek şart — yüzleri sadece merkezine göre hücreye atamak, hücreyi
-aşan yüzü olduğu gibi bırakır ve tek üçgen 60 m'ye uzanır.
+Target: longest edge **median < 8 m**. Cutting at the cell boundaries with `bisect_plane`
+is required — assigning faces to a cell only by their centre leaves a face that crosses
+the cell as it is, and a single triangle stretches to 60 m.
 
-### c. Küçük hücreyi silme, komşuya kat
+### c. Do not delete a small cell, merge it into a neighbour
 
-25 yüzden az hücreler ayrı parça yapılırsa iskelet gereksiz şişer ve
-sliver parçalar uçuşur. Aynı katmandaki en yakın büyük hücreye eklenir.
-88 parça + el + kök = **90 kemik** sorunsuz export edildi.
+If cells with fewer than 25 faces become separate parts, the skeleton bloats needlessly and
+sliver parts fly around. Add them to the nearest large cell in the same layer.
+88 parts + hand + root = **90 bones** exported without problems.
 
-### d. Yeniden kurarken sıra sabittir
+### d. When rebuilding, the order is fixed
 
-Parça listesi değişince **her şey** yeniden üretilir ve hiçbiri
-atlanamaz: enkaz (boolean) → armature → root mesh + ağırlıklar →
-animasyon → **klip sözlüğü** → export → `.ycd` yaması → ytyp kutuları →
-dağıtım. Klip sözlüğü eski armature data-block'una bakmaya devam ederse
-export `AssertionError: The armature bone-map is required at this point`
-verir — hiyerarşiyi silip `create_clip_dictionary` ile **sıfırdan** kur;
-`target_id`'yi elle düzeltmek yetmez.
+When the part list changes, **everything** is rebuilt and none of it
+can be skipped: debris (boolean) → armature → root mesh + weights →
+animation → **clip dictionary** → export → `.ycd` patch → ytyp boxes →
+deployment. If the clip dictionary keeps pointing at the old armature data-block, the
+export gives `AssertionError: The armature bone-map is required at this point`
+— delete the hierarchy and rebuild it **from scratch** with `create_clip_dictionary`;
+fixing `target_id` by hand is not enough.
 
-## 15. Kesilmiş yüzey — geometri kapanır, UV ve materyal de düzeltilir
+## 15. Cut surface — close the geometry, fix UV and material too
 
-Bir vanilla parçasını kesip enkaza çevirirken üç ayrı kusur çıkar ve
-**üçü de ayrı ölçütle** yakalanır. Ölçüldü (115 × 72 m köprü, 78 bin üçgen).
+When cutting a vanilla part and turning it into debris, three separate defects appear, and
+**each is caught by a separate criterion**. Measured (115 × 72 m bridge, 78 thousand triangles).
 
-### a. Sıra: temizle → KES → kalınlaştır → parçala → delik kapat
+### a. Order: clean → CUT → solidify → fracture → fill holes
 
-`remove_doubles` / `dissolve_degenerate` **hücre kesiklerini geri eritir**.
-Temizliği kesimden sonra yaparsan en uzun kenar 19.3 m'den **88.6 m**'ye
-fırlar ve tek üçgen sahneyi boydan boya süpürür. Sıra bozulunca hiçbir
-denetim uyarmaz; kenar uzunluğunu her adımdan sonra ölç.
+`remove_doubles` / `dissolve_degenerate` **melt the cell cuts back together**.
+Do the cleanup after the cut and the longest edge jumps from 19.3 m to **88.6 m**,
+and a single triangle sweeps across the whole scene. When the order breaks no
+check warns; measure edge length after every step.
 
-Vanilla yol/zemin **tek yüzlü kabuktur**: parçalara ayrılınca açık kenar
-oranı **%51,1**. Devrilen levhanın arkası görünür — bu "yırtılma" diye
-raporlanır. `SOLIDIFY` (0.6 m, `offset=-1`) + parça başına `holes_fill`
-ile kesik yüzeyleri kapanır: **%51,1 → %3,8**.
+A vanilla road/ground is **a single-sided shell**: split into parts, its open edge
+ratio is **51.1%**. The back of a toppling slab shows — this is reported as
+"tearing". `SOLIDIFY` (0.6 m, `offset=-1`) + per-part `holes_fill`
+closes the cut surfaces: **51.1% → 3.8%**.
 
-Bağsız vertex ölçümü kirletir: `bmesh.ops.delete(context='FACES')` yüze
-bağlı olmayan vertexleri bırakır, parça çapı **22.5 m yerine 106.9 m**
-okunur. Ölçmeden önce `context='VERTS'` ile temizle.
+Loose vertices pollute the measurement: `bmesh.ops.delete(context='FACES')` leaves the vertices
+not connected to a face, and the part diameter reads **106.9 m instead of 22.5 m**.
+Clean up with `context='VERTS'` before measuring.
 
-### b. UV: alan oranı YETMEZ, anizotropi ölç — ve n-gon'u üçgenle
+### b. UV: the area ratio is NOT ENOUGH, measure anisotropy — and triangulate n-gons
 
-`uv_alan / dünya_alan` **alan koruyan gerilmeyi göremez**: u ekseninde 10×
-uzayıp v'de 10× daralan üçgenin oranı değişmez. Bu ölçütle "düzeldi"
-denildi, ekranda sürtme izleri sürdü. Doğru ölçüt **Jacobian'ın tekil
-değer oranıdır** (`s0/s1`).
+`uv_area / world_area` **cannot see area-preserving stretch**: a triangle stretched 10×
+along u and squeezed 10× along v keeps the same ratio. With this criterion
+"fixed" was declared, and smear marks stayed on screen. The right criterion is **the singular
+value ratio of the Jacobian** (`s0/s1`).
 
-Ayrıca ölçüm yüzün **ilk üç loop'unu** alıyorsa `holes_fill`'in ürettiği
-n-gon'ların geri kalanı hiç ölçülmez. Önce `triangulate`, sonra ölç.
-Ölçüldü: n-gon'lu ölçüm "medyan 1.13, >3x %0.0" derken üçgenlenmiş ölçüm
-aynı meshte **>3x %11,4** buldu.
+Also, if the measurement takes **the first three loops** of a face, the rest of the n-gons
+that `holes_fill` produces are never measured. `triangulate` first, then measure.
+Measured: while the n-gon measurement said "median 1.13, >3x 0.0%", the triangulated measurement
+found **>3x 11.4%** on the same mesh.
 
-### c. UV ölçeği MATERYAL BAŞINA alınır, tek küresel medyan olmaz
+### c. The UV scale is taken PER MATERIAL, not as one global median
 
-Yeniden yansıtırken tüm yüzlere tek `uv/m` vermek yol dokusunu araziye,
-araziyi yola giydirir. Hedef ölçek **dokunulmamış vanilla parçasının**
-aynı materyaldeki iyi (anizotropi < 2) yüzlerinin medyanından alınır.
-Ölçülen vanilla değerleri birbirinden kat kat farklı:
-`im_road_001` **0.172 uv/m** (5.8 m'de tekrar) · `rn_tf_canyonrock_009`
-**0.087** (11.5 m). Tek sayı kullanmak ikisinden birini bozar.
+Giving all faces one `uv/m` when re-projecting dresses the terrain in the road texture
+and the road in the terrain texture. The target scale is taken from the median of the good
+(anisotropy < 2) faces of **an untouched vanilla part** in the same material.
+The measured vanilla values differ from each other several times over:
+`im_road_001` **0.172 uv/m** (repeats every 5.8 m) · `rn_tf_canyonrock_009`
+**0.087** (11.5 m). Using one number breaks one of the two.
 
-### d. Kesik yüzeyi kaynağın materyalini MİRAS ALIR — beton ver
+### d. A cut surface INHERITS the source's material — give it concrete
 
-Solidify yan duvarı ve delik kapatma yüzü, kesildiği yüzün materyalini
-taşır: dik bir duvarda **yol çizgisi** ya da **çim** dokusu belirir.
-Ölçüt basit ve ölçülebilir: `|n.z| < 0.55` **ve** materyal adı
-yol/zemin ailesinden → yapının kendi betonu (`hw10_bridge1_rn_rk_main`),
-zeminse kaya (`rn_tf_canyonrock_009`). Ölçüldü: %10,1 üçgen → %0,00.
+The solidify side wall and the hole-fill face carry the material of the face they were cut from:
+**road markings** or **grass** texture appear on a vertical wall.
+The criterion is simple and measurable: `|n.z| < 0.55` **and** the material name
+is from the road/ground family → the structure's own concrete (`hw10_bridge1_rn_rk_main`),
+rock if it is ground (`rn_tf_canyonrock_009`). Measured: 10.1% of triangles → 0.00%.
 
-### e. ⛔ İki render'ı farklı mesafeden karşılaştırma
+### e. ⛔ Do not compare two renders taken from different distances
 
-"Vanilla'da damalar sık, bizde çubuk" diye UV bozuk sanıldı; iki çekim
-farklı mesafedeydi. Ölçüm ikisinin de aynı bantta olduğunu söylüyordu:
-uv/m vanilla **0.216** · bizim **0.178**; anizotropi >3x vanilla **%7,5**,
-bizim **%0,3**. Kontrol çekimi **aynı hedef, aynı mesafe, aynı lens**
-olmadan kontrol değildir. (§13'ün aynısı: ekran görüntüsü ölçüm değildir.)
+"Vanilla has dense checks, ours has bars" — the UV was thought to be broken; the two shots
+were at different distances. The measurement said both were in the same band:
+uv/m vanilla **0.216** · ours **0.178**; anisotropy >3x vanilla **7.5%**,
+ours **0.3%**. A control shot is not a control without **the same target, the same distance,
+the same lens**. (The same as §13: a screenshot is not a measurement.)

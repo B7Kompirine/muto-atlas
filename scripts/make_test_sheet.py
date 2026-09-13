@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
-"""make_test_sheet.py — sprite sheet DILIMLEMESINI kesin sinayan test dokusu.
+"""make_test_sheet.py — test texture that checks sprite sheet SLICING for certain.
 
-⛔ NEDEN GEREKLI: ayni sekli tekrar eden bir sheet ile "motor dilimliyor mu"
-   sorusu EKRANDAN CEVAPLANAMAZ. Kelebek denemesinde tam bu yasandi --
-   kelebegin dort kanadi var, tek hucre de 2x2 gibi okunuyor, tum sheet de.
-   Iki durum gorsel olarak ayirt edilemeyince tur boyu yanlis yon kovalandi.
+⛔ WHY IT IS NEEDED: with a sheet that repeats the same shape the question "does
+   the engine slice" CANNOT BE ANSWERED FROM THE SCREEN. Exactly this happened in
+   the butterfly test -- the butterfly has four wings, a single cell reads like a
+   2x2, and so does the whole sheet. Because the two cases could not be told apart
+   visually, the wrong lead was chased for a whole round.
 
-   Bu betik her hucreye BASKA bir sekil koyar. Oyunda:
-     tek sekil goruyorsan   -> dilimleme CALISIYOR
-     dort sekli birden      -> dilimleme YOK, tum doku ciziliyor
-   Baska yorum yok.
+   This script puts a DIFFERENT shape in every cell. In the game:
+     you see one shape       -> slicing WORKS
+     all four shapes at once -> NO slicing, the whole texture is drawn
+   No other reading.
 
-Sekiller kasten kaba ve yuksek kontrastli: kucuk olcekte de ayirt edilsin.
+The shapes are deliberately crude and high-contrast, so they can be told apart
+at a small scale too.
 
-Kullanim:
-  python make_test_sheet.py cikti.png --hucre 128 --izgara 2
+Usage:
+  python make_test_sheet.py out.png --cell 128 --grid 2
 """
 from __future__ import annotations
+
+import sys
 
 import argparse
 import math
@@ -26,66 +30,74 @@ from PIL import Image, ImageDraw
 SS = 4     # supersample
 
 
-def sekil_ciz(d, tur, n, dolgu=255):
-    """n x n tuval icine tek sekil. Kenar payi birakilir ki hucre
-    sinirinda tasma olmasin (tasma dilimlemeyi yanlis okutur)."""
+def draw_shape(d, kind, n, fill=255):
+    """One shape inside an n x n canvas. A margin is left so nothing
+    spills over the cell border (a spill makes the slicing read wrongly)."""
     p = n * 0.14
     a, b = p, n - p
-    orta = n / 2.0
-    kal = int(n * 0.13)
-    if tur == "disk":
-        d.ellipse([a, a, b, b], fill=dolgu)
-    elif tur == "halka":
-        d.ellipse([a, a, b, b], outline=dolgu, width=kal)
-    elif tur == "arti":
-        d.rectangle([orta - kal, a, orta + kal, b], fill=dolgu)
-        d.rectangle([a, orta - kal, b, orta + kal], fill=dolgu)
-    elif tur == "ucgen":
-        d.polygon([(orta, a), (b, b), (a, b)], fill=dolgu)
-    elif tur == "kare":
-        d.rectangle([a, a, b, b], outline=dolgu, width=kal)
-    elif tur == "capraz":
-        d.line([a, a, b, b], fill=dolgu, width=kal)
-        d.line([a, b, b, a], fill=dolgu, width=kal)
+    mid = n / 2.0
+    stroke = int(n * 0.13)
+    if kind == "disk":
+        d.ellipse([a, a, b, b], fill=fill)
+    elif kind == "ring":
+        d.ellipse([a, a, b, b], outline=fill, width=stroke)
+    elif kind == "plus":
+        d.rectangle([mid - stroke, a, mid + stroke, b], fill=fill)
+        d.rectangle([a, mid - stroke, b, mid + stroke], fill=fill)
+    elif kind == "triangle":
+        d.polygon([(mid, a), (b, b), (a, b)], fill=fill)
+    elif kind == "square":
+        d.rectangle([a, a, b, b], outline=fill, width=stroke)
+    elif kind == "cross":
+        d.line([a, a, b, b], fill=fill, width=stroke)
+        d.line([a, b, b, a], fill=fill, width=stroke)
     else:
-        # numaralandirilmis nokta dizisi: 6+ hucre icin
-        k = int(tur)
+        # numbered dot pattern: for cells 6+
+        k = int(kind)
         r = n * 0.10
         for i in range(k):
-            ac = 2 * math.pi * i / max(k, 1) - math.pi / 2
-            cx, cy = orta + math.cos(ac) * n * 0.26, orta + math.sin(ac) * n * 0.26
-            d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=dolgu)
+            ang = 2 * math.pi * i / max(k, 1) - math.pi / 2
+            cx, cy = mid + math.cos(ang) * n * 0.26, mid + math.sin(ang) * n * 0.26
+            d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=fill)
 
 
 def main() -> int:
+    # Help and messages carry non-ASCII marks; a console with a legacy code page cannot encode
+    # them and argparse would crash. Replace what the console cannot show.
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(errors="replace")
+        except (AttributeError, ValueError):
+            pass
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cikti")
-    ap.add_argument("--hucre", type=int, default=128)
-    ap.add_argument("--izgara", type=int, default=2, help="izgara kenari (2 -> 2x2)")
-    a = ap.parse_args()
+    ap.add_argument("out")
+    ap.add_argument("--cell", "--hucre", dest="cell", type=int, default=128)
+    ap.add_argument("--grid", "--izgara", dest="grid", type=int, default=2,
+                    help="grid edge (2 -> 2x2)")
+    args = ap.parse_args()
 
-    sekiller = ["disk", "halka", "arti", "ucgen", "kare", "capraz"]
-    k = a.izgara
-    gen = a.hucre * k
-    sheet = Image.new("RGBA", (gen, gen), (255, 255, 255, 0))
+    shapes = ["disk", "ring", "plus", "triangle", "square", "cross"]
+    k = args.grid
+    width = args.cell * k
+    sheet = Image.new("RGBA", (width, width), (255, 255, 255, 0))
 
     for i in range(k * k):
-        n = a.hucre * SS
+        n = args.cell * SS
         m = Image.new("L", (n, n), 0)
         d = ImageDraw.Draw(m)
-        sekil_ciz(d, sekiller[i] if i < len(sekiller) else str(i + 1), n)
-        m = m.resize((a.hucre, a.hucre), Image.LANCZOS)
-        hucre = Image.merge("RGBA", (
+        draw_shape(d, shapes[i] if i < len(shapes) else str(i + 1), n)
+        m = m.resize((args.cell, args.cell), Image.LANCZOS)
+        cell = Image.merge("RGBA", (
             Image.new("L", m.size, 255), Image.new("L", m.size, 255),
             Image.new("L", m.size, 255), m))
-        sheet.paste(hucre, ((i % k) * a.hucre, (i // k) * a.hucre))
+        sheet.paste(cell, ((i % k) * args.cell, (i // k) * args.cell))
 
-    sheet.save(a.cikti)
-    ad = [sekiller[i] if i < len(sekiller) else str(i + 1) for i in range(k * k)]
-    print(f"[+] {a.cikti}  {gen}x{gen}  {k}x{k} = {k*k} kare")
-    print(f"    hucreler (soldan saga, yukaridan asagiya): {', '.join(ad)}")
-    print("    OYUNDA: tek sekil -> dilimleme VAR | hepsi birden -> dilimleme YOK")
+    sheet.save(args.out)
+    names = [shapes[i] if i < len(shapes) else str(i + 1) for i in range(k * k)]
+    print(f"[+] {args.out}  {width}x{width}  {k}x{k} = {k*k} frames")
+    print(f"    cells (left to right, top to bottom): {', '.join(names)}")
+    print("    IN THE GAME: one shape -> slicing WORKS | all at once -> NO slicing")
     return 0
 
 

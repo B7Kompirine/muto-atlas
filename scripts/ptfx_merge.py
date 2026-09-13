@@ -1,30 +1,30 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""ptfx_merge.py — cok sayida `.ypt`yi TEK bir `.ypt`ye birlestirir.
+"""ptfx_merge.py — merges many `.ypt` files into ONE `.ypt`.
 
-⛔ NEDEN GEREKLI: `PtFxAssetStore Pool Full, Size == 400`.
+⛔ WHY IT IS NEEDED: `PtFxAssetStore Pool Full, Size == 400`.
 
-Havuz EFEKT KURALINI degil DOSYAYI sayar. Kanit kesin: `core.ypt` tek
-dosyada **964 efekt kurali** tasiyor, havuz ise 400 -- kural sayilsaydi
-vanilla kendi basina havuzu patlatirdi. `RequestNamedPtfxAsset` de dosya
-adini alir. Yani "efekt basina bir dosya" savurganliktir: 35 aile 35 slot
-yerine **1** slot harcayabilir.
+The pool counts FILES, not EFFECT RULES. The evidence is conclusive: `core.ypt`
+carries **964 effect rules** in one file while the pool is 400 -- if rules were
+counted, vanilla would overflow the pool on its own. `RequestNamedPtfxAsset` also
+takes a file name. So "one file per effect" is wasteful: 35 families can use
+**1** slot instead of 35.
 
-Birlestirme = dort sozlugun `<Item>`larini birlestirmek:
+Merging = merging the `<Item>`s of four dictionaries:
   EffectRuleDictionary · EmitterRuleDictionary · ParticleRuleDictionary
   · TextureDictionary
 
-⛔ `TextureDictionary` HASH SIRALI olmak zorunda (RAGE ikili arama yapar).
-   Olculdu: vanilla `core.ypt`in 107 dokusu Jenkins hash'ine gore sirali;
-   ote yandan uc kural sozlugu sirali DEGIL (ne alfabetik ne hash). Yani
-   yalniz dokulari sirala, otekilere dokunma.
+⛔ `TextureDictionary` MUST BE SORTED BY HASH (RAGE does a binary search).
+   Measured: the 107 textures of vanilla `core.ypt` are sorted by Jenkins hash;
+   the three rule dictionaries, on the other hand, are NOT sorted (neither
+   alphabetically nor by hash). So sort only the textures, leave the others alone.
 
-⛔ Dokular XML'e GOMULU DEGIL: `<FileName>x.dds</FileName>` ile disaridan
-   okunur. Birlestirilmis XML'in yaninda butun `.dds` dosyalari bulunmali.
+⛔ Textures are NOT EMBEDDED in the XML: they are read from outside through
+   `<FileName>x.dds</FileName>`. Every `.dds` file must sit next to the merged XML.
 
-Kullanim:
-  python ptfx_merge.py --ad my_efektler --klasor <dizin>
-  python ptfx_merge.py --ad my_efektler --klasor <dizin> --disla my_x
+Usage:
+  python ptfx_merge.py --name my_effects --folder <dir>
+  python ptfx_merge.py --name my_effects --folder <dir> --exclude my_x
 """
 from __future__ import annotations
 
@@ -36,13 +36,13 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
-BETIK = os.path.dirname(os.path.abspath(__file__))
-SOZLUKLER = ("EffectRuleDictionary", "EmitterRuleDictionary",
-             "ParticleRuleDictionary", "TextureDictionary")
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DICTIONARIES = ("EffectRuleDictionary", "EmitterRuleDictionary",
+                "ParticleRuleDictionary", "TextureDictionary")
 
 
 def jenkins(s):
-    """RAGE'in isim hash'i. Vanilla doku sirasiyla dogrulandi."""
+    """RAGE's name hash. Verified against the vanilla texture order."""
     h = 0
     for c in s.lower().encode("utf-8"):
         h = (h + c) & 0xFFFFFFFF
@@ -54,130 +54,140 @@ def jenkins(s):
     return h
 
 
-def ogeler(xml, sozluk):
-    """Bir sozlugun ust duzey <Item> govdelerini (ad, metin) olarak verir."""
-    i = xml.find("<%s>" % sozluk)
+def dictionary_items(xml, dictionary):
+    """Returns the top-level <Item> bodies of a dictionary as (name, text)."""
+    i = xml.find("<%s>" % dictionary)
     if i < 0:
         return []
-    j = xml.find("</%s>" % sozluk)
-    govde = xml[i + len(sozluk) + 2:j]
-    # ⛔ Ust duzey <Item>'i regex ile bolmek ic ice <Item>lere takilir.
-    #    Her kural tam bir `\n   <Name>` ile baslar; tepe noktalarindan bol.
-    tepe = [m.start() for m in re.finditer(r"\n   <Name>[^<]+</Name>", govde)]
-    if not tepe:
+    j = xml.find("</%s>" % dictionary)
+    body = xml[i + len(dictionary) + 2:j]
+    # ⛔ Splitting top-level <Item>s with a regex trips over nested <Item>s.
+    #    Every rule starts with exactly `\n   <Name>`; split at those anchor points.
+    anchors = [m.start() for m in re.finditer(r"\n   <Name>[^<]+</Name>", body)]
+    if not anchors:
         return []
-    cikti = []
-    for n, s in enumerate(tepe):
-        e = tepe[n + 1] if n + 1 < len(tepe) else len(govde)
-        parca = govde[s:e]
-        ad = re.search(r"<Name>([^<]+)</Name>", parca).group(1)
-        # <Item> acilisini geri koy: tepe noktasi <Name>'den basliyor
-        cikti.append((ad, "  <Item>" + parca.rstrip().rsplit("</Item>", 1)[0]
-                      + "</Item>\n"))
-    return cikti
+    result = []
+    for n, s in enumerate(anchors):
+        e = anchors[n + 1] if n + 1 < len(anchors) else len(body)
+        chunk = body[s:e]
+        name = re.search(r"<Name>([^<]+)</Name>", chunk).group(1)
+        # put the opening <Item> back: the anchor point starts at <Name>
+        result.append((name, "  <Item>" + chunk.rstrip().rsplit("</Item>", 1)[0]
+                       + "</Item>\n"))
+    return result
 
 
 def main():
+    # Help and messages carry non-ASCII marks; a console with a legacy code page cannot encode
+    # them and argparse would crash. Replace what the console cannot show.
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(errors="replace")
+        except (AttributeError, ValueError):
+            pass
     ap = argparse.ArgumentParser()
-    ap.add_argument("--ad", required=True, help="birlesik varligin adi")
-    ap.add_argument("--klasor", required=True)
-    ap.add_argument("--disla", action="append", default=[],
-                    help="bu onekle baslayan dosyalari alma")
-    ap.add_argument("--derleme", action="store_true", help="yalniz XML uret")
-    ap.add_argument("--tekille", action="store_true",
-                    help="ayni ad birden cok dosyadan gelirse HATA verme, "
-                         "tekille. ⚠ Yalniz BILINCLI paylasimda kullan: "
-                         "bir bestelenmis efekt ile onun kaynak katmanlari "
-                         "ayni emitter/particle kurallarini PAYLASIR. Bayat "
-                         "dosya kazasini gizlememesi icin varsayilan HATA.")
-    a = ap.parse_args()
+    ap.add_argument("--name", "--ad", dest="name", required=True,
+                    help="name of the merged asset")
+    ap.add_argument("--folder", "--klasor", dest="folder", required=True)
+    ap.add_argument("--exclude", "--disla", dest="exclude", action="append", default=[],
+                    help="skip files that start with this prefix")
+    ap.add_argument("--xml-only", "--derleme", dest="xml_only", action="store_true",
+                    help="write the XML only")
+    ap.add_argument("--allow-duplicates", "--tekille", dest="allow_duplicates",
+                    action="store_true",
+                    help="do NOT fail when the same name comes from more than one file, "
+                         "keep one copy. ⚠ Use ONLY for DELIBERATE sharing: "
+                         "a composed effect and its source layers "
+                         "SHARE the same emitter/particle rules. The default is an "
+                         "ERROR so that a stale-file accident is not hidden.")
+    args = ap.parse_args()
 
-    kaynaklar = sorted(f for f in os.listdir(a.klasor)
-                       if f.endswith(".ypt.xml")
-                       and not f.startswith(a.ad + ".")
-                       and not any(f.startswith(d) for d in a.disla))
-    if not kaynaklar:
-        raise SystemExit("birlestirilecek .ypt.xml yok: %s" % a.klasor)
+    sources = sorted(f for f in os.listdir(args.folder)
+                     if f.endswith(".ypt.xml")
+                     and not f.startswith(args.name + ".")
+                     and not any(f.startswith(d) for d in args.exclude))
+    if not sources:
+        raise SystemExit("no .ypt.xml to merge: %s" % args.folder)
 
-    toplam = {d: [] for d in SOZLUKLER}
-    gorulen = {d: set() for d in SOZLUKLER}
-    cakisma, nereden = {}, {}
-    for f in kaynaklar:
-        s = io.open(os.path.join(a.klasor, f), encoding="utf-8",
+    collected = {d: [] for d in DICTIONARIES}
+    seen = {d: set() for d in DICTIONARIES}
+    clashes, origin = {}, {}
+    for f in sources:
+        s = io.open(os.path.join(args.folder, f), encoding="utf-8",
                     errors="replace").read()
-        for d in SOZLUKLER:
-            for ad, metin in ogeler(s, d):
-                # ⛔ AYNI ADI IKI KEZ YAZMA. Iki aile ayni donorden
-                #    uretilmisse dokulari farkli ama kural adlari benzersiz;
-                #    yine de guvenlik icin ad bazinda tekille -- cift kayit
-                #    sozlugu bozar ve hata vermez.
-                if ad in gorulen[d]:
-                    # ⛔ SESSIZCE ELEME. Onceki surum ilk gorulen kaydi
-                    #    tutup otekini atiyordu; girdi klasorunde kalan
-                    #    ESKI birlesik dosya (`my_katalog.ypt.xml`)
-                    #    boylece karisti ve dogru surumun kazanmasi yalniz
-                    #    ALFABETIK SIRAYA kaldi. Sans degil hata olmali.
-                    cakisma.setdefault((d, ad), []).append(f)
+        for d in DICTIONARIES:
+            for name, text in dictionary_items(s, d):
+                # ⛔ NEVER WRITE THE SAME NAME TWICE. If two families were made
+                #    from the same donor their textures differ but the rule names
+                #    are unique; still, keep one entry per name for safety -- a
+                #    duplicate entry breaks the dictionary and raises no error.
+                if name in seen[d]:
+                    # ⛔ DO NOT DROP SILENTLY. The previous version kept the first
+                    #    entry it saw and threw the other away; an OLD merged file
+                    #    left in the input folder (`my_catalog.ypt.xml`)
+                    #    got mixed in that way, and whether the right version won
+                    #    was left to ALPHABETICAL ORDER alone. It must be an error, not luck.
+                    clashes.setdefault((d, name), []).append(f)
                     continue
-                gorulen[d].add(ad)
-                nereden[(d, ad)] = f
-                toplam[d].append((ad, metin))
+                seen[d].add(name)
+                origin[(d, name)] = f
+                collected[d].append((name, text))
 
-    if cakisma and a.tekille:
-        print("ⓘ %d ad birden cok dosyada -- tekillendi (--tekille)"
-              % len(cakisma))
-        cakisma = {}
-    if cakisma:
-        print("⛔ AYNI AD BIRDEN COK DOSYADAN GELDI -- birlestirme durduruldu.")
-        for (d, ad), fs in sorted(cakisma.items())[:12]:
-            print("   %-24s %-28s once: %s | ayrica: %s"
-                  % (d, ad, nereden.get((d, ad), "?"), ", ".join(fs)))
-        print("   Girdi klasorunde eski bir birlesik dosya kalmis olabilir.")
+    if clashes and args.allow_duplicates:
+        print("ⓘ %d names in more than one file -- one copy kept (--allow-duplicates)"
+              % len(clashes))
+        clashes = {}
+    if clashes:
+        print("⛔ THE SAME NAME CAME FROM MORE THAN ONE FILE -- merge stopped.")
+        for (d, name), fs in sorted(clashes.items())[:12]:
+            print("   %-24s %-28s first: %s | also: %s"
+                  % (d, name, origin.get((d, name), "?"), ", ".join(fs)))
+        print("   An old merged file may have been left in the input folder.")
         return 1
 
-    # ⛔ Yalniz dokular hash sirali. Kural sozlukleri vanilla'da da sirali
-    #    degil; siralamak gereksiz ve dogrulamayi zorlastirir.
-    toplam["TextureDictionary"].sort(key=lambda t: jenkins(t[0]))
+    # ⛔ Only the textures are sorted by hash. The rule dictionaries are not
+    #    sorted in vanilla either; sorting them is unnecessary and makes verification harder.
+    collected["TextureDictionary"].sort(key=lambda t: jenkins(t[0]))
 
-    parcalar = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n",
-                "<ParticleEffectsList>\n",
-                " <Name>%s</Name>\n" % a.ad]
+    parts = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n",
+             "<ParticleEffectsList>\n",
+             " <Name>%s</Name>\n" % args.name]
     for d in ("EffectRuleDictionary", "EmitterRuleDictionary",
               "ParticleRuleDictionary"):
-        parcalar.append(" <%s>\n" % d)
-        parcalar += [m for _, m in toplam[d]]
-        parcalar.append(" </%s>\n" % d)
-    parcalar.append(" <DrawableDictionary />\n")
-    parcalar.append(" <TextureDictionary>\n")
-    parcalar += [m for _, m in toplam["TextureDictionary"]]
-    parcalar.append(" </TextureDictionary>\n")
-    parcalar.append("</ParticleEffectsList>\n")
-    metin = "".join(parcalar)
+        parts.append(" <%s>\n" % d)
+        parts += [m for _, m in collected[d]]
+        parts.append(" </%s>\n" % d)
+    parts.append(" <DrawableDictionary />\n")
+    parts.append(" <TextureDictionary>\n")
+    parts += [m for _, m in collected["TextureDictionary"]]
+    parts.append(" </TextureDictionary>\n")
+    parts.append("</ParticleEffectsList>\n")
+    text = "".join(parts)
 
-    ET.fromstring(metin)  # bozuk XML'i derleyiciye goturme
-    xml = os.path.join(a.klasor, a.ad + ".ypt.xml")
-    io.open(xml, "w", encoding="utf-8").write(metin)
-    print("kaynak dosya: %d" % len(kaynaklar))
-    for d in SOZLUKLER:
-        print("  %-24s %d oge" % (d, len(toplam[d])))
+    ET.fromstring(text)  # do not take broken XML to the compiler
+    xml = os.path.join(args.folder, args.name + ".ypt.xml")
+    io.open(xml, "w", encoding="utf-8").write(text)
+    print("source files: %d" % len(sources))
+    for d in DICTIONARIES:
+        print("  %-24s %d items" % (d, len(collected[d])))
 
-    # doku dosyalari yaninda mi?
-    eksik = [ad + ".dds" for ad, _ in toplam["TextureDictionary"]
-             if not os.path.exists(os.path.join(a.klasor, ad + ".dds"))]
-    if eksik:
-        print("⛔ EKSIK .dds (%d): %s" % (len(eksik), ", ".join(eksik[:6])))
+    # are the texture files next to it?
+    missing = [name + ".dds" for name, _ in collected["TextureDictionary"]
+               if not os.path.exists(os.path.join(args.folder, name + ".dds"))]
+    if missing:
+        print("⛔ MISSING .dds (%d): %s" % (len(missing), ", ".join(missing[:6])))
         return 1
 
-    if a.derleme:
+    if args.xml_only:
         return 0
     subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
-                    "-File", os.path.join(BETIK, "ypt_xml_to_bin.ps1"),
+                    "-File", os.path.join(SCRIPT_DIR, "ypt_xml_to_bin.ps1"),
                     "-Xml", xml], check=False)
-    ypt = os.path.join(a.klasor, a.ad + ".ypt")
+    ypt = os.path.join(args.folder, args.name + ".ypt")
     if not os.path.exists(ypt):
-        print("⛔ derlenmedi")
+        print("⛔ not compiled")
         return 1
-    print("\n%s.ypt  %d bayt" % (a.ad, os.path.getsize(ypt)))
+    print("\n%s.ypt  %d bytes" % (args.name, os.path.getsize(ypt)))
     return 0
 
 

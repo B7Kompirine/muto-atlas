@@ -205,4 +205,7 @@ def build(do_fetch=False):
 
 
 if __name__ == "__main__":
+    if any(a in ("-h", "--help") for a in sys.argv[1:]):
+        print(__doc__ or "usage: python build_index.py [--fetch]")
+        sys.exit(0)
     build(do_fetch="--fetch" in sys.argv)

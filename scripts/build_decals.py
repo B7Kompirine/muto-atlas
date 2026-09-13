@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
-"""build_decals.py — GTA V decalType tablosunu indeksler (`decals.dat`).
+"""build_decals.py — indexes the GTA V decalType table (`decals.dat`).
 
-NEDEN: `AddDecal(decalType, ...)` native'inin ilk argumani bir SAYIDIR ve o
-sayinin hangi gorsele denk geldigi hicbir yerde derli toplu yazili degil.
-FiveM belgesindeki enum EKSIKTIR (yalnizca bir kismi). Gercek kaynak oyunun
-kendi `common.rpf\\data\\effects\\decals.dat` dosyasidir.
+WHY: the first argument of the `AddDecal(decalType, ...)` native is a NUMBER, and
+which image that number maps to is not written down in one place anywhere.
+The enum in the FiveM docs is INCOMPLETE (only part of it). The real source is
+the game's own `common.rpf\\data\\effects\\decals.dat` file.
 
-DOSYA BICIMI: bosluk hizalanmis sabit sutunlu metin, '#' yorum.
+FILE FORMAT: space-aligned fixed-column text, '#' comments.
   ID  DIFFUSE  NORMAL  SPECULAR  ROW COL IDA IDB  TIME MULT FALLOFF INTNSTY
   FRESNEL STEEP SCALE VALUE LENGTH  TEX_WRAP USE_ANISO WASHABLE UNDERWATER ROTATE
 
-AYNI ID BIRDEN COK SATIRDA olabilir: motor o ID icin rastgele varyant secer
-(orn. 1010 = kan sicramasi, birden cok doku bolgesi). O yuzden ID basina
-satir sayisi = varyant sayisi.
+THE SAME ID CAN APPEAR ON SEVERAL ROWS: the engine picks a random variant for
+that ID (e.g. 1010 = blood splatter, several texture regions). So the row count
+per ID = the variant count.
 
-Kullanim:
-  python build_decals.py --src <decals.dat yolu>
-  (yol verilmezse %TEMP%\\decals.dat aranir)
+Usage:
+  python build_decals.py --src <path to decals.dat>
+  (without a path, %TEMP%\\decals.dat is looked for)
 """
 from __future__ import annotations
 
@@ -32,84 +32,86 @@ DATA = os.path.join(os.path.dirname(HERE), "data")
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="decals.dat -> tablo")
+    ap = argparse.ArgumentParser(description="decals.dat -> table")
     ap.add_argument("--src", default=os.path.join(os.environ.get("TEMP", "."), "decals.dat"))
     ap.add_argument("--out", default=os.path.join(DATA, "decal_types.tsv"))
     args = ap.parse_args()
 
     if not os.path.exists(args.src):
         sys.exit(
-            f"HATA: {args.src} yok.\n"
-            "  CodeWalker ile cikar: common.rpf\\data\\effects\\decals.dat")
+            f"ERROR: {args.src} not found.\n"
+            "  Extract it with CodeWalker: common.rpf\\data\\effects\\decals.dat")
 
-    # Son gorulen '# BASLIK' yorumu o satirlarin KATEGORISIDIR; dosyada
-    # BLOOD SPLATTERS / WEAPON IMPACTS gibi bloklar halinde gruplanmis.
-    kategori = ""
-    kayit: list[dict] = []
+    # The last '# HEADING' comment seen is the CATEGORY of the rows below it; the
+    # file groups them in blocks such as BLOOD SPLATTERS / WEAPON IMPACTS.
+    category = ""
+    records: list[dict] = []
     with open(args.src, encoding="utf-8", errors="replace") as fh:
-        for satir in fh:
-            s = satir.rstrip("\n")
-            ham = s.strip()
-            if not ham:
+        for raw_line in fh:
+            s = raw_line.rstrip("\n")
+            stripped = s.strip()
+            if not stripped:
                 continue
-            if ham.startswith("#"):
-                etiket = ham.lstrip("#").strip()
-                # 'ID  DIFFUSE MAP ...' gibi sutun basliklarini kategori sanma
-                if (etiket and not etiket.startswith("ID")
-                        and "---" not in etiket and len(etiket) < 60
-                        and etiket.upper() == etiket):
-                    kategori = etiket
+            if stripped.startswith("#"):
+                heading = stripped.lstrip("#").strip()
+                # do not take column headings such as 'ID  DIFFUSE MAP ...' for a category
+                if (heading and not heading.startswith("ID")
+                        and "---" not in heading and len(heading) < 60
+                        and heading.upper() == heading):
+                    category = heading
                 continue
-            if ham.startswith("DECAL_DEF"):
+            if stripped.startswith("DECAL_DEF"):
                 continue
-            parca = ham.split()
-            if not parca or not parca[0].isdigit():
+            parts = stripped.split()
+            if not parts or not parts[0].isdigit():
                 continue
-            kayit.append({
-                "id": int(parca[0]),
-                "kategori": kategori,
-                "diffuse": parca[1] if len(parca) > 1 else "",
-                "normal": parca[2] if len(parca) > 2 else "",
-                "specular": parca[3] if len(parca) > 3 else "",
-                # son bes sutun: TEX_WRAP USE_ANISO WASHABLE UNDERWATER ROTATE
-                "washable": parca[-3] if len(parca) >= 3 else "",
-                "underwater": parca[-2] if len(parca) >= 2 else "",
-                "rotate": parca[-1] if parca else "",
+            records.append({
+                "id": int(parts[0]),
+                "category": category,
+                "diffuse": parts[1] if len(parts) > 1 else "",
+                "normal": parts[2] if len(parts) > 2 else "",
+                "specular": parts[3] if len(parts) > 3 else "",
+                # last five columns: TEX_WRAP USE_ANISO WASHABLE UNDERWATER ROTATE
+                "washable": parts[-3] if len(parts) >= 3 else "",
+                "underwater": parts[-2] if len(parts) >= 2 else "",
+                "rotate": parts[-1] if parts else "",
             })
 
-    if not kayit:
-        sys.exit("HATA: hicbir decal satiri ayristirilamadi.")
+    if not records:
+        sys.exit("ERROR: no decal row could be parsed.")
 
-    # ID basina topla: varyant sayisi + benzersiz doku adlari
-    grup: dict[int, dict] = {}
-    for r in kayit:
-        g = grup.setdefault(r["id"], {
-            "id": r["id"], "kategori": r["kategori"],
-            "varyant": 0, "dokular": [], "washable": r["washable"],
+    # group per ID: variant count + unique texture names
+    groups: dict[int, dict] = {}
+    for r in records:
+        g = groups.setdefault(r["id"], {
+            "id": r["id"], "category": r["category"],
+            "variants": 0, "textures": [], "washable": r["washable"],
             "underwater": r["underwater"],
         })
-        g["varyant"] += 1
-        if r["diffuse"] and r["diffuse"] not in g["dokular"]:
-            g["dokular"].append(r["diffuse"])
-        if not g["kategori"] and r["kategori"]:
-            g["kategori"] = r["kategori"]
+        g["variants"] += 1
+        if r["diffuse"] and r["diffuse"] not in g["textures"]:
+            g["textures"].append(r["diffuse"])
+        if not g["category"] and r["category"]:
+            g["category"] = r["category"]
 
     os.makedirs(DATA, exist_ok=True)
     with open(args.out, "w", encoding="utf-8", newline="") as fh:
         w = csv.writer(fh, delimiter="\t", lineterminator="\n")
+        # The header is part of data/decal_types.tsv, which assetdb.py reads: keep these column
+        # names as they are (kategori = category, varyant = variants, dokular = textures).
         w.writerow(["id", "kategori", "varyant", "washable", "underwater", "dokular"])
-        for i in sorted(grup):
-            g = grup[i]
-            w.writerow([g["id"], g["kategori"], g["varyant"], g["washable"],
-                        g["underwater"], ";".join(g["dokular"][:6])])
+        for i in sorted(groups):
+            g = groups[i]
+            w.writerow([g["id"], g["category"], g["variants"], g["washable"],
+                        g["underwater"], ";".join(g["textures"][:6])])
 
-    kat = collections.Counter(g["kategori"] for g in grup.values())
+    per_category = collections.Counter(g["category"] for g in groups.values())
     print(f"[+] {args.out}")
-    print(f"[+] {len(grup)} benzersiz decalType / {len(kayit)} satir (varyant dahil)")
-    print(f"[+] ID araligi: {min(grup)} - {max(grup)}")
-    print("\nkategoriler:")
-    for k, v in kat.most_common(20):
-        print(f"   {k or '(kategorisiz)':<34} {v} tip")
+    print(f"[+] {len(groups)} unique decalTypes / {len(records)} rows (variants included)")
+    print(f"[+] ID range: {min(groups)} - {max(groups)}")
+    print("\ncategories:")
+    for k, v in per_category.most_common(20):
+        print(f"   {k or '(no category)':<34} {v} types")
     return 0
 
 

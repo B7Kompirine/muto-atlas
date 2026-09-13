@@ -1,344 +1,344 @@
-# Dağıtım ve oyunda ölçüm — tezgâh, rcon, `PtFxAssetStore`, "bozuk görünüyor"
+# Deployment and in-game measurement — test bench, rcon, `PtFxAssetStore`, "it looks broken"
 
-**Ne zaman okunur:** `.ypt`'yi sunucuya koyacaksın, oyunda test edeceksin, "efekt bozuk/görünmüyor" diyorsun, oyun donuyor.
-**When to read:** shipping a `.ypt` and measuring it in game — test bench, rcon, `PtFxAssetStore` pool, "it looks wrong" is not a measurement.
-**Kaynak:** `ptfx-flipbook-uretimi.md` §1c, §7, §16-18 (2026-09) · **Ölçüm:** tezgâh piksel ölçümü; `PtFxAssetStore` 400; tek büyük `.ypt` donma eşiği
-**Önce:** `branches/particle/_branch.md` · gövde › `trunk/tool-pitfalls.md` §3 CodeWalker (`FxcFileHash`, `VFT`, `ResourcePointerArray64`) · araçlar `ptfx_bench.py`, `ptfx_sim.py` (motor değil, model)
+**When to read:** you will put a `.ypt` on the server and test it in game, you say "the effect is broken / not showing", or the game freezes — test bench, rcon, `PtFxAssetStore` pool; "it looks wrong" is not a measurement.
+**Source:** the former ptfx flipbook reference (2.5.0) §1c, §7, §16-18 (2026-09) · **Measured:** test bench pixel measurement; `PtFxAssetStore` 400; freeze threshold of a single large `.ypt`
+**Read first:** `branches/particle/_branch.md` · trunk › `trunk/tool-pitfalls.md` §3 CodeWalker (`FxcFileHash`, `VFT`, `ResourcePointerArray64`) · tools `ptfx_bench.py`, `ptfx_sim.py` (a model, not the engine)
 
 ---
 
-## 1c. Teşhis yöntemi — bu turda pahalıya öğrenilenler
+## 1c. Diagnosis method — lessons learned the expensive way in this round
 
-### ⛔ REFERANSSIZ GÖRÜNTÜDEN TEŞHİS KONMAZ
+### ⛔ NO DIAGNOSIS FROM AN IMAGE WITHOUT A REFERENCE
 
-Beş tur boyunca ekranda neyin **normal** olduğunu bilmeden "bozuk" denildi.
-Karşılaştırma noktası olmadan bir partikülün doğru mu yanlış mı çizildiği
-gözle ayırt edilemez — özellikle gece, saydam ve büyük ölçekte. Teste
-**oyunun kendi efektini** aynı karede referans olarak koy:
+For five rounds things were called "broken" without knowing what is **normal** on screen.
+Without a comparison point you cannot tell by eye whether a particle is drawn
+right or wrong — especially at night, translucent and at large scale. Put
+**the game's own effect** in the same frame as a reference:
 
 ```lua
 UseParticleFxAssetNextCall('core')
 StartParticleFxLoopedAtCoord('exp_grd_grenade_smoke', ...)
 ```
 
-Yan yana: referans · bizim dosya + vanilla doku · bizim dosya + bizim doku.
-Tek değişken doku kaynağı olur.
+Side by side: reference · our file + vanilla texture · our file + our texture.
+The texture source becomes the only variable.
 
-Ek okunabilirlik şartları (hepsi ihlal edildi): gündüz (`NetworkOverrideClockTime`),
-küçük ölçek (`--boyut-carpan 0.30`), aralarında ≥4 m, konumu değil **rengi**
-etiket yap.
+Extra readability conditions (all of them were violated): daytime (`NetworkOverrideClockTime`),
+small scale (`--size-mult 0.30`), ≥4 m between them, label by **colour**,
+not by position.
 
-### ✅ TEZGÂH — testi kullanıcıdan al, ölçüme bağla
+### ✅ TEST BENCH — take the test away from the user, tie it to measurement
 
-Beş tur "kullanıcıyı oyuna sok → ekran görüntüsü iste → görüntüyü yorumla"
-döngüsünde kayboldu ve yorum katmanı üç kez yanlış teşhis üretti. Kalıcı
-çözüm o katmanı kaldırmaktır.
+Five rounds were lost in the loop "put the user in the game → ask for a screenshot → interpret the screenshot",
+and the interpretation layer produced a wrong diagnosis three times. The permanent
+solution is to remove that layer.
 
-`screenshot-basic` çoğu sunucuda zaten kuruludur ve **sunucudan**
-sürülebilir:
+`screenshot-basic` is already installed on most servers and can be driven
+**from the server**:
 
 ```lua
 exports['screenshot-basic']:requestClientScreenshot(src,
     { fileName = 'cache/my_ptfx/x.jpg', encoding = 'jpg', quality = 0.85 },
-    function(err, dosya) ... end)
+    function(err, file) ... end)
 ```
 
-Kurulum: kaynak `is/istek.json` dosyasını 1 sn'de bir yoklar; dışarıdan
-yazılan iş için istemciyi kurar (efekt + **sabit kamera**), bekler, ekran
-görüntüsü alır, `is/sonuc.json` yazar. Sürücü ve ölçüm:
+Setup: the resource polls the `is/istek.json` file once every 1 s (`istek` = request,
+`sonuc` = result; the names stay because the resource reads them); for a job written
+from outside it sets up the client (effect + **fixed camera**), waits, takes a
+screenshot, writes `is/sonuc.json`. Driver and measurement:
 `scripts/ptfx_bench.py`.
 
-- **Kamera her adımda aynı noktaya, aynı yönle kurulur.** Elle çekilen
-  karelerde mesafe/açı değiştiği için iki efekt kıyaslanamıyordu.
-- Sahne koşulları sabitlenir: `NetworkOverrideClockTime(12,0,0)`,
-  `SetWeatherTypeNowPersist('EXTRASUNNY')`, ped dondurulur.
+- **The camera is placed at the same point with the same direction at every step.** In frames
+  taken by hand the distance/angle changed, so two effects could not be compared.
+- Scene conditions are fixed: `NetworkOverrideClockTime(12,0,0)`,
+  `SetWeatherTypeNowPersist('EXTRASUNNY')`, the ped is frozen.
 
-**Ölçüt numaralı tanı sayfasıdır**: her hücreye kocaman numarası yazılır.
-Bağlantılı bileşen sayısı iki durumu kesin ayırır (ölçüldü):
-sayfanın tamamı → **89 bileşen**, tek hücre → **1 bileşen**.
+**The criterion is a numbered diagnostic sheet**: each cell has its big number written on it.
+The count of connected components separates the two cases exactly (measured):
+the whole sheet → **89 components**, a single cell → **1 component**.
 
-⛔ **`screenshot-basic`'e `fileName` VERME.** Dosyaya yazmaya çalışırsa
-FiveM'in dosya kapısına takılır: *"Access to this API has been restricted.
-Use --allow-fs-write"*. `fileName`'siz çağrıda base64 veri URI'si döner;
-onu kendi kaynağımıza `SaveResourceFile` ile yazarız — o bir native,
-node'un fs kapısına tabi değil.
+⛔ **Do NOT give `fileName` to `screenshot-basic`.** If it tries to write to a file,
+it hits FiveM's file gate: *"Access to this API has been restricted.
+Use --allow-fs-write"*. A call without `fileName` returns a base64 data URI;
+we write that into our own resource with `SaveResourceFile` — that is a native,
+not subject to node's fs gate.
 
-⛔ **`StopParticleFxLooped(h, false)` EFEKTİ HEMEN KALDIRMAZ.** Emisyonu
-durdurur ama yaşayan parçacıklar ömürleri bitene kadar ekranda kalır ve
-**bir sonraki ölçüme bulaşır** (ölçüldü: 4 sn ömürlü adımın numaraları
-sonraki karede okundu, yanlış teşhis kondu). `true` ver, üstüne
-`RemoveParticleFx(h, true)` çağır, ve adımlar arasında bekle.
+⛔ **`StopParticleFxLooped(h, false)` DOES NOT REMOVE THE EFFECT IMMEDIATELY.** It stops
+emission, but living particles stay on screen until their lifetime ends and
+**leak into the next measurement** (measured: the numbers of a step with 4 s lifetime
+were read in the next frame, a wrong diagnosis was made). Pass `true`, call
+`RemoveParticleFx(h, true)` on top, and wait between steps.
 
-⛔ **Kamerayı sabit bir dünya yönüne koyma.** Efekt oyuncunun ileri
-vektörü boyunca duruyorsa, kamerayı `hedef.y - 3.2` gibi sabit bir eksene
-koymak onu **pedin içinde** bırakır; karede yalnız sırt çantası görünür.
-Kamera oyuncunun göz hizasından hedefe bakmalı.
+⛔ **Do not place the camera along a fixed world direction.** If the effect sits along the player's forward
+vector, putting the camera on a fixed axis such as `target.y - 3.2`
+leaves it **inside the ped**; only the backpack is visible in the frame.
+The camera must look at the target from the player's eye level.
 
-⛔ **Çerçeveleme efekti KÜÇÜLTEREK yapılmaz, kamerayı GERİ ÇEKEREK yapılır.**
-Efekt küçültülünce tamamen görünmez oldu (değişen piksel %0,6).
+⛔ **Framing is done by pulling the CAMERA BACK, not by SHRINKING the effect.**
+When the effect was shrunk it became completely invisible (changed pixels 0.6%).
 
-⛔ **Sınır:** ekran görüntüsü istemcinin render'ıdır; oyuncunun bağlı
-olması şarttır. Ve stream dosyası değiştiyse **yeniden bağlanmak**
-gerekir — `restart` yetmez. Tezgâh yalnız zaten dağıtılmış varlığı ölçer.
+⛔ **Limit:** the screenshot is the client's render; the player must be
+connected. And if a stream file changed, **reconnecting** is
+required — `restart` is not enough. The test bench only measures an asset that is already deployed.
 
-### ⛔ ETİKETİ EKRANA YAZ — konum da renk de güvenilmez
+### ⛔ WRITE THE LABEL ON SCREEN — neither position nor colour can be trusted
 
-Kutuları önce **konumdan**, sonra **renkten** eşleştirmeye çalışıldı; ikisi
-de yanlış okumaya yol açtı. Renk turunda dosyalara doğru RGB'nin yazıldığı
-ölçümle doğrulandı (dördü de birebir istenen değerde) ama ekran
-görüntüsünde "mavi kutu" hiç bulunamadı — yani doğru veriyle bile
-eşleştirme yapılamadı.
+The boxes were first matched **by position**, then **by colour**; both
+led to misreadings. In the colour round it was verified by measurement that the right RGB
+was written into the files (all four exactly at the requested value), but the "blue box"
+was never found in the screenshot — so matching failed
+even with correct data.
 
-Çözüm: her efektin üstüne `DrawText3D` ile **adını yaz**. Ekran
-görüntüsünün kendisi hangi kutunun ne olduğunu söylemeli; yorum payı
-bırakma. `SetDrawOrigin(x,y,z,0)` + `DrawText(0,0)` + `ClearDrawOrigin()`.
+Solution: **write its name** above each effect with `DrawText3D`. The screenshot
+itself must say which box is which; leave no room for
+interpretation. `SetDrawOrigin(x,y,z,0)` + `DrawText(0,0)` + `ClearDrawOrigin()`.
 
-### ⛔ VANILLA EFEKTİ REFERANS OLARAK ÇAĞIRMAK BEDAVA
+### ⛔ CALLING A VANILLA EFFECT AS REFERENCE IS FREE
 
-`UseParticleFxAssetNextCall('core')` + oyunun kendi efekt adı — dosya
-göndermeden, garantili doğru bir karşılaştırma noktası. Her görsel teste
-bunu koy.
+`UseParticleFxAssetNextCall('core')` + the game's own effect name — without shipping
+a file, a guaranteed-correct comparison point. Put it in every visual
+test.
 
-### ⛔ TESTİN KENDİSİNİ DE DENETLE — ölçek iki kez uygulandı
+### ⛔ AUDIT THE TEST ITSELF TOO — scale was applied twice
 
-Referanslı test kurulduktan sonra bile sonuç yanıltıcı çıktı: denekler
-referanstan çok daha küçük göründü ve "noktalar kümesi" gibi okundu.
-Sebep bulguda değil **testin tasarımındaydı** — küçültme iki kez
-uygulanmıştı: dosyaya `--boyut-carpan 0.30` pişirildi, üstüne Lua'da
-`StartParticleFxLoopedAtCoord(..., 0.35)` verildi. Referans yalnız
-0.35 aldı, denekler 0.30 × 0.35. Yani denekler referansın **0.3 katıydı**
-ve 0.3 katına inmiş bir duman bulutu doğal olarak küçük noktalar gibi görünür.
+Even after the referenced test was set up, the result was misleading: the subjects
+looked much smaller than the reference and read as "a cluster of dots".
+The cause was not in the finding but **in the test's design** — the shrink had been
+applied twice: `--size-mult 0.30` was baked into the file, and on top of that
+`StartParticleFxLoopedAtCoord(..., 0.35)` was given in Lua. The reference got only
+0.35, the subjects 0.30 × 0.35. So the subjects were **0.3 times** the reference,
+and a smoke cloud reduced to 0.3 times naturally looks like small dots.
 
-**Kural: karşılaştırmalı testte her yol aynı dönüşümlerden geçmeli.**
-Deneği hazırlarken uygulanan her ölçek/renk değişikliği referansa da
-uygulanmalı, ya da hiçbirine uygulanmamalı. Test öncesi bunu **ölçerek**
-doğrula: kural bloğunu vanilla ile metin düzeyinde karşılaştır —
-`Size`/`Colour`/`AnimateTexture`/`Velocity` blokları bayt bayt eşit olmalı,
-tüm dosyadaki tek fark isimler kadar (bu vakada 27 bayt) kalmalı.
+**Rule: in a comparative test every path must go through the same transforms.**
+Every scale/colour change applied while preparing the subject must also be applied
+to the reference, or to none of them. Verify this **by measuring** before the test:
+compare the rule block with vanilla at text level —
+the `Size`/`Colour`/`AnimateTexture`/`Velocity` blocks must be byte-for-byte equal,
+and the only difference in the whole file must be the names (27 bytes in this case).
 
-### ⛔ "Bozuk görünüyor" bir ölçüm değildir — kafesi SAY
+### ⛔ "It looks broken" is not a measurement — COUNT the lattice
 
-Ekran görüntüsünden şüphelenilen bir örüntü FFT / otokorelasyon ile ölçülür.
-Ölçüldü: bloğun içinde ~7 tekrar (bizim ızgaramız 7×7), periyot 20 px.
-Ama hücreler **birbiriyle korelasyonsuz** (+0.002) çıktı; bizim sayfamızın
-hücreleri ise birbirine benziyor (+0.791). Yani gördüğümüz şey ne
-"sayfanın tamamı" ne de "tek hücrenin tekrarı"ydı — gözle konan iki teşhis
-de yanlıştı.
+A pattern suspected in a screenshot is measured with FFT / autocorrelation.
+Measured: ~7 repeats inside the block (our grid is 7×7), period 20 px.
+But the cells came out **uncorrelated with each other** (+0.002); the cells
+of our sheet, on the other hand, resemble each other (+0.791). So what we saw was neither
+"the whole sheet" nor "a repeat of a single cell" — both diagnoses made by eye
+were wrong.
 
-### Elenen alanlar — ham bayt düzeyinde
+### Fields ruled out — at raw byte level
 
-`AnimateTexture` bloğu (208 bayt) vanilla ile **birebir aynı**: 208 baytın
-yalnız 7'si farklı ve ikisi de işaretçidir (0x10 ve 0xA0, keyframe
-adresleri). CodeWalker hiçbir baytı gizlemiyor — XML turu yalnız VFT
-işaretçilerini değiştiriyor, davranışların tek bir alanı bile kaymıyor.
-Doku metadata'sı da aynı (`UsageFlags`, `UsageData`, `Unknown_32h`).
+The `AnimateTexture` block (208 bytes) is **identical** to vanilla: only 7 of the 208
+bytes differ, and both are pointers (0x10 and 0xA0, keyframe
+addresses). CodeWalker hides no byte — the XML round trip only changes the VFT
+pointers, not a single field of the behaviours shifts.
+The texture metadata is the same too (`UsageFlags`, `UsageData`, `Unknown_32h`).
 
-**Sonuç: dosyanın içinde aranacak yer kalmadı.**
+**Result: there is no place left to search inside the file.**
 
-### ✅ KAPANDI — custom `.ypt` MOTORDA VANİLLA GİBİ İŞLENİYOR
+### ✅ CLOSED — a custom `.ypt` IS PROCESSED BY THE ENGINE LIKE VANILLA
 
-Referanslı, eşit ölçekli, gündüz kurulan testte oyunun kendi efekti ile
-bizim `.ypt`'miz (aynı kural, vanilla doku) ve bizim `.ypt`+bizim sayfamız
-**ayırt edilemedi**. Yani stream yolu, kural kopyalama, doku gömme ve sayfa
-animasyonu sağlam.
+In the referenced, equal-scale, daytime test, the game's own effect,
+our `.ypt` (same rule, vanilla texture) and our `.ypt` + our sheet
+**could not be told apart**. So the stream path, rule copying, texture embedding and sheet
+animation are sound.
 
-⚠ Bu, önceki turlarda konulan "dosya bozuk / motor ızgarayı uygulamıyor"
-teşhislerini **geçersiz kılar**; o testlerin hepsi karıştırılmıştı
-(çift ölçek, referanssız okuma, gece, etiketsiz kutular).
+⚠ This **invalidates** the "file is broken / engine does not apply the grid"
+diagnoses made in earlier rounds; all those tests were confounded
+(double scale, reading without a reference, night, unlabelled boxes).
 
-### ⛔ `rm my_t*` DENEK SİLERKEN ÜRETİMİ DE SİLER
+### ⛔ `rm my_t*` DELETES PRODUCTION WHILE DELETING SUBJECTS
 
-`my_t1..t5` deneklerini temizleyen glob `my_toz.ypt`'yi de yakaladı ve
-dosya sessizce kayboldu. Dağıtımdan sonra **Lua'nın andığı her varlık adını
-stream içeriğiyle karşılaştır** — bu kapı olmasa oyunda "bir efekt eksik"
-diye tur kaybedilecekti.
+The glob that cleaned up the `my_t1..t5` subjects also caught the dust family's file (`my_dust.ypt`
+today; at the time its Turkish name began with `my_t`) and the file silently disappeared. After deployment
+**compare every asset name Lua mentions with the stream contents** — without this gate
+a round would have been lost to "one effect is missing" in game.
 
 ---
 
-## 7. Dağıtım — stream ve komutlar AYRI kaynakta
+## 7. Deployment — stream and commands in SEPARATE resources
 
-⛔ **Bozuk bir stream varlığı kaynağın TAMAMINI sessizce düşürür**:
-sunucu `Started resource X` yazar, istemcide hiçbir komut kaydolmaz,
-hiçbir print çıkmaz, F8'de hata yoktur.
+⛔ **A broken stream asset silently drops the WHOLE resource**:
+the server writes `Started resource X`, no command registers on the client,
+no print appears, there is no error in F8.
 
-Bu yüzden `.ypt` dosyaları `my_ptfx/stream/` içinde (Lua yok), test
-komutları `my_ptfx_test/` içinde (stream yok). Komut çalışıp efekt
-gelmiyorsa kusur stream'dedir; komut hiç yoksa kusur Lua'dadır.
+That is why the `.ypt` files are in `my_ptfx/stream/` (no Lua) and the test
+commands in `my_ptfx_test/` (no stream). If the command runs but the effect does not
+appear, the defect is in the stream; if the command does not exist at all, the defect is in Lua.
 
-`ensure [script]` klasörün tamamını başlatır — cfg'ye satır eklemek
-gerekmez.
+`ensure [script]` starts the whole folder — no need to add a line to the
+cfg.
 
-Kopyadan sonra **hash karşılaştır**; "komut hata vermedi" dağıtım kanıtı
-değildir.
+After copying, **compare hashes**; "the command gave no error" is not proof of
+deployment.
 
-### Lua tarafı
-- `RequestNamedPtfxAsset(ad)` + `HasNamedPtfxAssetLoaded(ad)` beklenir
-  (zaman aşımı koy).
-- `UseParticleFxAssetNextCall(ad)` **her** `StartParticleFx...` çağrısından
-  önce yenilenir.
-- Handle 0 dönerse **varlık yüklendi ama efekt kuralı adı bulunamadı**
-  demektir — ikisini ayrı raporla.
-- ⛔ `GetEntityRightVector` **standart bir native değildir**;
-  `GetEntityMatrix` sarmalayıcısında dönüş sırası belirsizdir. Sağ vektörü
-  ileriden türet: `sag = (ileri.y, -ileri.x)`.
+### Lua side
+- Wait for `RequestNamedPtfxAsset(name)` + `HasNamedPtfxAssetLoaded(name)`
+  (set a timeout).
+- `UseParticleFxAssetNextCall(name)` is renewed before **every** `StartParticleFx...` call.
+- If the handle returns 0, it means **the asset loaded but the effect rule name was not found**
+  — report the two separately.
+- ⛔ `GetEntityRightVector` **is not a standard native**;
+  in the `GetEntityMatrix` wrapper the return order is unclear. Derive the right vector
+  from forward: `right = (forward.y, -forward.x)`.
 
-### ⛔ VARLIK ADINDA BÜYÜK HARF OLMAZ
+### ⛔ AN ASSET NAME HAS NO CAPITAL LETTERS
 
-`my_gA` adıyla üretilen varlık **yükleniyor** ama
-`StartParticleFxLoopedAtCoord` **handle 0** döndürüyor: "efekt kuralı
-bulunamadı". GTA ad hash'lerini küçük harfe çevirerek hesaplar;
-`RequestNamedPtfxAsset` geçer, içerideki efekt kuralının hash'i tutmaz.
-Belirti yanıltıcı — varlık yüklü görünür, efekt yoktur.
-**Tüm varlık/efekt/doku adları küçük harf.**
+An asset produced under the name `my_gA` **loads**, but
+`StartParticleFxLoopedAtCoord` returns **handle 0**: "effect rule
+not found". GTA computes name hashes after lowercasing;
+`RequestNamedPtfxAsset` passes, the hash of the effect rule inside does not match.
+The symptom is misleading — the asset looks loaded, the effect is not there.
+**All asset/effect/texture names are lowercase.**
 
-### ⛔ STREAM'E YENİ DOSYA EKLEMEK ÜÇ ADIMDIR
+### ⛔ ADDING A NEW FILE TO STREAM TAKES THREE STEPS
 
-1. dosyayı `stream/` içine kopyala
-2. **`restart <kaynak>`** — sunucu stream listesini yeniden kurar
-3. istemciyi yeniden **bağla**
+1. copy the file into `stream/`
+2. **`restart <resource>`** — the server rebuilds the stream list
+3. **connect** the client again
 
-2. adım atlanınca istemci varlığı hiç bulamaz (`varlik YUKLENMEDI`) ve
-ekranda hiçbir şey çıkmaz. Hata yalnız **istemci** günlüğünde görünür;
-sunucu konsolunda iz yoktur. Var olan dosyayı *değiştirmek* manifesti
-değiştirmez, ama dosya *eklemek* değiştirir.
+If step 2 is skipped, the client never finds the asset (`asset NOT LOADED`) and
+nothing appears on screen. The error shows only in the **client** log;
+there is no trace in the server console. *Changing* an existing file does not change the manifest,
+but *adding* a file does.
 
-### ⛔ İSTEMCİYİ ÖLDÜRMEK HAYALET OTURUM BIRAKIR
+### ⛔ KILLING THE CLIENT LEAVES A GHOST SESSION
 
-Süreci zorla kapatınca sunucu oyuncuyu hâlâ bağlı sayar ve yeniden
-bağlanma **"Duplicate Rockstar License Found"** ile reddedilir.
-RCON'da `clientkick` de `drop` da **yoktur** ("No such command"); oturum
-kendi zaman aşımıyla düşer. Çözüm: öldürdükten sonra ~25 sn bekle.
+When the process is force-closed, the server still counts the player as connected, and
+reconnecting is refused with **"Duplicate Rockstar License Found"**.
+RCON has **neither** `clientkick` nor `drop` ("No such command"); the session
+drops by its own timeout. Solution: wait ~25 s after killing.
 
-### ⛔ `while read` DÖNGÜSÜNDE powershell STDIN'İ YUTAR
+### ⛔ IN A `while read` LOOP, powershell SWALLOWS STDIN
 
-Döngü gövdesinde `powershell`/`python` çağırmak kalan satırları tüketir ve
-döngü satır atlar. Ölçüldü: 15 aileden 5'i yanlış değerlerle kuruldu ve
-sebebi ancak geri okumayla görüldü. Ayrı dosya tanıtıcısı kullan:
-`while read ... <&3; do ... </dev/null; done 3< dosya.txt`
+Calling `powershell`/`python` in the loop body consumes the remaining lines and
+the loop skips lines. Measured: 5 of 15 families were built with wrong values, and
+the cause was only seen through read back. Use a separate file descriptor:
+`while read ... <&3; do ... </dev/null; done 3< file.txt`
 
-### ⛔ FiveM PROTOKOLÜ KABUKTAN ÇAĞRILIR
+### ⛔ THE FiveM PROTOCOL IS CALLED FROM THE SHELL
 
-`FiveM.exe fivem://connect/...` doğrudan başlatılırsa
+If `FiveM.exe fivem://connect/...` is started directly, it crashes with
 *"This application should be launched directly from the shell or a web
-browser"* ile çöker. Çağrı kabuktan gelmeli:
+browser"*. The call must come from the shell:
 `Start-Process 'explorer.exe' -ArgumentList 'fivem://connect/<ip>'`
 
-### ⛔ Asset değişince sunucudan ÇIKIP YENİDEN BAĞLAN
-FiveM stream dosyalarını cache'ler; `restart` yetmez.
+### ⛔ When an asset changes, LEAVE THE SERVER AND RECONNECT
+FiveM caches stream files; `restart` is not enough.
 
 ---
 
-## 16. ⛔ TÜRKÇE KESME İŞARETİ LUA STRING'İNİ KAPATIR — `lua_check` KAÇIRIR
+## 16. ⛔ A TURKISH APOSTROPHE CLOSES A LUA STRING — `lua_check` MISSES IT
 
-Yazılan satır:
+The line written:
 
 ```lua
-print('^2[x]^7 hazir - /ptfxkat <n> (8'er)  /ptfxall')
+print('^2[x]^7 ready - /ptfxkat <n> (8'er)  /ptfxall')
 ```
 
-`8'er`'deki kesme string'i kapatıyor. FiveM'in verdiği hata
-`')' expected near 'er'` ve sonucu şu: **kaynağın TAMAMI yüklenmiyor.**
-Hiçbir komut kaydolmuyor. Oyunda belirti "Lua hatası" gibi değil,
-*"komut yok"* gibi görünüyor — kullanıcı `/ptfx` yazınca yalnızca
-başka bir kaynağın komutu çıktı.
+The apostrophe in `8'er` (a Turkish suffix) closes the string. The error FiveM gives is
+`')' expected near 'er'` and the result is: **the WHOLE resource does not load.**
+No command registers. In game the symptom does not look like a "Lua error" but like
+*"no command"* — when the user typed `/ptfx`, only
+another resource's command appeared.
 
-⛔ **`lua_check` (lua-language-server) bunu "No diagnostics" dedi.**
-   Tek denetim olarak ona güvenme. Doğrulanmış ikinci kapı:
-   `python lua_syntax.py <dosya.lua>` — Lua'nın string/yorum
-   kurallarını gerçekten izler (`'`/`"`, `\` kaçışı, `--` satır yorumu,
-   `[[ ]]` ve `[==[ ]==]` uzun blok). Hatalı satırı yakaladığı, doğrusunu
-   geçirdiği ölçülerek doğrulandı.
+⛔ **`lua_check` (lua-language-server) said "No diagnostics" for it.**
+   Do not trust it as the only check. Verified second gate:
+   `python lua_syntax.py <file.lua>` — it really follows Lua's string/comment
+   rules (`'`/`"`, `\` escape, `--` line comment,
+   `[[ ]]` and `[==[ ]==]` long block). Verified by measurement that it catches the broken line and
+   passes the correct one.
 
-**Kural:** Türkçe metinde kesme varsa **çift tırnak** kullan
-(`"8'er"`), ya da kesmeyi hiç yazma.
+**Rule:** if Turkish text contains an apostrophe, use **double quotes**
+(`"8'er"`), or do not write the apostrophe at all.
 
-Kapsam notu: bu betik string/yorum dengesine bakar. `<eof> expected
-near 'end'` gibi YAPISAL hataları (fazla/eksik `end`) yakalamaz — onun
-için `lua_check` hâlâ gerekli. İkisi birbirini tamamlar, biri ötekinin
-yerine geçmez.
+Scope note: this script checks string/comment balance. It does not catch STRUCTURAL errors
+such as `<eof> expected
+near 'end'` (extra/missing `end`) — `lua_check` is still needed
+for that. The two complement each other; neither replaces
+the other.
 
-## 17. `/ptfxkat` donması — veri değil OVERDRAW
+## 17. `/ptfxkat` freeze — OVERDRAW, not data
 
-Belirti: `Window Watchdog: FiveM has stopped responding`, crash dump'ta
-`Is Out of memory : No`. Logda **tek bir ptfx hatası yok**, varlık
-`Mounted my_ptfx` ile sorunsuz yükleniyor.
+Symptom: `Window Watchdog: FiveM has stopped responding`, in the crash dump
+`Is Out of memory : No`. There is **not a single ptfx error** in the log, the asset
+loads cleanly with `Mounted my_ptfx`.
 
-Ölçüldü: 56 efekti birden açmak **1784 eş zamanlı parçacık** demek.
-Üstüne Kenney dokularının alfa kaplaması **%40-70** (eski prosedürel
-dokular %2-30'du) — yani parçacık sayısı aynı kalsa bile doldurma
-maliyeti birkaç kat arttı. VFXDoc'un *"alpha coverage is one of the most
-underestimated sources of performance"* uyarısı tam olarak bu.
+Measured: opening 56 effects at once means **1784 concurrent particles**.
+On top of that, the alpha coverage of the Kenney textures is **40-70%** (the old procedural
+textures were 2-30%) — so even with the same particle count the fill
+cost rose several times. VFXDoc's warning *"alpha coverage is one of the most
+underestimated sources of performance"* is exactly this.
 
-En ağır beş aile: `cokme_tozu` 244 · `duvar_cokme` 215 ·
-`su_patlamasi` 100 · `radyoaktif_sis` 88 · `yakit_varili` 72.
+The five heaviest families: `collapse_dust` 244 · `wall_collapse` 215 ·
+`water_explosion` 100 · `radioactive_fog` 88 · `fuel_barrel` 72.
 
-**Ders:** toplu gösterim komutu varsayılan olarak SAYFA açmalı.
-`/ptfxkat` 8'erlik sayfa, `/ptfxsira` tek tek gezinme; hepsini birden
-açan yol (`/ptfxkat hep`) uyarı basar.
+**Lesson:** a bulk display command should open a PAGE by default.
+`/ptfxkat` pages of 8, `/ptfxsira` one-by-one browsing; the path that opens
+everything at once (`/ptfxkat hep`) prints a warning.
 
 
-## 18. ⛔ TEK BÜYÜK `.ypt` OYUNU DONDURUR — ölçülmüş eşik
+## 18. ⛔ A SINGLE LARGE `.ypt` FREEZES THE GAME — measured threshold
 
-§12 "havuz dosya sayar, hepsini tek dosyada birleştir" diyordu. **Bu tek
-başına yanlış yönlendirir:** birleştirmenin bir ÜST sınırı var.
+§12 said "the pool counts files, merge everything into one file". **On its own
+this misleads:** merging has an UPPER limit.
 
-Ölçüldü (ikiye bölerek, oyunda):
+Measured (by halving, in game):
 
-| dosya | efekt | boyut | sonuç |
+| file | effects | size | result |
 |---|---|---|---|
-| `my_mini2` | 2 | 0.06 MB | **yüklendi** |
-| `my_mini16` | 16 | 0.39 MB | **yüklendi** |
-| `my_efektler` | 71 | 1.88 MB | **DONDURDU** |
+| `my_mini2` | 2 | 0.06 MB | **loaded** |
+| `my_mini16` | 16 | 0.39 MB | **loaded** |
+| `my_effects` | 71 | 1.88 MB | **FROZE** |
 
-Eşik 16 ile 71 arasında. Üretim 18'erlik dört parçaya bölündü.
+The threshold is between 16 and 71. Production was split into four parts of 18.
 
-### Teşhis nasıl yapıldı — her adımı yanlış çıkan üç tahmin
+### How the diagnosis was made — three guesses, each proved wrong
 
-1. **"Boyut"** → 6.56 MB'ı 256×256 dokularla 1.88 MB'a indirdim, **aynı
-   şekilde dondu**. Boyut değil, ÖĞE SAYISI.
-2. **"`Wait` komut callback'inde"** → doğru bir kusurdu (aşağıda) ama
-   düzeltince de dondu. Tek sebep o değildi.
-3. **"3B etiket çizimi"** → kapatıldı, yine dondu.
+1. **"Size"** → I reduced 6.56 MB to 1.88 MB with 256×256 textures, **it froze
+   the same way**. Not size, ITEM COUNT.
+2. **"`Wait` in the command callback"** → a real defect (below), but
+   it still froze after the fix. It was not the only cause.
+3. **"3D label drawing"** → turned off, still froze.
 
-Kesin cevabı ancak **harness'ı kanıt üretecek hale getirince** aldım:
-bloklamayan yükleme + her adımda log. Log şunu gösterdi —
+I got the definitive answer only **after making the harness produce evidence**:
+non-blocking load + a log at every step. The log showed this —
 
 ```
-[t1] baslangic ✓  su an yuklu mu: false ✓  varlik isteniyor ✓
-[t1] komut bitti (beklemedi) ✓     <- Lua sonuna kadar çalıştı
-                                    <- 46 sn sonra
+[t1] start ✓  loaded right now: false ✓  requesting asset ✓
+[t1] command finished (did not wait) ✓     <- Lua ran to the end
+                                    <- 46 s later
 Window Watchdog: FiveM has stopped responding
 ```
 
-`varlik HAZIR` hiç basılmadı → donma `RequestNamedPtfxAsset` **sonrası**,
-GTA varlığı stream ederken. Lua tamamen aklandı.
+`asset READY` was never printed → the freeze is **after** `RequestNamedPtfxAsset`,
+while GTA streams the asset. Lua was fully cleared.
 
-⛔ **Ders: "donuyor" demekle "nerede donuyor" arasındaki farkı kod
-üretmeli.** Üç turu adım logu olmadan tahminle harcadım.
+⛔ **Lesson: the code must produce the difference between "it freezes" and "where it
+freezes".** I spent three rounds guessing without a step log.
 
-### ⛔ `Wait()` COMMAND CALLBACK'İNDE ÇAĞRILAMAZ
+### ⛔ `Wait()` CANNOT BE CALLED IN A COMMAND CALLBACK
 
-`RegisterCommand` geri çağrısı coroutine içinde çalışmaz; içinden
-`Wait(0)` çağırmak ana iş parçacığını kilitler. Belirti çok yanıltıcı:
-**tek satır print bile basılmaz**, komut hiç çalışmamış gibi görünür.
+The `RegisterCommand` callback does not run inside a coroutine; calling
+`Wait(0)` from it locks the main thread. The symptom is very misleading:
+**not even a single print line appears**, the command looks as if it never ran.
 
-Bu kusur baştan beri koddaydı ama hiç tetiklenmemişti: varlık zaten
-yüklüyken `HasNamedPtfxAssetLoaded` erken dönüyor, döngüye girilmiyor,
-`Wait` hiç çağrılmıyordu. Tek büyük varlığa geçince ilk kez tetiklendi.
+This defect was in the code from the start but had never triggered: while the asset
+was already loaded, `HasNamedPtfxAssetLoaded` returned early, the loop was not entered,
+`Wait` was never called. It triggered for the first time after switching to a single large asset.
 
-Çözüm: gövdeyi `CreateThread` içine alan bir kaydedici
-(`komut(ad, fn)`), ve daha iyisi — **bloklayan beklemeyi tamamen
-kaldırmak**: istek bir kez gönderilir, kalıcı gözcü thread durumu izler,
-hazır olunca bekleyen iş çalışır.
+Solution: a registrar that wraps the body in `CreateThread`
+(`komut(ad, fn)`, i.e. command(name, fn)), and better — **remove blocking waits
+entirely**: the request is sent once, a persistent watcher thread tracks the state,
+and the pending job runs when it is ready.
 
-### Bölünmüş varlıkta ad haritası ŞART
+### A name map is REQUIRED for a split asset
 
-`UseParticleFxAssetNextCall` efektin **bulunduğu** varlığı ister; yanlış
-varlık verilirse `handle 0` döner ve hiçbir hata çıkmaz. Efekt adı →
-varlık adı haritası üretilip Lua'ya gömülür.
+`UseParticleFxAssetNextCall` wants the asset **that contains** the effect; if the wrong
+asset is given it returns `handle 0` and no error appears. An effect name →
+asset name map is generated and embedded in Lua.
 
-### Doku çözünürlüğü (bu turda yine de kazanç)
+### Texture resolution (still a win in this round)
 
-Vanilla `core.ypt`in en yaygın doku boyutu **256×256** (107 dokunun 33'ü).
-512 kullandığı yerler **16-49 karelik sayfalar** — kare başına ~73 piksel.
-Tek kare sprite için 512 fazladır: 71 doku 23.7 MB'dan **5.9 MB**'a indi.
+The most common texture size in vanilla `core.ypt` is **256×256** (33 of 107 textures).
+Where it uses 512 are **16-49 frame sheets** — ~73 pixels per frame.
+For a single-frame sprite 512 is too much: 71 textures went from 23.7 MB down to **5.9 MB**.

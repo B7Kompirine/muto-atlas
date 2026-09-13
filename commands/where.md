@@ -1,37 +1,37 @@
 ---
 description: Where a prop/object sits in the world (ymap + MLO interior), or what is near a coordinate
-argument-hint: <model adı> | near <x> <y> <z> [--radius N] [--filter parça]
+argument-hint: <model name> | near <x> <y> <z> [--radius N] [--filter part]
 allowed-tools: Bash(python:*), Read
 ---
 
-Kullanıcının sorgusu: `$ARGUMENTS`
+User query: `$ARGUMENTS`
 
-Plugin kökü: `${CLAUDE_PLUGIN_ROOT}` (bulunamazsa `scripts/assetdb.py`'yi içeren muto-atlas klasörü).
+Plugin root: `${CLAUDE_PLUGIN_ROOT}` (if it cannot be found, the muto-atlas folder that contains `scripts/assetdb.py`).
 
-3.05 milyon dünya yerleşimi indekste. İç mekân (MLO) proplarının konumu
-`mloPos + rotate(localPos, mloRot)` ile hesaplanır — yani Fleeca'nın içindeki
-kapı da bulunur, sadece dış dünya değil.
+3.05 million world placements are in the index. The position of interior (MLO) props is
+computed as `mloPos + rotate(localPos, mloRot)` — so the door inside the Fleeca
+is found too, not only the outside world.
 
-## Nasıl kullan
+## How to use
 
 ```bash
-# bir archetype'in tüm yerleşimleri
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" where <model adı>
+# all placements of an archetype
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" where <model name>
 
-# bir noktanın çevresinde ne var
+# what is around a point
 python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" near <x> <y> <z> --radius 10
 python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" near <x> <y> <z> --radius 15 --filter door
 ```
 
-## Sonucu sunarken
+## When presenting the result
 
-- Konumu doğrudan `vec3(x, y, z)` biçiminde ver — config'e yapıştırılabilsin.
-- `[mlo]` işaretliyse hangi iç mekânın parçası olduğunu söyle; o prop ancak
-  o MLO yüklüyken vardır.
-- "6 benzersiz konum" gibi bir sonuç, o propun haritada kaç yerde
-  tekrarlandığını gösterir (örn. 6 Fleeca şubesi) — config'i buna göre kur,
-  tek koordinat varsayma.
-- Sonuç yoksa: prop dünyaya yerleştirilmemiş olabilir (sadece script ile
-  spawn edilir) ya da LOD filtresine takılmıştır. `/asset <ad>` ile
-  archetype olarak var mı diye bak.
-- `entities.db` yoksa kullanıcıya `/asset-build` öner — **uydurma**.
+- Give the position directly as `vec3(x, y, z)` — so it can be pasted into a config.
+- If it is marked `[mlo]`, say which interior it belongs to; that prop only exists
+  while that MLO is loaded.
+- A result such as "6 unique locations" shows how many places the prop is repeated
+  on the map (e.g. 6 Fleeca bank branches) — build the config for that; do not
+  assume a single coordinate.
+- If there is no result: the prop may not be placed in the world (only spawned
+  by script), or it was caught by the LOD filter. Check with `/asset <name>` whether it
+  exists as an archetype.
+- If `entities.db` does not exist, suggest `/asset-build` to the user — **do not invent**.

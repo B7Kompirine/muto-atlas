@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""build_entities_db.py — entities.tsv.gz -> entities.db (SQLite, indeksli).
+"""build_entities_db.py — entities.tsv.gz -> entities.db (SQLite, indexed).
 
-3 milyon satirda dogrusal tarama yavas; sorgunun aninda donmesi icin
-SQLite'a aliyoruz. Isimler sozluk-kodlu (names tablosu) tutuluyor ki
-dosya makul kalsin.
+A linear scan over 3 million rows is slow; the rows go into SQLite so a query
+returns instantly. Names are dictionary-encoded (the names table) so the file
+stays a reasonable size.
 
-Kullanim:
+Usage:
   python build_entities_db.py [--drop-tsv]
 """
 from __future__ import annotations
@@ -31,24 +31,24 @@ DROP TABLE IF EXISTS ent;
 DROP TABLE IF EXISTS names;
 CREATE TABLE names (id INTEGER PRIMARY KEY, name TEXT UNIQUE);
 CREATE TABLE ent (
-    nid  INTEGER NOT NULL,   -- names.id  (archetype adi)
+    nid  INTEGER NOT NULL,   -- names.id  (archetype name)
     x    REAL NOT NULL,
     y    REAL NOT NULL,
     z    REAL NOT NULL,
-    kind INTEGER NOT NULL,   -- 0=root ymap, 1=MLO ic mekan
-    ymid INTEGER NOT NULL,   -- names.id  (ymap dosya adi)
-    iid  INTEGER             -- names.id  (MLO adi) veya NULL
+    kind INTEGER NOT NULL,   -- 0=root ymap, 1=MLO interior
+    ymid INTEGER NOT NULL,   -- names.id  (ymap file name)
+    iid  INTEGER             -- names.id  (MLO name) or NULL
 );
 """
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--drop-tsv", action="store_true", help="import sonrasi entities.tsv.gz sil")
+    ap.add_argument("--drop-tsv", action="store_true", help="delete entities.tsv.gz after the import")
     args = ap.parse_args()
 
     if not os.path.exists(TSV):
-        sys.exit(f"HATA: {TSV} yok. Once build_entities.ps1 calistir.")
+        sys.exit(f"ERROR: {TSV} not found. Run build_entities.ps1 first.")
 
     if os.path.exists(DB):
         os.remove(DB)
@@ -68,7 +68,7 @@ def main():
 
     def rows():
         with gzip.open(TSV, "rt", encoding="utf-8", errors="replace") as fh:
-            fh.readline()  # baslik
+            fh.readline()  # header
             for line in fh:
                 p = line.rstrip("\n").split("\t")
                 if len(p) != 7:
@@ -85,21 +85,21 @@ def main():
     con.executemany("INSERT INTO names (id,name) VALUES (?,?)", ((v, k) for k, v in ids.items()))
 
     n = con.execute("SELECT COUNT(*) FROM ent").fetchone()[0]
-    print(f"[*] {n} entity, {len(ids)} benzersiz isim, {time.time()-t0:.1f} sn")
+    print(f"[*] {n} entities, {len(ids)} unique names, {time.time()-t0:.1f} s")
 
-    print("[*] indeksler kuruluyor...")
+    print("[*] building indexes...")
     con.execute("CREATE INDEX ix_ent_nid ON ent(nid)")
-    con.execute("CREATE INDEX ix_ent_x   ON ent(x)")   # 'near' sorgusu icin on eleme
+    con.execute("CREATE INDEX ix_ent_x   ON ent(x)")   # pre-filter for the 'near' query
     con.commit()
     con.execute("VACUUM")
     con.close()
 
     mb = os.path.getsize(DB) / 1024 / 1024
-    print(f"[+] {DB}  ({mb:.0f} MB, {time.time()-t0:.1f} sn)")
+    print(f"[+] {DB}  ({mb:.0f} MB, {time.time()-t0:.1f} s)")
 
     if args.drop_tsv:
         os.remove(TSV)
-        print(f"[+] {TSV} silindi")
+        print(f"[+] {TSV} deleted")
 
 
 if __name__ == "__main__":

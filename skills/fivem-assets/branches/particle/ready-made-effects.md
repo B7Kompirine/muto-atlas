@@ -1,19 +1,18 @@
-# Var olan efekti kullan / prop'a bağla — `fxName`, `StartParticleFx`, ytyp extension
+# Use an existing effect / attach it to a prop — `fxName`, `StartParticleFx`, ytyp extension
 
-**Ne zaman okunur:** vanilla efekt arıyorsun (duman, ateş, kıvılcım, toz), bir prop'a partikül bağlayacaksın, "efekt hiç çıkmıyor".
 **When to read:** you are looking for an existing vanilla effect (smoke, fire, sparks, dust), attaching a particle to a prop, or "the effect never appears".
-**Kaynak:** `trunk/flags.md` §6 · SKILL sorgu satırları (2026-08) · **Ölçüm:** 64.209 ytyp extension, 2.549 efekt / 368 `.ypt`; `ent_` öneki %65,3
-**Önce:** `branches/particle/_branch.md` · gövde › `trunk/tool-pitfalls.md` §3 CodeWalker (`FxcFileHash`, `VFT`, `ResourcePointerArray64`)
+**Source:** `trunk/flags.md` §6 · SKILL query lines (2026-08) · **Measured:** 64,209 ytyp extensions, 2,549 effects / 368 `.ypt`; `ent_` prefix 65.3%
+**Read first:** `branches/particle/_branch.md` · trunk › `trunk/tool-pitfalls.md` §3 CodeWalker (`FxcFileHash`, `VFT`, `ResourcePointerArray64`)
 
 ---
 
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" ptfx <prop|efekt>     # ytyp partikül extension'ı, fxType
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" fx <ad> --exact      # efekt .ypt kataloğunda var mı, hangi dosyada
-python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" ptfx --type 4        # Destroy (3 Break) — 'kırılınca toz'
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" ptfx <prop|effect>   # ytyp particle extension, fxType
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" fx <name> --exact    # is the effect in the .ypt catalogue, in which file
+python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" ptfx --type 4        # Destroy (3 Break) — 'dust on break'
 ```
 
-## ytyp partikül extension'ı (`CExtensionDefParticleEffect`)
+## ytyp particle extension (`CExtensionDefParticleEffect`)
 
 ```xml
 <Item type="CExtensionDefParticleEffect">
@@ -22,7 +21,7 @@ python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" ptfx --type 4        # Destroy
   <offsetRotation x="0" y="0" z="0" w="1" />
   <fxName>dst_wood_structures</fxName>
   <fxType value="4" />          <!-- Destroy -->
-  <boneTag value="-1" />        <!-- -1 = TÜM kemikler -->
+  <boneTag value="-1" />        <!-- -1 = ALL bones -->
   <scale value="1.4" />
   <probability value="100" />
   <flags value="0" />
@@ -30,117 +29,116 @@ python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" ptfx --type 4        # Destroy
 </Item>
 ```
 
-### `fxType` enum'u
+### The `fxType` enum
 
-| Değer | Ad | Not |
+| Value | Name | Note |
 |---:|---|---|
-| 0 | Ambient | sürekli/ortam; `amb_*` aileleri |
-| 1 | Collision | çarpma anında |
-| 2 | Shot | vurulunca |
-| 3 | Break | kırılınca |
-| 4 | Destroy | yok olunca (`dst_*`) |
-| 5 | Animation (Unused) | kullanılmıyor |
+| 0 | Ambient | continuous/ambient; `amb_*` families |
+| 1 | Collision | at impact |
+| 2 | Shot | when shot |
+| 3 | Break | when broken |
+| 4 | Destroy | when destroyed (`dst_*`) |
+| 5 | Animation (Unused) | not used |
 | 6 | RayFire | *"Valid FX names are defined in the `ENTITYFX_RAYFIRE_PTFX` block"* |
-| 7 | In Water | su altında |
+| 7 | In Water | under water |
 
-### Bayraklar
+### Flags
 `Ignore Damaged Model` · `Play on Parent` · `Only on Damaged Model` ·
 `Allow Rubber Bullet Shot`
 
-### ⛔ ytyp'teki `fxName` ile `.ypt`'deki efekt adı AYNI DEĞİL
+### ⛔ The ytyp `fxName` and the effect name in the `.ypt` are NOT THE SAME
 
-**Ölçüldü** (406 benzersiz `fxName` × 2.549 efekt kataloğu):
+**Measured** (406 unique `fxName` × 2,549-effect catalogue):
 
-| Durum | Adet | Oran |
+| Case | Count | Share |
 |---|---:|---:|
-| katalogda **aynen** var | 3 | %0,7 |
-| **`ent_` öneki** eklenince var | 265 | %65,3 |
-| `ent_` öneki **+ sonek** ile var | 9 | %2,2 |
-| **hiçbir akrabası yok** | 129 | %31,8 |
+| in the catalogue **as is** | 3 | 0.7% |
+| found after adding the **`ent_` prefix** | 265 | 65.3% |
+| found with the `ent_` prefix **+ a suffix** | 9 | 2.2% |
+| **no relative at all** | 129 | 31.8% |
 
-Yani ytyp'e `amb_steam_vent_round` yazarsın, `.ypt` içindeki gerçek ad
-**`ent_amb_steam_vent_round`**'dur. Bazen sonek de eklenir:
+So you write `amb_steam_vent_round` into the ytyp, and the real name inside the `.ypt`
+is **`ent_amb_steam_vent_round`**. Sometimes a suffix is added too:
 `amb_butterflys` → **`ent_amb_butterflys_swarm`** ·
 `amb_moths` → `ent_amb_moths_swarm` / `ent_amb_moths_cupboard` ·
 `ray_shipwreck_splash` → `..._s` / `..._l`.
 
-**Toplam çözülebilirlik: %68,2.**
+**Total resolvable: 68.2%.**
 
-### ⚠ Kalan %31,8 vanilla'nın kendi boşta referansları
+### ⚠ The remaining 31.8% are vanilla's own dangling references
 
-**İndeks eksik değil — kanıtlandı:** `core.ypt` CodeWalker ile XML'e açıldı
-(45,5 MB) ve `EffectRuleDictionary`'deki **895 efektin 895'i** indekste çıktı,
-kaçan **0**. Yani bu adlar oyunun dosyalarında gerçekten yok.
+**The index is not incomplete — proven:** `core.ypt` was opened to XML with CodeWalker
+(45.5 MB) and **895 of the 895 effects** in `EffectRuleDictionary` appeared in the index,
+**0** missed. So these names really do not exist in the game files.
 
-En çarpıcıları: `amb_water_roof_drips_short` **5.621 kullanım** ·
+The most striking: `amb_water_roof_drips_short` **5,621 uses** ·
 `amb_wind_dust_swirl` 783 · `amb_wind_sand_dune` 547 · `amb_wind_dust` 475 ·
 `amb_water_roof_pour_short` 374 · `dst_shop_plastic_cont` 256.
 
-`amb_water_roof_drips` ve `..._thin` var ama `_short` yok — yani bunlar
-sürüm geçişlerinde silinmiş/yeniden adlandırılmış efektlere kalan ölü
-referanslar. **Bir vanilla ytyp'i kopyalayıp efektini devraldıysan, o efekt
-zaten çalışmıyor olabilir.**
+`amb_water_roof_drips` and `..._thin` exist but `_short` does not — so these are dead
+references left over from effects deleted/renamed across versions. **If you copied a vanilla ytyp and inherited its effect,
+that effect may already not work.**
 
-Pratik sonuç: bir vanilla prop'un ytyp'ini kopyalayıp efektini devraldıysan,
-o efekt zaten çalışmıyor olabilir. **Kopyalamadan önce doğrula:**
+Practical result: if you copied a vanilla prop's ytyp and inherited its effect,
+that effect may already not work. **Verify before copying:**
 
 ```bash
 assetdb.py fx <fxName> --exact
 ```
 
-### Efekt adını nereden bulacaksın (dört yol)
+### Where to find the effect name (four ways)
 
-1. **Vanilla ytyp'ten öğren** — CodeWalker RPF Explorer → ilgili ytyp (ör.
-   `v_storage.ytyp`) → `Ctrl+F` prop adı → `extensions` altındaki particle
-   bloğu. Kırılan paletin efekti `DST_wood_structure`, **FX type 4**,
+1. **Learn it from the vanilla ytyp** — CodeWalker RPF Explorer → the relevant ytyp (e.g.
+   `v_storage.ytyp`) → `Ctrl+F` the prop name → the particle block under
+   `extensions`. The breaking pallet's effect is `DST_wood_structure`, **FX type 4**,
    **bone tag −1**.
-2. **Pleb Masters: Forge** — prop'a tıkla, altta particle effect yazar
-   (tam arama 121 sayfa prop).
-3. Hazır listeler: Derek Deck'in test edilmiş ambient listesi · Dirty Free'nin
-   GTA 5 data dump'ı.
-4. ⭐ **`echo effect`** (FiveM helper resource) — efektleri **oyun içinde**
-   kaydırıcılarla arayıp önizletir. Resource klasörüne at + `ensure`.
-   Aynı işi yapan ikinci araç: `eco_effect`
+2. **Pleb Masters: Forge** — click the prop, the particle effect is shown at the bottom
+   (full search 121 pages of props).
+3. Ready-made lists: Derek Deck's tested ambient list · Dirty Free's
+   GTA 5 data dump.
+4. ⭐ **`echo effect`** (FiveM helper resource) — searches and previews effects **in game**
+   with sliders. Drop it into the resource folder + `ensure`.
+   A second tool doing the same job: `eco_effect`
    (`sources/community-resources.md` §11).
 
-### Blender tarafı — extension'ı kurmak
+### Blender side — setting up the extension
 
-ytyp → *autocreate from selected* → **Extensions** sekmesi → `+` → type
+ytyp → *autocreate from selected* → **Extensions** tab → `+` → type
 **Particle** → FX Name / FX Type / bone tag / scale / probability.
-Gizmo'yu görmek için viewport'ta `T` → araç çubuğundaki gizmo düğmesi.
-**Gizmo yalnız konumu temsil eder, efekti değil.**
+To see the gizmo: `T` in the viewport → the gizmo button on the toolbar.
+**The gizmo only represents the position, not the effect.**
 
-- ⛔ **Extension `Shift`+sürükle ile ÇOĞALTILAMAZ** — hiçbir şey olmaz, hata
-  da vermez. **`Duplicate Extension`** düğmesini kullan.
-- ⚠️ **Gizmo'yu taşıdıktan sonra viewport'a tıklamadan sayılar işlenmez.**
-- ⚠️ **`scale = 1` çoğu efekt için çok büyüktür; tipik değer `0.2`.**
-  (Yukarıdaki XML örneğindeki `1.4` o prop için ölçülmüş değerdir, varsayılan
-  değil.)
+- ⛔ **An extension CANNOT be duplicated with `Shift`+drag** — nothing happens, and
+  no error either. Use the **`Duplicate Extension`** button.
+- ⚠️ **After moving the gizmo, the numbers are not applied until you click in the viewport.**
+- ⚠️ **`scale = 1` is too big for most effects; the typical value is `0.2`.**
+  (The `1.4` in the XML example above is the value measured for that prop, not a
+  default.)
 
-**Oyunda görüldüğü doğrulanmış ambient adları** (`amb_` öneki ytyp
-extension'ından doğrudan çalışır): `amb_generator_smoke` · `amb_cockroaches` ·
+**Ambient names verified as visible in game** (the `amb_` prefix works directly from a ytyp
+extension): `amb_generator_smoke` · `amb_cockroaches` ·
 `amb_fly` · `amb_candle_flame` · `amb_sparking_wires` · `amb_moths_nighttime`
-(yalnız gece) · `amb_water_drips_med` · `amb_cherry_blossom` ·
+(night only) · `amb_water_drips_med` · `amb_cherry_blossom` ·
 `CO_falling_snow` (collision) · `SHT_rubbish` (shot).
 
-**Ölçüm:** Stumpy Mason 38 dk (`leiAB2aM3w8`), `notlar/07` §2, 2026-09 —
-yazım hatası tuzağı tek videoda **üç kez** yaşandı (`sparking_wired`,
-`cockroaches` yanlış yazımı); efekt hiç çıkmadı, hata da verilmedi.
-`assetdb.py fx <ad> --exact` tam bu iş içindir.
+**Measured:** Stumpy Mason 38 min (`leiAB2aM3w8`), local notes `notes/07` §2, 2026-09 —
+the typo pitfall happened **three times** in a single video (`sparking_wired`,
+a misspelled `cockroaches`); the effect never appeared, and no error was given.
+`assetdb.py fx <name> --exact` is exactly for this.
 
-### Efekt kataloğu
+### Effect catalogue
 
-`data/ptfx_effects.tsv.gz` — **2.549 benzersiz efekt**, 368 `.ypt` içinde
-(1.240 dosya tarandı, 0 hata). `core.ypt` tek başına 895 efekt taşıyor.
-Üretici: `build_ptfx.ps1`.
+`data/ptfx_effects.tsv.gz` — **2,549 unique effects** in 368 `.ypt`
+(1,240 files scanned, 0 errors). `core.ypt` alone carries 895 effects.
+Generator: `build_ptfx.ps1`.
 
-### Ölçülmüş tuzaklar
-- **Yazım hatası sessizdir.** Yanlış `fxName` hiçbir hata üretmez, efekt
-  görünmez. Extension kopyalanınca hata da kopyalanır.
-- `boneTag = -1` → tüm kemikler (parça hangi sırayla kopar farketmez).
-- `probability` gerçekten olasılıktır (%20 → 5 objeden ~1'i).
-- **Rotasyon önemli**: ters kurulan kıvılcım yukarı saçar.
-- `veh_` `ped_` `proj_` `wheel_` önekli efektler ytype'tan çalışmaz, script ister.
-- Bazıları koşulludur: `_nighttime` yalnız gece, deniz efektleri su altında.
+### Measured pitfalls
+- **A typo is silent.** A wrong `fxName` produces no error, the effect
+  is invisible. When the extension is copied, the error is copied with it.
+- `boneTag = -1` → all bones (it does not matter in which order the parts break off).
+- `probability` really is a probability (20% → ~1 in 5 objects).
+- **Rotation matters**: sparks set up upside down spray upwards.
+- Effects with the `veh_` `ped_` `proj_` `wheel_` prefixes do not work from a ytype, they need a script.
+- Some are conditional: `_nighttime` only at night, sea effects under water.
 
 ---
