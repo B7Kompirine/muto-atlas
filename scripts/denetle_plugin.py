@@ -21,11 +21,28 @@ Denetlenenler:
 
 Cikis kodu: sorun varsa 1, temizse 0.
 
-Kullanim:  python scripts/denetle_plugin.py
+Kullanim:  python scripts/denetle_plugin.py [--lang en|tr]
+           Rapor dili diger betiklerle ayni secilir: --lang > MUTO_ATLAS_LANG > config > en.
 """
-import io, os, re, json, sys
+import argparse, io, os, re, json, sys
 
 A = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(A, "scripts"))
+from i18n import add_lang_arg, get_lang, set_lang  # noqa: E402
+
+_ap = argparse.ArgumentParser(description="muto-atlas plugin integrity audit (exit 1 when a problem is found)")
+add_lang_arg(_ap)
+_lang = _ap.parse_args().lang
+if _lang:
+    set_lang(_lang)
+EN = get_lang() == "en"
+
+
+def L(tr, en):
+    """Rapor satiri iki dilde yazilir; hangisinin basilacagi i18n ile ayni kurala uyar."""
+    return en if EN else tr
+
+
 problems, notes = [], []
 
 def read(p):
@@ -38,12 +55,13 @@ for rel in (r".claude-plugin\plugin.json", r".claude-plugin\marketplace.json"):
         json.load(io.open(p, encoding='utf-8'))
         notes.append(f"JSON ok: {rel}")
     except Exception as e:
-        problems.append(f"JSON BOZUK: {rel} -> {e}")
+        problems.append(L(f"JSON BOZUK: {rel} -> {e}", f"BROKEN JSON: {rel} -> {e}"))
 
 pj = json.load(io.open(os.path.join(A, r".claude-plugin\plugin.json"), encoding='utf-8'))
 mj = json.load(io.open(os.path.join(A, r".claude-plugin\marketplace.json"), encoding='utf-8'))
 if pj["name"] != mj["plugins"][0]["name"]:
-    problems.append(f"plugin adi uyusmuyor: {pj['name']} vs {mj['plugins'][0]['name']}")
+    problems.append(L(f"plugin adi uyusmuyor: {pj['name']} vs {mj['plugins'][0]['name']}",
+                      f"plugin name mismatch: {pj['name']} vs {mj['plugins'][0]['name']}"))
 
 # ---------- 2. commands frontmatter ----------
 cmd_dir = os.path.join(A, "commands")
@@ -52,22 +70,25 @@ TR = set("çğıöşüÇĞİÖŞÜ")
 for f in cmds:
     txt = read(os.path.join(cmd_dir, f))
     if not txt.startswith("---"):
-        problems.append(f"komut frontmatter YOK: {f}")
+        problems.append(L(f"komut frontmatter YOK: {f}", f"command has NO frontmatter: {f}"))
         continue
     fm = txt.split("---", 2)[1]
     for key in ("description",):
         if not re.search(rf"^{key}:", fm, re.M):
-            problems.append(f"komut '{f}': '{key}' alani eksik")
+            problems.append(L(f"komut '{f}': '{key}' alani eksik", f"command '{f}': '{key}' field missing"))
     for key in ("argument-hint", "allowed-tools"):
         if not re.search(rf"^{key}:", fm, re.M):
-            notes.append(f"komut '{f}': '{key}' yok (istege bagli)")
+            notes.append(L(f"komut '{f}': '{key}' yok (istege bagli)", f"command '{f}': no '{key}' (optional)"))
     m = re.search(r"^description:\s*(.+)$", fm, re.M)
     if m and (set(m.group(1)) & TR):
-        problems.append(f"komut '{f}': description TURKCE karakter iceriyor "
-                        f"(konvansiyon: frontmatter Ingilizce)")
+        problems.append(L(f"komut '{f}': description TURKCE karakter iceriyor "
+                          f"(konvansiyon: frontmatter Ingilizce)",
+                          f"command '{f}': description contains TURKISH characters "
+                          f"(convention: frontmatter in English)"))
     body = txt.split("---", 2)[2]
     if not (set(body) & TR):
-        notes.append(f"komut '{f}': govdede Turkce karakter yok (konvansiyon: govde Turkce)")
+        notes.append(L(f"komut '{f}': govdede Turkce karakter yok (konvansiyon: govde Turkce)",
+                       f"command '{f}': no Turkish characters in the body (convention: body in Turkish)"))
 
 # ---------- 3. referanslar: var mi / yetim mi ----------
 ref_dirs = [os.path.join(A, "skills", s_, "references")
@@ -91,9 +112,10 @@ for p in md_files:
         mentioned.add(m.group(1))
 
 for r in sorted(mentioned - refs_on_disk):
-    problems.append(f"ATIF VAR DOSYA YOK: references/{r}")
+    problems.append(L(f"ATIF VAR DOSYA YOK: references/{r}", f"REFERENCED FILE MISSING: references/{r}"))
 for r in sorted(refs_on_disk - mentioned):
-    problems.append(f"YETIM REFERANS (hicbir yerden atif yok): references/{r}")
+    problems.append(L(f"YETIM REFERANS (hicbir yerden atif yok): references/{r}",
+                      f"ORPHAN REFERENCE (nothing links to it): references/{r}"))
 
 # ---------- 3b. AGAC: govde/ + dallar/<dal>/ + _arsiv/ ----------
 # NEDEN: bilgi govde/dal/yaprak agacina tasindi. Yaprak dosyasi _dal.md
@@ -131,9 +153,9 @@ if os.path.isdir(dallar_dir):
                     planli_tum.add(f"dallar/{dal_}/{row_.group(1)}")
 for r in sorted(tree_mentioned - tree_on_disk):
     if r in planli_tum:
-        notes.append(f"planli yapraga atif (henuz yazilmadi): {r}")
+        notes.append(L(f"planli yapraga atif (henuz yazilmadi): {r}", f"link to a planned leaf (not written yet): {r}"))
     else:
-        problems.append(f"ATIF VAR DOSYA YOK: {r}")
+        problems.append(L(f"ATIF VAR DOSYA YOK: {r}", f"REFERENCED FILE MISSING: {r}"))
 
 if os.path.isdir(dallar_dir):
     for dal in sorted(os.listdir(dallar_dir)):
@@ -142,7 +164,7 @@ if os.path.isdir(dallar_dir):
             continue
         dal_md = os.path.join(dp, "_dal.md")
         if not os.path.exists(dal_md):
-            problems.append(f"DAL DOSYASI YOK: dallar/{dal}/_dal.md")
+            problems.append(L(f"DAL DOSYASI YOK: dallar/{dal}/_dal.md", f"BRANCH FILE MISSING: dallar/{dal}/_dal.md"))
             continue
         dt = read(dal_md)
         # yaprak tablosu: | istenen | dosya.md | durum — kaynak |
@@ -154,18 +176,23 @@ if os.path.isdir(dallar_dir):
             (planned if "taşınacak" in rest or "tasinacak" in rest else listed).add(f)
         on_disk = {f for f in os.listdir(dp) if f.endswith(".md") and f != "_dal.md"}
         for f in sorted(listed - on_disk):
-            problems.append(f"dallar/{dal}/_dal.md yaprak listeliyor, dosya yok: {f}")
+            problems.append(L(f"dallar/{dal}/_dal.md yaprak listeliyor, dosya yok: {f}",
+                              f"dallar/{dal}/_dal.md lists a leaf that does not exist: {f}"))
         for f in sorted(on_disk - listed - planned):
-            problems.append(f"YETIM YAPRAK (dal tablosunda yok): dallar/{dal}/{f}")
+            problems.append(L(f"YETIM YAPRAK (dal tablosunda yok): dallar/{dal}/{f}",
+                              f"ORPHAN LEAF (not in the branch table): dallar/{dal}/{f}"))
         for f in sorted(planned & on_disk):
-            problems.append(f"dallar/{dal}/{f} yazilmis ama tabloda hala 'tasinacak': durumu guncelle")
+            problems.append(L(f"dallar/{dal}/{f} yazilmis ama tabloda hala 'tasinacak': durumu guncelle",
+                              f"dallar/{dal}/{f} exists but its table row still says 'tasinacak' (to be moved): update it"))
         if planned - on_disk:
-            notes.append(f"dallar/{dal}: {len(planned - on_disk)} yaprak henuz tasinmadi")
+            notes.append(L(f"dallar/{dal}: {len(planned - on_disk)} yaprak henuz tasinmadi",
+                           f"dallar/{dal}: {len(planned - on_disk)} leaves not moved yet"))
         n = dt.count("\n")
         if n > 150:
-            notes.append(f"dallar/{dal}/_dal.md {n} satir (>150) -> fazlasi yapraga insin")
+            notes.append(L(f"dallar/{dal}/_dal.md {n} satir (>150) -> fazlasi yapraga insin",
+                           f"dallar/{dal}/_dal.md is {n} lines (>150) -> move the extra into leaves"))
         if f"dallar/{dal}/" not in skill_txt:
-            problems.append(f"SKILL.md 'dallar/{dal}/' dalini anmiyor")
+            problems.append(L(f"SKILL.md 'dallar/{dal}/' dalini anmiyor", f"SKILL.md does not mention the 'dallar/{dal}/' branch"))
         # tasima kaydi: yapragin Kaynak satirindaki eski dosya hala references/ altindaysa
         for f in sorted(on_disk):
             lt = read(os.path.join(dp, f))
@@ -173,19 +200,23 @@ if os.path.isdir(dallar_dir):
             if m:
                 for old in re.findall(r"([A-Za-z0-9._-]+\.md)", m.group(1)):
                     if old in refs_on_disk:
-                        notes.append(f"dallar/{dal}/{f}: kaynak references/{old} hala duruyor (tasima bitmemis)")
+                        notes.append(L(f"dallar/{dal}/{f}: kaynak references/{old} hala duruyor (tasima bitmemis)",
+                                       f"dallar/{dal}/{f}: its source references/{old} still exists (move not finished)"))
 
 # govde olcutu: govde dosyasi en az 4 dalda anilmali (her dalda gecerli mi)
+_dal_sayisi = len([d for d in os.listdir(dallar_dir) if os.path.isdir(os.path.join(dallar_dir, d))])
 for gf_ in sorted(f for f in os.listdir(govde_dir) if f.endswith(".md")):
     kac_ = sum(1 for dal_ in os.listdir(dallar_dir)
                if os.path.isdir(os.path.join(dallar_dir, dal_))
                and gf_ in read(os.path.join(dallar_dir, dal_, "_dal.md")))
     if kac_ < 4 and gf_ != "gta-temel.md":
-        notes.append(f"govde/{gf_}: yalniz {kac_}/{len([d for d in os.listdir(dallar_dir) if os.path.isdir(os.path.join(dallar_dir, d))])} dalda aniliyor -> her dalda gecerli mi, yoksa kaynaklar/ mi?")
+        notes.append(L(f"govde/{gf_}: yalniz {kac_}/{_dal_sayisi} dalda aniliyor -> her dalda gecerli mi, yoksa kaynaklar/ mi?",
+                       f"govde/{gf_}: mentioned in only {kac_}/{_dal_sayisi} branches -> does it hold for every branch, or belong in kaynaklar/?"))
 
 n = skill_txt.count("\n")
 if n > 250:
-    notes.append(f"fivem-assets/SKILL.md {n} satir (>250) -> govde/ altina in")
+    notes.append(L(f"fivem-assets/SKILL.md {n} satir (>250) -> govde/ altina in",
+                   f"fivem-assets/SKILL.md is {n} lines (>250) -> move content into govde/"))
 
 # ---------- 3c. YAPRAKTA GOVDE KURALI TEKRARI (not) ----------
 # NEDEN: agacin amaci ortak kurali BIR kez, govde/_dal'da tutmak. Bir yaprakta
@@ -222,10 +253,11 @@ if os.path.isdir(dallar_dir):
                     hit_ = [e for e, rx in GOVDE_KURAL if re.search(rx, blk_.lower())]
                     if hit_:
                         tekrar += 1
-                        notes.append(f"yaprakta govde kurali tekrari ({hit_[0]}): dallar/{dal_}/{f_}: {ls_[i_].strip()[:70]}")
+                        notes.append(L(f"yaprakta govde kurali tekrari ({hit_[0]}): dallar/{dal_}/{f_}: {ls_[i_].strip()[:70]}",
+                                       f"trunk rule repeated in a leaf ({hit_[0]}): dallar/{dal_}/{f_}: {ls_[i_].strip()[:70]}"))
                 i_ = j_
 if tekrar == 0:
-    notes.append("yaprak/govde tekrari: 0 (kisa madde olcutuyle)")
+    notes.append(L("yaprak/govde tekrari: 0 (kisa madde olcutuyle)", "leaf/trunk repeats: 0 (short-item check)"))
 
 # ---------- 3d. ORTUSME: tekrarlanan baslik + birebir kopyalanmis blok ----------
 # NEDEN: agacin sozu "bir kez, en genis yerde". Ayni dosyada ayni baslik iki kez
@@ -240,6 +272,7 @@ for _r, _d, _fs in os.walk(FA):
         if _f.endswith(".md"):
             _canli.append(os.path.join(_r, _f))
 
+_ortusme = 0
 _bas = re.compile(r"^#{2,4}\s+(.+?)\s*$", re.M)
 for _p in sorted(_canli):
     _c = {}
@@ -250,8 +283,12 @@ for _p in sorted(_canli):
         # kisa/genel altbaslik (Olcum, Sirayla, Dogrulama...) bir dosyada birden
         # cok bolumde gecebilir; kopya belirtisi degildir.
         if _v > 1 and len(_k) >= 14:
-            problems.append("TEKRARLANAN BASLIK: %s icinde '%s' %d kez — blok kopyalanmis ya da iki ayri sey ayni adi tasiyor"
-                            % (os.path.relpath(_p, A).replace("\\", "/"), _k[:60], _v))
+            _ortusme += 1
+            _rel = os.path.relpath(_p, A).replace("\\", "/")
+            problems.append(L("TEKRARLANAN BASLIK: %s icinde '%s' %d kez — blok kopyalanmis ya da iki ayri sey ayni adi tasiyor"
+                              % (_rel, _k[:60], _v),
+                              "REPEATED HEADING: '%s' appears %d times in %s — a block was copied, or two different things share one name"
+                              % (_k[:60], _v, _rel)))
 
 # birebir kopya blok: >=6 anlamli ardisik satir, iki ayri yerde
 def _anlamli(_ls):
@@ -278,10 +315,13 @@ for _win, _yer in _pen.items():
     if _imza in _gorulen:
         continue
     _gorulen.add(_imza)
-    problems.append("BIREBIR KOPYA BLOK (>=6 satir): " + " · ".join("%s:%d" % _y for _y in _yer[:3])
-                    + " — bilgi bir kez, en genis yerde yazilir")
-if not [_x for _x in problems if _x.startswith(("TEKRARLANAN BASLIK", "BIREBIR KOPYA"))]:
-    notes.append("ortusme: tekrarlanan baslik 0, birebir kopya blok 0 (%d canli md)" % len(_canli))
+    _ortusme += 1
+    _yerler = " · ".join("%s:%d" % _y for _y in _yer[:3])
+    problems.append(L("BIREBIR KOPYA BLOK (>=6 satir): " + _yerler + " — bilgi bir kez, en genis yerde yazilir",
+                      "IDENTICAL BLOCK (>=6 lines): " + _yerler + " — write knowledge once, in the widest place"))
+if not _ortusme:
+    notes.append(L("ortusme: tekrarlanan baslik 0, birebir kopya blok 0 (%d canli md)" % len(_canli),
+                   "overlap: repeated headings 0, identical blocks 0 (%d live md files)" % len(_canli)))
 
 # ---------- 4. scripts: atif var mi ----------
 script_dir = os.path.join(A, "scripts")
@@ -296,10 +336,12 @@ for s_ in sorted(script_mentioned - scripts_on_disk):
     ctx = re.search("scripts/" + re.escape(s_) + "[^" + chr(10) + "]*", all_text)
     line = ctx.group(0) if ctx else ""
     if "yazilmadi" in line or "yazılmadı" in line or "TODO" in line:
-        notes.append(f"scripts/{s_}: atif var, dosya yok — ama belgede "
-                     f"'henuz yazilmadi' diye ISARETLI (bilinen acik is)")
+        notes.append(L(f"scripts/{s_}: atif var, dosya yok — ama belgede "
+                       f"'henuz yazilmadi' diye ISARETLI (bilinen acik is)",
+                       f"scripts/{s_}: referenced but missing — MARKED 'not written yet' "
+                       f"in the docs (known open work)"))
     else:
-        problems.append(f"ATIF VAR BETIK YOK: scripts/{s_}")
+        problems.append(L(f"ATIF VAR BETIK YOK: scripts/{s_}", f"REFERENCED SCRIPT MISSING: scripts/{s_}"))
 
 # ---------- 5. slash komut atiflari ----------
 cmd_names = {f[:-3] for f in cmds}
@@ -320,11 +362,15 @@ KNOWN_EXTERNAL = {
 }
 eksik_komut = sorted(referred_cmds - cmd_names - KNOWN_EXTERNAL)
 for c in eksik_komut:
-    problems.append(f"KIRIK KOMUT ATIFI: '/{c}' aniliyor ama commands/{c}.md yok "
-                    f"(plugin komutu kaldirildiysa atiflari da guncelle; oyun ici "
-                    f"komutsa KNOWN_EXTERNAL'a ekle)")
+    problems.append(L(f"KIRIK KOMUT ATIFI: '/{c}' aniliyor ama commands/{c}.md yok "
+                      f"(plugin komutu kaldirildiysa atiflari da guncelle; oyun ici "
+                      f"komutsa KNOWN_EXTERNAL'a ekle)",
+                      f"BROKEN COMMAND LINK: '/{c}' is mentioned but commands/{c}.md does not exist "
+                      f"(if the plugin command was removed, update the links; if it is an "
+                      f"in-game command, add it to KNOWN_EXTERNAL)"))
 if not eksik_komut:
-    notes.append(f"komut atiflari: {len(referred_cmds & cmd_names)} gecerli, kirik 0")
+    notes.append(L(f"komut atiflari: {len(referred_cmds & cmd_names)} gecerli, kirik 0",
+                   f"command links: {len(referred_cmds & cmd_names)} valid, 0 broken"))
 
 # ---------- 6. ps1 BOM ----------
 for f in sorted(os.listdir(script_dir)):
@@ -339,26 +385,30 @@ for f in sorted(os.listdir(script_dir)):
     except UnicodeDecodeError:
         non_ascii = True
     if non_ascii and not has_bom:
-        problems.append(f"BOM EKSIK ve ASCII disi karakter var: scripts/{f} "
-                        f"(PowerShell 5.1 bozuk okur)")
+        problems.append(L(f"BOM EKSIK ve ASCII disi karakter var: scripts/{f} "
+                          f"(PowerShell 5.1 bozuk okur)",
+                          f"MISSING BOM with non-ASCII characters: scripts/{f} "
+                          f"(PowerShell 5.1 misreads it)"))
     elif not non_ascii and not has_bom:
-        notes.append(f"scripts/{f}: BOM yok ama saf ASCII -> sorun degil")
+        notes.append(L(f"scripts/{f}: BOM yok ama saf ASCII -> sorun degil",
+                       f"scripts/{f}: no BOM but pure ASCII -> fine"))
 
 # ---------- 7. SKILL.md ----------
 for skill in ("fivem-assets", "fivem-natives"):
     p = os.path.join(A, "skills", skill, "SKILL.md")
     if not os.path.exists(p):
-        problems.append(f"SKILL.md yok: {skill}")
+        problems.append(L(f"SKILL.md yok: {skill}", f"SKILL.md missing: {skill}"))
         continue
     t = read(p)
     if not t.startswith("---"):
-        problems.append(f"{skill}/SKILL.md frontmatter yok")
+        problems.append(L(f"{skill}/SKILL.md frontmatter yok", f"{skill}/SKILL.md has no frontmatter"))
         continue
     fm = t.split("---", 2)[1]
     if not re.search(r"^name:\s*" + re.escape(skill) + r"\s*$", fm, re.M):
-        problems.append(f"{skill}/SKILL.md: 'name' alani klasor adiyla uyusmuyor")
+        problems.append(L(f"{skill}/SKILL.md: 'name' alani klasor adiyla uyusmuyor",
+                          f"{skill}/SKILL.md: 'name' does not match the folder name"))
     if not re.search(r"^description:", fm, re.M):
-        problems.append(f"{skill}/SKILL.md: description yok")
+        problems.append(L(f"{skill}/SKILL.md: description yok", f"{skill}/SKILL.md: no description"))
 
 # ---------- 8. SAYAC TUTARLILIGI + YETIM BETIK ----------
 # NEDEN: belgeye elle yazilan sayi kayar. Olculdu: veri katmani icin ayni anda
@@ -380,17 +430,19 @@ try:
     _spec.loader.exec_module(_mod)
     _katman = len(_mod.KATMANLAR)
 except Exception as _e:
-    notes.append("katman sayisi okunamadi (setup.py import): %s" % _e)
+    notes.append(L("katman sayisi okunamadi (setup.py import): %s" % _e,
+                   "could not read the layer count (setup.py import): %s" % _e))
 if _katman:
     # "2 veri katmani kurulu degil" gibi cikis-kodu satirlari iddia degildir
     _iddia = re.findall(r"(\d+)\s*(?:offline data layers|çevrimdışı veri katmanı|veri katmanı|data layers)(?!\s*(?:kurulu|not installed))", _hepsi)
     for _yaz in sorted(set(_iddia)):
         if int(_yaz) != _katman:
-            problems.append("SAYAC KAYMASI: belgede '%s veri katmani' yaziyor, setup.py'de %d katman var"
-                            % (_yaz, _katman))
+            problems.append(L("SAYAC KAYMASI: belgede '%s veri katmani' yaziyor, setup.py'de %d katman var" % (_yaz, _katman),
+                              "COUNTER DRIFT: the docs say '%s data layers', setup.py has %d" % (_yaz, _katman)))
     for _f, _t in _belge.items():
         for _yaz in set(re.findall(r"N/(\d+)\s*katman", _t)):
-            problems.append("SABIT KATMAN SAYISI: %s icinde 'N/%s' — sayiyi yazma, setup.py hesaplar" % (_f, _yaz))
+            problems.append(L("SABIT KATMAN SAYISI: %s icinde 'N/%s' — sayiyi yazma, setup.py hesaplar" % (_f, _yaz),
+                              "HARD-CODED LAYER COUNT: 'N/%s' in %s — do not write the number, setup.py computes it" % (_yaz, _f)))
 
 # 8b. dal / yaprak / komut / betik sayaci
 _disk = {
@@ -401,10 +453,12 @@ _disk = {
     "komut":  len([f for f in os.listdir(os.path.join(A, "commands")) if f.endswith(".md")]),
 }
 _ETIKET = {"dal": r"(\d+)\s*dal\b", "yaprak": r"(\d+)\s*yaprak\b", "komut": r"(\d+)\s*komut\b"}
+_AD_EN = {"dal": "branches", "yaprak": "leaves", "komut": "commands"}
 for _k, _rx in _ETIKET.items():
     for _yaz in set(re.findall(_rx, _hepsi)):
         if int(_yaz) != _disk[_k]:
-            problems.append("SAYAC KAYMASI: belgede '%s %s' yaziyor, diskte %d var" % (_yaz, _k, _disk[_k]))
+            problems.append(L("SAYAC KAYMASI: belgede '%s %s' yaziyor, diskte %d var" % (_yaz, _k, _disk[_k]),
+                              "COUNTER DRIFT: the docs say '%s %s', %d on disk" % (_yaz, _AD_EN[_k], _disk[_k])))
 
 # 8c. yetim betik: belgede anilmiyor VE baska betikten cagrilmiyor
 _sdir = os.path.join(A, "scripts")
@@ -435,22 +489,25 @@ for _s in _betikler:
     _yetim.append(_s)
 if _yetim:
     for _s in _yetim:
-        notes.append("yetim betik: scripts/%s hicbir belgede anilmiyor ve hicbir betikten cagrilmiyor" % _s)
+        notes.append(L("yetim betik: scripts/%s hicbir belgede anilmiyor ve hicbir betikten cagrilmiyor" % _s,
+                       "orphan script: scripts/%s is not mentioned in any doc and not called by any script" % _s))
 else:
-    notes.append("yetim betik: 0 (%d betik tarandi)" % len(_betikler))
+    notes.append(L("yetim betik: 0 (%d betik tarandi)" % len(_betikler),
+                   "orphan scripts: 0 (%d scripts scanned)" % len(_betikler)))
 
 # ---------- rapor ----------
 print("=" * 62)
-print(f"muto-atlas denetimi — v{pj['version']}")
-print(f"  komut: {len(cmds)} · referans: {len(refs_on_disk)} · agac: {len(tree_on_disk)} · betik: {len(scripts_on_disk)}")
+print(L(f"muto-atlas denetimi — v{pj['version']}", f"muto-atlas audit — v{pj['version']}"))
+print(L(f"  komut: {len(cmds)} · referans: {len(refs_on_disk)} · agac: {len(tree_on_disk)} · betik: {len(scripts_on_disk)}",
+        f"  commands: {len(cmds)} · references: {len(refs_on_disk)} · tree: {len(tree_on_disk)} · scripts: {len(scripts_on_disk)}"))
 print("=" * 62)
 if problems:
-    print(f"\n!! {len(problems)} SORUN\n")
+    print(L(f"\n!! {len(problems)} SORUN\n", f"\n!! {len(problems)} PROBLEMS\n"))
     for x in problems:
         print("  X " + x)
 else:
-    print("\nSORUN YOK\n")
-print(f"\n-- {len(notes)} not --")
+    print(L("\nSORUN YOK\n", "\nNO PROBLEMS\n"))
+print(L(f"\n-- {len(notes)} not --", f"\n-- {len(notes)} notes --"))
 for x in notes:
     print("  . " + x)
 sys.exit(1 if problems else 0)
