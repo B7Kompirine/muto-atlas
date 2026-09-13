@@ -5,7 +5,7 @@
 **Ground truth for FiveM / GTA V development.** A Claude Code plugin that answers
 questions about the game's actual data instead of guessing.
 
-[Türkçe dokümantasyon →](docs/README.tr.md)
+[Türkçe dokümantasyon →](docs/README.tr.md) · [![checks](https://github.com/B7Kompirine/muto-atlas/actions/workflows/checks.yml/badge.svg)](https://github.com/B7Kompirine/muto-atlas/actions/workflows/checks.yml)
 
 ---
 
@@ -95,6 +95,7 @@ The plugin also checks **itself**:
 
 ```bash
 python scripts/audit_plugin.py     # exit 1 if anything is broken
+python scripts/check_repo.py       # scripts, data tables, public text, links
 ```
 
 It catches the failures that never raise an error: a command pointing at a
@@ -211,8 +212,9 @@ themselves. The slash commands stay Claude Code only.
 `scripts/mcp_server.py` exposes the same queries as MCP tools: asset and door lookups, animation
 and particle names, flag decoding, native checks, the knowledge tree, and — locally only —
 `doctor`, structural diff, light decoding and the Lua linter. Every result starts with its exit
-code and what that code means. It needs the `mcp` Python package (tested with 1.28):
-`python -m pip install "mcp>=1.28"`.
+code and what that code means. It needs the `mcp` Python package, version 1.x (tested with 1.28
+and 1.30; mcp 2.x renamed the server API and is not supported yet):
+`python -m pip install "mcp>=1.28,<2"`.
 
 Claude Desktop (`claude_desktop_config.json`), Cursor (`~/.cursor/mcp.json`) and Gemini CLI
 (`~/.gemini/settings.json`) use this shape; VS Code (`.vscode/mcp.json`) takes the same entry

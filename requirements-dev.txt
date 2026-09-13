@@ -1,0 +1,6 @@
+# Python packages the repository checks need: python -m pip install -r requirements-dev.txt
+# (scripts/check_repo.py runs every script's --help, and some scripts import these at start-up.)
+numpy
+Pillow
+# mcp 2.x renamed FastMCP to MCPServer; scripts/mcp_server.py is written for mcp 1.x
+mcp>=1.28,<2

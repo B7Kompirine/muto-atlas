@@ -54,6 +54,7 @@ add other tool-specific syntax to skill bodies.
 
 ```bash
 python scripts/audit_plugin.py        # must exit 0
+python scripts/check_repo.py          # must exit 0 (the pull-request checks)
 python scripts/install_skills.py --check
 python scripts/mcp_server.py --list-tools
 python scripts/build_atlas_db.py --tagger rules   # if you touched the knowledge tree
