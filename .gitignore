@@ -29,3 +29,6 @@ __pycache__/
 *.yedek
 *.bak
 *.orig
+
+# Marka animasyonu render çıktıları (brand/motion/render.mjs üretir)
+brand/motion/cikti/

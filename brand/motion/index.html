@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>muto-atlas hareket</title>
+<style>
+  /* Yazı tipleri depoda (SIL OFL 1.1, bkz. fonts/): ağ gerekmez, her render aynı çıkar */
+  @font-face { font-family: "Space Grotesk"; src: url("fonts/SpaceGrotesk.ttf") format("truetype"); font-weight: 300 700; font-display: block; }
+  @font-face { font-family: "JetBrains Mono"; src: url("fonts/JetBrainsMono.ttf") format("truetype"); font-weight: 100 800; font-display: block; }
+  :root { --zemin: #0B0D10; --panel: #15181D; --amber: #F59F18; --yazi: #C9CDD3; }
+  html, body { margin: 0; background: var(--zemin); color: var(--yazi); font: 14px "JetBrains Mono", monospace; }
+  body.render { overflow: hidden; }
+  body.render .arac { display: none; }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  canvas { display: block; width: 100%; height: auto; background: #000; border-radius: 8px; }
+  body.render canvas { width: auto; border-radius: 0; }
+  body.dikey:not(.render) canvas { max-width: 420px; margin: 0 auto; }
+  .arac { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+  button, select { background: var(--panel); color: var(--yazi); border: 1px solid #2a2f37; border-radius: 6px;
+    padding: 7px 12px; font: inherit; cursor: pointer; }
+  button.aktif { border-color: var(--amber); color: var(--amber); }
+  input[type=range] { flex: 1 1 220px; accent-color: var(--amber); }
+  #zaman { min-width: 64px; text-align: right; }
+</style>
+</head>
+<body>
+<main>
+  <div class="arac">
+    <button data-sahne="intro" class="aktif">Giriş</button>
+    <button data-sahne="outro">Kapanış</button>
+    <select id="dil"><option value="tr">TR</option><option value="en">EN</option></select>
+    <select id="oran"><option value="1920x1080">16:9</option><option value="1080x1920">9:16</option><option value="1080x1080">1:1</option></select>
+    <button id="oynat">❚❚</button>
+  </div>
+  <canvas id="c" width="1920" height="1080"></canvas>
+  <div class="arac">
+    <input id="sure" type="range" min="0" max="1" step="0.001" value="0">
+    <span id="zaman">0.00s</span>
+  </div>
+</main>
+<script type="module">
+  import { ciz, SURE } from './scene.js';
+
+  // Parametreler: ?sahne=intro|outro&dil=tr|en&w=1920&h=1080&render=1
+  const q = new URLSearchParams(location.search);
+  const durum = {
+    sahne: q.get('sahne') || 'intro',
+    dil: q.get('dil') || 'tr',
+    oynuyor: !q.has('render'),
+    t: 0,
+  };
+  const c = document.getElementById('c');
+  const ctx = c.getContext('2d');
+  const boyutla = (w, h) => { c.width = w; c.height = h; document.body.classList.toggle('dikey', h > w); };
+  boyutla(+(q.get('w') || 1920), +(q.get('h') || 1080));
+  if (q.has('render')) document.body.classList.add('render');
+
+  await document.fonts.load('700 100px "Space Grotesk"');
+  await document.fonts.load('500 20px "JetBrains Mono"');
+  await document.fonts.load('600 20px "JetBrains Mono"');
+  await document.fonts.ready;
+
+  // render.mjs bu fonksiyonu kare kare çağırır
+  window.kareCiz = t => { ciz(ctx, durum.sahne, t, durum.dil); };
+  window.hazir = true;
+  if (q.has('render')) { window.kareCiz(0); }
+  else {
+    const kaydirici = document.getElementById('sure'), zaman = document.getElementById('zaman');
+    const oynatBtn = document.getElementById('oynat');
+    document.getElementById('dil').value = durum.dil;
+    let onceki = performance.now();
+    const dongu = simdi => {
+      const dt = (simdi - onceki) / 1000; onceki = simdi;
+      const S = SURE[durum.sahne];
+      if (durum.oynuyor) { durum.t += dt; if (durum.t > S + 0.8) durum.t = 0; }
+      const t = Math.min(durum.t, S);
+      ciz(ctx, durum.sahne, t, durum.dil);
+      kaydirici.value = t / S;
+      zaman.textContent = t.toFixed(2) + 's';
+      requestAnimationFrame(dongu);
+    };
+    requestAnimationFrame(dongu);
+    document.querySelectorAll('[data-sahne]').forEach(b => b.onclick = () => {
+      document.querySelectorAll('[data-sahne]').forEach(x => x.classList.toggle('aktif', x === b));
+      durum.sahne = b.dataset.sahne; durum.t = 0; durum.oynuyor = true; oynatBtn.textContent = '❚❚';
+    });
+    document.getElementById('dil').onchange = e => { durum.dil = e.target.value; };
+    document.getElementById('oran').onchange = e => { const [w, h] = e.target.value.split('x'); boyutla(+w, +h); };
+    oynatBtn.onclick = () => { durum.oynuyor = !durum.oynuyor; oynatBtn.textContent = durum.oynuyor ? '❚❚' : '▶'; };
+    kaydirici.oninput = () => { durum.oynuyor = false; oynatBtn.textContent = '▶'; durum.t = kaydirici.value * SURE[durum.sahne]; };
+  }
+</script>
+</body>
+</html>
