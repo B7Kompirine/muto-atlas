@@ -21,6 +21,7 @@ import json
 import os
 import re
 import sys
+from native_names import binding_record, callable_index, load_database
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(os.path.dirname(HERE), "data")
@@ -75,21 +76,13 @@ def db():
     global _DB
     if _DB is None:
         path = os.path.join(DATA, "natives.merged.json")
-        if not os.path.exists(path):
-            sys.exit("index missing - run: python scripts/build_index.py --fetch")
-        with open(path, encoding="utf-8") as f:
-            _DB = json.load(f)
+        _DB = load_database(path)
     return _DB
 
 
 def native_index():
     """Lua identifier -> record. Only Lua-callable spellings."""
-    idx = {}
-    for key, r in db().items():
-        idx[key] = r
-        for a in r.get("luaAliases") or []:
-            idx.setdefault(a, r)
-    return idx
+    return callable_index(db())
 
 
 def manifest_sides(root):
@@ -255,43 +248,14 @@ def lint_file(path, idx, side_override=None, manifest=None, defined=frozenset())
 
             rec = idx.get(name)
 
-            # ==================================================================
-            # ⚠ FIVEM'S LUA NAME CAN CARRY AN UNDERSCORE — THE DATABASE DOES NOT
-            # ==================================================================
-            # The native database holds the OFFICIAL name (`GET_GROUND_Z_FOR_3D_COORD`
-            # -> `GetGroundZFor3dCoord`), but the name FiveM exposes to Lua
-            # takes an UNDERSCORE before a part that starts with a digit:
-            #     GetGroundZFor_3dCoord      (this is the one valid in Lua)
-            #     GetHeadingFromVector_2d    (this is the one valid in Lua)
-            #
-            # The difference did harm in both directions:
-            #   1. CORRECT names with an underscore were reported as E001
-            #      (a known false positive, ignored by hand).
-            #   2. Worse: trusting that false positive, the form without the
-            #      underscore was taken as "correct" and written into code. In
-            #      game it crashed with `attempt to call a nil value (global
-            #      'GetHeadingFromVector2d')` — so the linter rejected the
-            #      correct code while approving the WRONG code.
-            #
-            # Rule: if the name equals a known native once the underscores
-            # are dropped, the name is VALID and the apiset check runs
-            # against that record.
-            if rec is None and "_" in name:
-                plain = name.replace("_", "")
-                rec = idx.get(plain)
-                if rec is None:
-                    for k in idx:
-                        if k.lower() == plain.lower():
-                            rec = idx[k]
-                            break
-
             if rec is None:
                 # Only flag identifiers that look like natives, not user functions.
-                if name in idx or not re.match(r"^(Get|Set|Is|Has|Does|Draw|Create|Request|Network|Add|Remove|Start|Stop|Clear|Task|Play)[A-Z]", name):
+                if not re.match(r"^_*(Get|Set|Is|Has|Does|Draw|Create|Request|Network|Add|Remove|Start|Stop|Clear|Task|Play)[A-Z]", name):
                     continue
                 import difflib
 
-                close = difflib.get_close_matches(name, list(idx), n=3, cutoff=0.8)
+                names = [candidate for candidate in idx if not candidate.startswith("N_0x")]
+                close = difflib.get_close_matches(name, names, n=3, cutoff=0.8)
                 findings.append(
                     {
                         "rule": "E001",
@@ -303,6 +267,8 @@ def lint_file(path, idx, side_override=None, manifest=None, defined=frozenset())
                     }
                 )
                 continue
+
+            rec = binding_record(rec, name, side)
 
             if side in ("client", "server") and rec["apiset"] not in (side, "shared"):
                 findings.append(

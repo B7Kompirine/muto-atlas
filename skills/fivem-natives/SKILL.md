@@ -41,6 +41,13 @@ With one central copy everyone would be stuck on one version (measured:
 this install has 1271 `m26_*` archetypes, the ready-made dump has 0).
 ## Data
 
+Lua adlari C native adindan tahmin edilmez: `${CLAUDE_PLUGIN_ROOT}/scripts/native_names.py`, kurulu FiveM'in
+`natives_universal.lua` ve `natives_server.lua` sarmalayicilarini hash ile eslestirir.
+Buyuk/kucuk harf ve alt cizgiler birebir kontrol edilir; yalniz gercek Lua adlari onerilir.
+FiveM otomatik bulunamazsa `python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" path fivem <FiveM.app>` ile yolu kaydet.
+Eksik sarmalayici EXIT 2, okunamayan/gecersiz sarmalayici EXIT 3 doner; metaveri adi
+Lua fonksiyonu sayilmaz. Regresyon kontrolu: `python "${CLAUDE_PLUGIN_ROOT}/scripts/test_native_names.py"`.
+
 An offline, merged index in `data/`:
 
 | set | count |

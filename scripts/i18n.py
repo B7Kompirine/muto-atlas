@@ -36,6 +36,28 @@ DATA = os.path.join(os.path.dirname(HERE), "data")
 CONFIG = os.path.join(DATA, "config.json")
 
 MESSAGES = {
+    "native_lua_aliases": {"tr": "Lua takma adlari", "en": "Lua aliases"},
+    "native_tests_passed": {"tr": "Lua native adi regresyon kontrolleri gecti.", "en": "Lua native-name regression checks passed."},
+    "native_runtime_missing": {
+        "tr": "FiveM Lua sarmalayicilari bulunamadi ({reason}). Ayarla: python scripts/assetdb.py path fivem <FiveM.app klasoru>",
+        "en": "FiveM Lua wrappers not found ({reason}). Configure: python scripts/assetdb.py path fivem <FiveM.app folder>",
+    },
+    "native_runtime_invalid": {
+        "tr": "FiveM Lua native adlari okunamadi: {reason}",
+        "en": "Could not read FiveM Lua native names: {reason}",
+    },
+    "native_index_invalid": {
+        "tr": "Native metaveri dizini okunamadi: {reason}",
+        "en": "Could not read the native metadata index: {reason}",
+    },
+    "native_lua_not_callable": {
+        "tr": "{name} secili FiveM calisma ortaminda Lua fonksiyonu degil",
+        "en": "{name} is not an exposed Lua name in the selected FiveM runtime",
+    },
+    "native_no_lua_wrapper": {
+        "tr": "{native}: yalniz native metaverisi; secili calisma ortaminda Lua sarmalayicisi yok",
+        "en": "{native}: native metadata only; no Lua wrapper in the selected runtime",
+    },
     # --- exit codes / layers ---
     "layer_missing": {
         "tr": "{file} yok. Uret: {cmd}",

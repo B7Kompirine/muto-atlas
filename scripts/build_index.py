@@ -21,6 +21,7 @@ import re
 import sys
 import urllib.request
 from datetime import datetime, timezone
+from native_names import apply_runtime_names, binding_record, runtime_bindings
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(os.path.dirname(HERE), "data")
@@ -46,7 +47,7 @@ def fetch(url, dest):
 
 
 def lua_name(native_name, hash_):
-    """Convert a native name to the identifier Lua/JS actually calls."""
+    """Initial metadata grouping key; runtime wrappers determine callable Lua names."""
     if not native_name:
         return "N_" + hash_.lower()
     lead = len(native_name) - len(native_name.lstrip("_"))
@@ -137,7 +138,7 @@ def build(do_fetch=False):
         for entry in natives.values():
             add(entry, "cfx")
 
-    # Resolve which side each native is callable on. Upstream marks a Cfx declaration
+    # Preserve metadata availability for reference. Upstream marks a Cfx declaration
     # "server" even when the same native also exists in the GTA V client set, so the
     # two sides have to be unioned rather than overwritten.
     extra_applied = 0
@@ -152,11 +153,9 @@ def build(do_fetch=False):
         rec["apiset"] = (
             "shared" if on_client and on_server else "server" if on_server else "client"
         )
-        # Aliases ship in NATIVE_CASE; callers write them in Lua case.
-        rec["luaAliases"] = sorted(
-            {lua_name(a, rec["hash"]) for a in (rec.get("aliases") or [])} - {rec["lua"]}
-        )
 
+    bindings, runtime_sources = runtime_bindings()
+    merged = apply_runtime_names(merged, bindings)
     out_full = os.path.join(DATA, "natives.merged.json")
     with open(out_full, "w", encoding="utf-8") as f:
         json.dump(merged, f, ensure_ascii=False, separators=(",", ":"))
@@ -164,6 +163,9 @@ def build(do_fetch=False):
     lines = ["# lua\tnative\tns\tapiset\thash\treturns\tparams"]
     for key in sorted(merged):
         r = merged[key]
+        if not r["luaVerified"]:
+            continue
+        r = binding_record(r, r["lua"])
         lines.append(
             "\t".join(
                 [
@@ -191,10 +193,12 @@ def build(do_fetch=False):
         "apiset": counts,
         "mergedDuplicates": collisions,
         "serverExtraApplied": extra_applied,
+        "runtimeLua": runtime_sources,
+        "verifiedLuaNatives": sum(record["luaVerified"] for record in merged.values()),
         "note": (
-            "GTA V natives carry no apiset upstream; docs.fivem.net treats them as "
-            "client-only. Server availability comes from the CFX declaration set plus "
-            "handlers registered in ServerGameState_Scripting.cpp."
+            "Lua names, aliases, signatures and client/server availability are verified "
+            "against the selected installed FiveM Lua wrappers. Native metadata without "
+            "a matching wrapper is retained for reference, not treated as Lua-callable."
         ),
     }
     with open(os.path.join(DATA, "meta.json"), "w", encoding="utf-8") as f:

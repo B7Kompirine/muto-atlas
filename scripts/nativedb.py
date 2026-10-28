@@ -18,6 +18,8 @@ import difflib
 import json
 import os
 import sys
+from i18n import t
+from native_names import binding_record, callable_index, load_database, reference_record
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(os.path.dirname(HERE), "data")
@@ -30,10 +32,7 @@ def db():
     global _DB
     if _DB is None:
         path = os.path.join(DATA, "natives.merged.json")
-        if not os.path.exists(path):
-            sys.exit("index missing - run: python scripts/build_index.py --fetch")
-        with open(path, encoding="utf-8") as f:
-            _DB = json.load(f)
+        _DB = load_database(path)
     return _DB
 
 
@@ -41,17 +40,24 @@ def lookup_map():
     """Every accepted spelling -> canonical Lua key."""
     m = {}
     for key, r in db().items():
-        m[key.lower()] = key
-        m[r["name"].lower()] = key
+        if r["luaVerified"]:
+            for name in r["luaBindings"]:
+                m[name.lower()] = key
+    for key, r in db().items():
+        m.setdefault(r["name"].lower(), key)
         m[r["hash"].lower()] = key
-        for a in (r.get("aliases") or []) + (r.get("luaAliases") or []):
+        m["0x{:016x}".format(int(r["hash"], 16))] = key
+        for a in r.get("aliases") or []:
             m.setdefault(a.lower(), key)
         for h in r.get("altHash") or []:
             m.setdefault(h.lower(), key)
+            m.setdefault("0x{:016x}".format(int(h, 16)), key)
     return m
 
 
 def sig(r):
+    if not r["luaVerified"]:
+        return t("native_no_lua_wrapper", native=r["name"])
     params = ", ".join(
         "{} {}".format(p.get("type", "?"), p.get("name", "?")) for p in r["params"]
     )
@@ -67,6 +73,13 @@ def side_note(r):
 
 
 def resolve(name, m):
+    if name.lower().startswith("0x"):
+        try:
+            key = m.get("0x{:016x}".format(int(name, 16)))
+            if key:
+                return key, []
+        except ValueError:
+            pass
     key = m.get(name.lower())
     if key:
         return key, []
@@ -74,19 +87,23 @@ def resolve(name, m):
     close, seen = [], set()
     for c in difflib.get_close_matches(name.lower(), list(m), n=12, cutoff=0.72):
         key = m[c]
-        if key not in seen:
+        if key not in seen and db()[key]["luaVerified"]:
             seen.add(key)
-            close.append(key)
+            close.append(db()[key]["lua"])
     return None, close[:5]
 
 
 def cmd_check(args):
     m = lookup_map()
+    callable_names = callable_index(db(), args.apiset)
     out, ok = [], True
     for name in args.names:
         key, close = resolve(name, m)
-        if key:
-            r = db()[key]
+        r = callable_names.get(name)
+        if r is None and key and name.lower().startswith("0x") and db()[key]["luaVerified"]:
+            source = db()[key]
+            r = reference_record(source, name, args.apiset)
+        if r and r["luaVerified"] and (not args.apiset or r["apiset"] in (args.apiset, "shared")):
             out.append(
                 {
                     "query": name,
@@ -101,6 +118,8 @@ def cmd_check(args):
             )
         else:
             ok = False
+            if key and db()[key]["luaVerified"]:
+                close = [db()[key]["lua"]]
             out.append({"query": name, "exists": False, "suggestions": close})
     if args.json:
         print(json.dumps(out, indent=1))
@@ -110,7 +129,7 @@ def cmd_check(args):
                 print("OK    {}  [{}]  {}".format(o["lua"], o["apiset"], o["ns"]))
                 print("      {}".format(o["signature"]))
             else:
-                print("FAIL  {} does not exist".format(o["query"]))
+                print("FAIL  " + t("native_lua_not_callable", name=o["query"]))
                 if o["suggestions"]:
                     print("      did you mean: {}".format(", ".join(o["suggestions"])))
                 else:
@@ -120,6 +139,7 @@ def cmd_check(args):
 
 def cmd_show(args):
     m = lookup_map()
+    callable_names = callable_index(db(), args.apiset)
     for name in args.names:
         key, close = resolve(name, m)
         if not key:
@@ -128,6 +148,8 @@ def cmd_show(args):
                 print("      did you mean: {}".format(", ".join(close)))
             continue
         r = db()[key]
+        if r["luaVerified"]:
+            r = callable_names.get(name) or reference_record(r, name, args.apiset)
         if args.json:
             print(json.dumps(r, indent=1, ensure_ascii=False))
             continue
@@ -138,8 +160,9 @@ def cmd_show(args):
         print("apiset    {} -> {}".format(r["apiset"], side_note(r)))
         print("hash      {}".format(r["hash"]))
         print("docs      {}".format(DOCS.format(r["hash"])))
-        if r.get("aliases"):
-            print("aliases   {}".format(", ".join(r["aliases"])))
+        aliases = [alias for alias in r["luaAliases"] if not alias.startswith("N_0x")]
+        if aliases:
+            print("{}   {}".format(t("native_lua_aliases"), ", ".join(aliases)))
         if r.get("description"):
             print("\n{}".format(r["description"].strip()))
         if r["params"]:
@@ -161,6 +184,8 @@ def cmd_show(args):
 
 
 def matches(r, args):
+    if not r["luaVerified"]:
+        return False
     if args.apiset:
         want = args.apiset
         if want == "server" and r["apiset"] not in ("server", "shared"):
@@ -178,6 +203,8 @@ def cmd_search(args):
     terms = [t.lower() for t in args.query]
     hits = []
     for r in db().values():
+        if r["luaVerified"]:
+            r = binding_record(r, r["lua"], args.apiset)
         if not matches(r, args):
             continue
         hay = "{} {} {}".format(r["lua"], r["ns"], r.get("description", "")).lower()
@@ -203,6 +230,8 @@ def cmd_ns(args):
     if not args.namespace:
         counts = {}
         for r in db().values():
+            if not r["luaVerified"]:
+                continue
             counts.setdefault(r["ns"], []).append(r["apiset"])
         for ns in sorted(counts):
             sides = counts[ns]
@@ -210,7 +239,8 @@ def cmd_ns(args):
             print("{:<16} {:>5} natives  ({} server-callable)".format(ns, len(sides), srv))
         return 0
     want = args.namespace.upper()
-    rows = [r for r in db().values() if r["ns"].upper() == want and matches(r, args)]
+    records = [binding_record(r, r["lua"], args.apiset) for r in db().values() if r["luaVerified"]]
+    rows = [r for r in records if r["ns"].upper() == want and matches(r, args)]
     if not rows:
         print("unknown namespace: {}".format(args.namespace))
         return 1

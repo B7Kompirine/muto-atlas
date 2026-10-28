@@ -54,6 +54,10 @@ def _home(*parts):
 # name -> (config key, description, kind, candidate paths)
 # kind: "file" | "folder". Candidates are tried IN ORDER; the first that exists wins.
 REGISTERED = {
+    "fivem": (
+        "fivemFolder", "FiveM.app - installed Lua native wrappers", "folder",
+        [os.path.join(os.environ.get("LOCALAPPDATA", _home("AppData", "Local")), "FiveM", "FiveM.app")],
+    ),
     "codewalker": (
         "codeWalker", "CodeWalker.Core.dll - decodes .ydr/.yft/.ycd", "file",
         [_home("Desktop", "CodeWalker", "CodeWalker.Core.dll")],
