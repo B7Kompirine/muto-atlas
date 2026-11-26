@@ -29,15 +29,15 @@ checkbox list.
 
 | Value | Bit | Name |
 |---:|---:|---|
-| 1 | 0 | *(unnamed)* |
-| 2 | 1 | Wet Road Reflection |
-| 4 | 2 | Dont Fade |
-| 8 | 3 | Draw Last |
-| 16 | 4 | Climbable By AI |
-| 32 | 5 | Suppress HD TXDs |
-| 64 | 6 | Static |
-| 128 | 7 | Disable alpha sorting |
-| 256 | 8 | Tough For Bullets |
+| 1 | 0 | Wet Road Reflection |
+| 2 | 1 | Dont Fade |
+| 4 | 2 | Draw Last |
+| 8 | 3 | Climbable By AI |
+| 16 | 4 | Suppress HD TXDs |
+| **32** | 5 | **Static** |
+| 64 | 6 | Disable alpha sorting |
+| 128 | 7 | Tough For Bullets |
+| 256 | 8 | Is Generic |
 | **512** | 9 | **Has Anim (YCD)** |
 | **1024** | 10 | **UV anims (YCD)** |
 | 2048 | 11 | Shadow Only |
