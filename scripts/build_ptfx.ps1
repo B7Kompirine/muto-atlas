@@ -8,6 +8,11 @@
 # A misspelt fxName is a SILENT failure (the effect never appears, no warning).
 # This index is there to catch that failure before you write it.
 #
+# It also writes entityfx.tsv: the ytyp fxName is NOT an effect name but a TAG
+# in entityfx.dat, whose row names the particle asset and the effect
+# (AMB_WATER_ROOF_DRIPS_SHORT -> core / ent_amb_water_roof_drips_thin). Without
+# this table 138 of 405 vanilla fxNames look like they point at nothing.
+#
 # .ypt STRUCTURE (a claim from a video, verified against the CodeWalker types):
 #   ParticleEffectsList (root)
 #     +- EffectRuleDictionary    <- effects; each one an EventEmitters list
@@ -73,11 +78,14 @@ public static class PtfxIndexer
         man.Init(gtaFolder, s => { }, s => { }, false, true);
 
         var ypts = new List<RpfFileEntry>();
+        var entityFx = new List<RpfFileEntry>();
         foreach (var rpf in man.AllRpfs)
             foreach (var e in rpf.AllEntries)
             {
                 var fe = e as RpfFileEntry;
-                if (fe != null && fe.NameLower.EndsWith(".ypt")) ypts.Add(fe);
+                if (fe == null) continue;
+                if (fe.NameLower.EndsWith(".ypt")) ypts.Add(fe);
+                else if (fe.NameLower == "entityfx.dat") entityFx.Add(fe);
             }
         Console.WriteLine("[*] ypt files: {0}", ypts.Count);
 
@@ -153,9 +161,58 @@ public static class PtfxIndexer
         File.WriteAllBytes(Path.Combine(outFolder, "ptfx_files.tsv"),
                            Encoding.UTF8.GetBytes(sb2.ToString()));
 
+        WriteEntityFx(entityFx, outFolder);
+
         Console.WriteLine("[+] ptfx_effects.tsv.gz  ({0} unique effects / {1} definitions)", effects.Count, nEffect);
         Console.WriteLine("[+] ptfx_files.tsv       ({0} ypt)", yptEffects.Count);
         Console.WriteLine("[+] {0:0.0} s", (DateTime.Now - t0).TotalSeconds);
+    }
+
+    // entityfx.dat is plain text: '#' comments, <BLOCK>_START / <BLOCK>_END markers,
+    // and rows whose first three columns are TAG, PTFX_ASSET, FX_NAME. The base
+    // copy is read first and the update copy last, so the update row wins.
+    static void WriteEntityFx(List<RpfFileEntry> files, string outFolder)
+    {
+        files.Sort((a, b) => Rank(a).CompareTo(Rank(b)));
+        var rows = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+        int read = 0;
+        foreach (var fe in files)
+        {
+            var data = fe.File.ExtractFile(fe);
+            if (data == null || data.Length == 0)
+                throw new Exception("entityfx.dat could not be read: " + fe.Path);
+            read++;
+            string block = null;
+            foreach (var raw in Encoding.UTF8.GetString(data).Split('\n'))
+            {
+                var line = raw.Trim();
+                if (line.Length == 0 || line[0] == '#') continue;
+                if (line.EndsWith("_START")) { block = line.Substring(0, line.Length - 6); continue; }
+                if (line.EndsWith("_END")) { block = null; continue; }
+                if (block == null) continue;
+                var p = line.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                if (p.Length < 3) continue;
+                rows[p[0]] = new[] { p[0], block, p[1], p[2], fe.Path };
+            }
+        }
+        if (read == 0) throw new Exception("no entityfx.dat found in the archives");
+
+        var sb = new StringBuilder();
+        sb.Append("tag\tblock\tasset\teffect\tsource\n");
+        foreach (var r in rows.Values)
+            sb.Append(Clean(r[0])).Append('\t').Append(Clean(r[1])).Append('\t')
+              .Append(Clean(r[2])).Append('\t').Append(Clean(r[3])).Append('\t')
+              .Append(Clean(r[4])).Append('\n');
+        File.WriteAllBytes(Path.Combine(outFolder, "entityfx.tsv"), Encoding.UTF8.GetBytes(sb.ToString()));
+        Console.WriteLine("[+] entityfx.tsv         ({0} tags from {1} entityfx.dat)", rows.Count, read);
+    }
+
+    static int Rank(RpfFileEntry fe)
+    {
+        string p = fe.Path.ToLowerInvariant();
+        if (p.StartsWith("update\\update")) return 2;
+        if (p.StartsWith("update")) return 1;
+        return 0;
     }
 }
 '@
