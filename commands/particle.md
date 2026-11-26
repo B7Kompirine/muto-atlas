@@ -17,5 +17,5 @@ Plugin root: `${CLAUDE_PLUGIN_ROOT}` (if it cannot be found, the muto-atlas fold
 4. After building, read back (`ypt_xml_to_bin.ps1` exit 0) and measure in game with the **test bench** — "the handle is set" is not proof.
 
 ## When presenting the result
-- State explicitly that the `fxName` was found in the `.ypt`, and mention the `ent_` prefix.
+- State explicitly which `entityfx.dat` row the `fxName` resolves to (asset + effect), and that the effect is in that `.ypt`.
 - If a new `.ypt` went into stream: a separate resource, a lower-case name, **leave the server and reconnect**.
