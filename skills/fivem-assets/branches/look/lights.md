@@ -107,8 +107,8 @@ Measured, not guessed:
   is the same content. The only criterion is **the read-back**; `--apply` always reads
   back and does not write if the light count does not match.
 
-- **`Flashiness` (flicker) is not documented anywhere**; it was read from the distribution of 72,539 lights:
-  **15** alarm · **17** tunnel · **9** emergency · **19** damaged ship
+- **`Flashiness` (flicker) is a named enum** (Sollumz `LightFlashiness`): **15** `CANDLE` (used on alarm lamps) ·
+  **17** `FIRE` (tunnel lamps) · **9** `ALARM` (emergency lights) · **19** `ELECTRIC` (damaged ship)
   (68,036 of them are 0). ⚠️ The vanilla prop named "broken light" has flashiness
   **0** — GTA makes "broken" with the model, not with flicker.
 - **An emissive panel has no light** — the brightness is in `emissiveMultiplier`, and
@@ -195,19 +195,24 @@ putting it in `stream/` under the same name = override.
 = 21:00–07:00. **The most common cause of "the light does not come on" is the hour window**,
 not the light itself.
 
-### Flashiness — its meaning is documented nowhere, it was read from the distribution
+### Flashiness — the enum names, and what vanilla uses each value for
+The values are a named enum: Sollumz `LightFlashiness` in `szio/gta5/drawables.py`
+(0 `CONSTANT` · 1 `RANDOM` · 2 `RANDOM_OVERRIDE_IF_WET` · 3 `ONCE_PER_SECOND` ·
+4 `TWICE_PER_SECOND` · 5 `FIVE_PER_SECOND` · 6 `RANDOM_FLASHINESS` · 7 `OFF` · 8 `UNUSED` ·
+9 `ALARM` · 10 `ON_WHEN_RAINING` · 11-13 `CYCLE_1`-`CYCLE_3` · 14 `DISCO` · 15 `CANDLE` ·
+16 `PLANE` · 17 `FIRE` · 18 `THRESHOLD` · 19 `ELECTRIC` · 20 `STROBE`).
 72,539 vanilla lights scanned, **68,036 = 0** (constant). The non-zero ones and
-the models that use them:
+the models that use them; the usage column is a hint, the name is the enum:
 
-| Value | Count | Models using it (hint) |
-|---|---|---|
-| 15 | 1096 | `v_med_cor_alarmlight`, `xm_prop_x17_sub_alarm_lamp` — red 255,5,0 **alarm** |
-| 17 | 693 | `cs2_30_tunnel_det_*` — tunnel lamps |
-| 11/12/13 | ~1400 | casino arcade, cinema — cycles |
-| 9 | 344 | `prop_ld_alarm_alert`, `v_48_emerg_light_a` — **emergency** |
-| 19 | 172 | `gr_prop_damship_01a` (**damaged ship**) |
-| 20 | 39 | `ba_prop_battle_lights_fx_rige` — strobe |
-| 14 | 22 | `v_73_elev_sec*` — elevator |
+| Value | Name | Count | Models using it (hint) |
+|---|---|---|---|
+| 15 | `CANDLE` | 1096 | `v_med_cor_alarmlight`, `xm_prop_x17_sub_alarm_lamp` — red 255,5,0 alarm lamps |
+| 17 | `FIRE` | 693 | `cs2_30_tunnel_det_*` — tunnel lamps |
+| 11/12/13 | `CYCLE_1`/`_2`/`_3` | ~1400 | casino arcade, cinema — cycles |
+| 9 | `ALARM` | 344 | `prop_ld_alarm_alert`, `v_48_emerg_light_a` — emergency |
+| 19 | `ELECTRIC` | 172 | `gr_prop_damship_01a` (damaged ship) |
+| 20 | `STROBE` | 39 | `ba_prop_battle_lights_fx_rige` — strobe |
+| 14 | `DISCO` | 22 | `v_73_elev_sec*` — elevator |
 
 ⚠️ **`h4_int_club_broken_light` ("broken light") has flashiness = 0.** So GTA
 makes the "broken" look **with the model**, not with flashiness.
