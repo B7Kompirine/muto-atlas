@@ -1,7 +1,7 @@
 # Use an existing effect / attach it to a prop — `fxName`, `StartParticleFx`, ytyp extension
 
 **When to read:** you are looking for an existing vanilla effect (smoke, fire, sparks, dust), attaching a particle to a prop, or "the effect never appears".
-**Source:** `trunk/flags.md` §6 · SKILL query lines (2026-08) · **Measured:** 64,209 ytyp extensions, 2,549 effects / 368 `.ypt`; `ent_` prefix 65.3%
+**Source:** `trunk/flags.md` §6 · SKILL query lines (2026-08) · **Measured:** 64,209 ytyp extensions, 2,549 effects / 368 `.ypt`; 515 `entityfx.dat` rows
 **Read first:** `branches/particle/_branch.md` · trunk › `trunk/tool-pitfalls.md` §3 CodeWalker (`FxcFileHash`, `VFT`, `ResourcePointerArray64`)
 
 ---
@@ -46,45 +46,50 @@ python "${CLAUDE_PLUGIN_ROOT}/scripts/assetdb.py" ptfx --type 4        # Destroy
 `Ignore Damaged Model` · `Play on Parent` · `Only on Damaged Model` ·
 `Allow Rubber Bullet Shot`
 
-### ⛔ The ytyp `fxName` and the effect name in the `.ypt` are NOT THE SAME
+### ⛔ The ytyp `fxName` is an `entityfx.dat` tag, not an effect name
 
-**Measured** (406 unique `fxName` × 2,549-effect catalogue):
+The `fxName` of a `CExtensionDefParticleEffect` is looked up as a **tag** in
+`entityfx.dat` (`common.rpf/data/effects/entityfx.dat`; the copy in
+`update/update.rpf/common/data/effects/` wins). Each row gives the tag, the
+**particle asset** and the **effect name**:
 
-| Case | Count | Share |
-|---|---:|---:|
-| in the catalogue **as is** | 3 | 0.7% |
-| found after adding the **`ent_` prefix** | 265 | 65.3% |
-| found with the `ent_` prefix **+ a suffix** | 9 | 2.2% |
-| **no relative at all** | 129 | 31.8% |
-
-So you write `amb_steam_vent_round` into the ytyp, and the real name inside the `.ypt`
-is **`ent_amb_steam_vent_round`**. Sometimes a suffix is added too:
-`amb_butterflys` → **`ent_amb_butterflys_swarm`** ·
-`amb_moths` → `ent_amb_moths_swarm` / `ent_amb_moths_cupboard` ·
-`ray_shipwreck_splash` → `..._s` / `..._l`.
-
-**Total resolvable: 68.2%.**
-
-### ⚠ The remaining 31.8% are vanilla's own dangling references
-
-**The index is not incomplete — proven:** `core.ypt` was opened to XML with CodeWalker
-(45.5 MB) and **895 of the 895 effects** in `EffectRuleDictionary` appeared in the index,
-**0** missed. So these names really do not exist in the game files.
-
-The most striking: `amb_water_roof_drips_short` **5,621 uses** ·
-`amb_wind_dust_swirl` 783 · `amb_wind_sand_dune` 547 · `amb_wind_dust` 475 ·
-`amb_water_roof_pour_short` 374 · `dst_shop_plastic_cont` 256.
-
-`amb_water_roof_drips` and `..._thin` exist but `_short` does not — so these are dead
-references left over from effects deleted/renamed across versions. **If you copied a vanilla ytyp and inherited its effect,
-that effect may already not work.**
-
-Practical result: if you copied a vanilla prop's ytyp and inherited its effect,
-that effect may already not work. **Verify before copying:**
-
-```bash
-assetdb.py fx <fxName> --exact
+```text
+# TAG                        PTFX_ASSET   FX_NAME
+AMB_STEAM_VENT_ROUND         core         ent_amb_steam_vent_round
+AMB_WATER_ROOF_DRIPS_SHORT   core         ent_amb_water_roof_drips_thin
+AMB_WIND_SAND_DUNE           core         env_wind_sand_dune
+AMB_SPRINKLER_INT_ON         core         scr_agency3b_sprinkler_on
 ```
+
+The file has 515 rows in eight blocks (`ENTITYFX_AMBIENT_PTFX` 226,
+`ENTITYFX_RAYFIRE_PTFX` 143, `FRAGMENTFX_DESTROY_PTFX` 65, `ENTITYFX_SHOT_PTFX` 27,
+`ENTITYFX_ANIM_PTFX` 24, `FRAGMENTFX_BREAK_PTFX` 18, `ENTITYFX_COLLISION_PTFX` 9,
+`ENTITYFX_INWATER_PTFX` 3). In **313** of them the effect name is `ent_` + the tag,
+which is why matching names against the `.ypt` catalogue looks like a prefix rule.
+The other 202 map to something else (`_thin` instead of `_short`, `env_`, `scr_`).
+
+**Measured** (405 unique vanilla `fxName` values × 2,549-effect catalogue, then × `entityfx.dat`):
+
+| Case | Count |
+|---|---:|
+| in the catalogue **as is** | 3 |
+| found after adding `ent_` | 264 |
+| not found by name, **but a tag in `entityfx.dat`** | 138 |
+| not found anywhere | **0** |
+
+So there are **no dangling vanilla references**: the names that "have no relative"
+in the catalogue (`amb_water_roof_drips_short`, `amb_wind_dust_swirl`,
+`amb_wind_sand_dune`, `amb_wind_dust`, ...) are all rows in `entityfx.dat`, and the
+effect they point to exists in the game files (not re-tested in game).
+
+**Practical rules:**
+- To find the real effect for an `fxName`, look the tag up in `entityfx.dat`
+  (case-insensitive), not in the `.ypt` catalogue.
+- `assetdb.py fx <fxName> --exact` searches the catalogue only, so exit `1` for an
+  `fxName` does **not** mean the effect is missing. Check `entityfx.dat` first.
+- An add-on effect needs its **own row** in an `entityfx.dat` (tag, asset, effect),
+  or the extension points at nothing. Naming the effect `ent_<tag>` alone does not
+  register it.
 
 ### Where to find the effect name (four ways)
 

@@ -14,8 +14,9 @@ Measurement sources: `core.ypt` (45.5 MB) field by field; 2,549 vanilla effects 
 15 + 56 families measured in game with the test bench.
 
 ### Naming and links
-- **The ytyp `fxName` and the effect name in the `.ypt` are NOT THE SAME** — the engine adds the `ent_` prefix (65.3%). Before writing
-  an `fxName`, run `assetdb.py fx <name> --exact`. A wrong name **silently** never appears.
+- **The ytyp `fxName` is a tag in `entityfx.dat`, not the effect name in the `.ypt`** — the row gives the asset and the
+  effect (`ent_` + tag in 313 of 515 rows, something else in the rest). Look the tag up there; an add-on effect needs its own row.
+  A wrong name **silently** never appears.
 - **The emitter name is not the effect name**; `<ParticleRule>` is in the **effect** block, not in the emitter.
 - In-game use carries **two separate names** (asset name + effect name); an asset name **has no capital letters**.
 
