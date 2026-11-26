@@ -69,6 +69,41 @@ MESSAGES = {
     "dump_version": {"tr": "dump surumu", "en": "dump version"},
     "built_at": {"tr": "uretim", "en": "built"},
 
+    # --- fx / entityfx.dat ---
+    "fx_tag": {"tr": "entityfx.dat etiketi", "en": "entityfx.dat tag"},
+    "fx_block": {"tr": "blok", "en": "block"},
+    "fx_asset": {"tr": "ptfx asset", "en": "ptfx asset"},
+    "fx_effect": {"tr": "efekt", "en": "effect"},
+    "fx_tag_dangling": {
+        "tr": "Bu satirin efekti ({effect}) hicbir .ypt icinde yok ({n} efekt tarandi).",
+        "en": "This row's effect ({effect}) is in no .ypt ({n} effects scanned).",
+    },
+    "fx_tag_resolved": {
+        "tr": "ytyp fxName'i bir efekt adi degil, entityfx.dat etiketidir; oyun efekti bu satirdan bulur.",
+        "en": "A ytyp fxName is not an effect name but an entityfx.dat tag; the game finds the effect through this row.",
+    },
+    "fx_effect_not_tag": {
+        "tr": "'{q}' bir efekt adi ama entityfx.dat etiketi DEGIL. ytyp fxName'ine bunu yazma.",
+        "en": "'{q}' is an effect name but NOT an entityfx.dat tag. Do not write it into a ytyp fxName.",
+    },
+    "fx_effect_tags": {
+        "tr": "Bu efekte giden etiket(ler):",
+        "en": "Tag(s) that point to this effect:",
+    },
+    "fx_effect_no_tag": {
+        "tr": "Hicbir entityfx.dat satiri bu efekte gitmiyor; ytyp'ten kullanmak icin kendi satirin gerekir.",
+        "en": "No entityfx.dat row points to this effect; using it from a ytyp needs a row of your own.",
+    },
+    "fx_none": {
+        "tr": "'{q}' ne bir entityfx.dat etiketi ({tags} etiket) ne de bir efekt adi ({n} efekt).",
+        "en": "'{q}' is neither an entityfx.dat tag ({tags} tags) nor an effect name ({n} effects).",
+    },
+    "fx_none_hint": {
+        "tr": "Yanlis fxName SESSIZ bir hatadir: efekt hic gorunmez, uyari yok. Eklenti efekt icin entityfx.dat'a kendi satirini ekle.",
+        "en": "A wrong fxName is a SILENT failure: the effect never appears, no warning. An add-on effect needs its own entityfx.dat row.",
+    },
+    "fx_did_you_mean": {"tr": "bunu mu demek istedin:", "en": "did you mean:"},
+
     # --- ped ---
     "ped_clipdict": {"tr": "klip sozlugu", "en": "clip dictionary"},
     "ped_expr": {"tr": "expression", "en": "expression"},

@@ -919,6 +919,30 @@ def ext_rows():
 
 
 PTFXTSV = os.path.join(DATA, "ptfx_effects.tsv.gz")
+ENTITYFX_TSV = os.path.join(DATA, "entityfx.tsv")
+
+
+def entityfx_table():
+    """entityfx.dat rows: tag (lower case) -> (tag, block, asset, effect).
+
+    The ytyp fxName is looked up HERE, not in the .ypt catalogue: the row names
+    the particle asset and the effect. Measured: of 515 rows, 313 have
+    effect == 'ent_' + tag, the other 202 something else
+    (AMB_WATER_ROOF_DRIPS_SHORT -> ent_amb_water_roof_drips_thin).
+    Written by build_ptfx.ps1 together with ptfx_effects.tsv.gz (same layer).
+    Returns None when it is not built, so 'not built' stays distinct
+    from 'no such tag'.
+    """
+    if not os.path.exists(ENTITYFX_TSV):
+        return None
+    out = {}
+    with open(ENTITYFX_TSV, encoding="utf-8", errors="replace") as fh:
+        fh.readline()
+        for line in fh:
+            p = line.rstrip("\n").split("\t")
+            if len(p) >= 4:
+                out[p[0].lower()] = (p[0], p[1], p[2], p[3])
+    return out
 
 
 def ptfx_catalog():
@@ -949,46 +973,54 @@ def cmd_fx(args):
 
     q = (args.query or "").lower()
     if args.exact:
-        # The fxName in the ytyp and the effect name in the .ypt are NOT THE SAME:
-        # measured, of 406 fxNames only 3 exist as is, 265 (65.3%) need the
-        # 'ent_' prefix. Try as is first, then with the prefix.
-        r = catalog.get(q) or catalog.get("ent_" + q)
-        if r and not catalog.get(q):
-            print(f"\n  NOTE: the ytyp says '{args.query}' but the real name in the "
-                  f".ypt is '{r[0]}'.")
-            print("        The engine adds the 'ent_' prefix itself "
-                  "(true for 65.3% of 406 fxNames).")
-        if not r:
-            # If something STARTS WITH 'ent_<name>', the name also got a suffix.
-            # Measured: 9 of 406 fxNames are like this (e.g. amb_butterflys ->
-            # ent_amb_butterflys_swarm).
-            prefixed = "ent_" + q
-            suffixed = sorted(v[0] for k, v in catalog.items() if k.startswith(prefixed))
-            if suffixed:
-                print(f"\n'{args.query}' does not exist as is, but a SUFFIXED form does:")
-                for y in suffixed[:6]:
-                    print(f"    {y}")
-                print("\n  The ytyp name and the .ypt name can differ by both a prefix")
-                print("  and a suffix. Make sure which one you want.")
+        # The ytyp fxName is an entityfx.dat TAG. Resolve it there first; only
+        # then is the effect looked up in the .ypt catalogue.
+        efx = entityfx_table()
+        if efx is None:
+            die_layer(t("layer_missing", file=ENTITYFX_TSV,
+                        cmd="powershell -NoProfile -ExecutionPolicy Bypass "
+                            "-File scripts/build_ptfx.ps1"))
+        row = efx.get(q)
+        if row:
+            tag, block, asset, effect = row
+            print(f"\n=== {tag} ===")
+            print(f"  {t('fx_block'):<14}: {block}")
+            print(f"  {t('fx_asset'):<14}: {asset}")
+            print(f"  {t('fx_effect'):<14}: {effect}")
+            hit = catalog.get(effect.lower())
+            if hit:
+                print(f"  found in ypt  : {hit[2].replace(';', ', ')}")
+            uses = [x for x in ext_rows()
+                    if x["extType"] == "Particle" and x["fxName"].lower() == q]
+            print(f"  ytyp usage    : {len(uses)} props")
+            for x in uses[:6]:
+                print(f"     {x['archetype']:<34} fxType={x['fxType']} scale={x['scale']}")
+            print(f"\n  {t('fx_tag_resolved')}")
+            if not hit:
+                print(f"  !! {t('fx_tag_dangling', effect=effect, n=len(catalog))}")
                 return 1
+            return 0
 
-            print(f"\nNo effect named '{args.query}' EXISTS ({len(catalog)} effects scanned;")
-            print("  the 'ent_' prefix and suffixed forms were tried too).")
-            close = [v[0] for k, v in catalog.items() if q[:6] and q[:6] in k][:8]
+        r = catalog.get(q)
+        if not r:
+            print(f"\n{t('fx_none', q=args.query, tags=len(efx), n=len(catalog))}")
+            close = sorted({v[0] for v in efx.values() if q[:6] and q[:6] in v[0].lower()} |
+                           {v[0] for k, v in catalog.items() if q[:6] and q[:6] in k})[:8]
             if close:
-                print("  did you mean:")
+                print(f"  {t('fx_did_you_mean')}")
                 for y in close:
                     print(f"    {y}")
-            print("\n  !! A wrong fxName is a SILENT failure: the effect never appears, no warning.")
-            print("  !! BUT 'not found' does not always mean it is your mistake.")
-            print("     MEASURED: 129 of 406 vanilla fxNames (31.8%) have no relative in")
-            print("     any .ypt at all -- e.g. 'amb_water_roof_drips_short', although it")
-            print("     is used 5621 times. The index is NOT incomplete: compared with")
-            print("     core.ypt's XML, 895/895 effects were captured.")
-            print("     So these are vanilla's own DANGLING REFERENCES.")
-            print("     If you copied a vanilla ytyp and inherited its effect,")
-            print("     that effect may already not work.")
+            print(f"\n  !! {t('fx_none_hint')}")
             return 1
+        # An effect name, not a tag: say so, and name the tags that reach it.
+        print(f"\n  {t('fx_effect_not_tag', q=args.query)}")
+        tags = sorted(v[0] for v in efx.values() if v[3].lower() == q)
+        if tags:
+            print(f"  {t('fx_effect_tags')}")
+            for y in tags[:8]:
+                print(f"    {y}")
+        else:
+            print(f"  {t('fx_effect_no_tag')}")
         name, emitter, ypts = r
         print(f"\n=== {name} ===")
         print(f"  event emitter : {emitter}")
@@ -2214,9 +2246,9 @@ def main():
     s.add_argument("--limit", type=int, default=25)
     s.set_defaults(func=cmd_ptfx)
 
-    s = sub.add_parser("fx", help="particle EFFECT catalog (.ypt): does the effect exist, in which ypt")
+    s = sub.add_parser("fx", help="particle EFFECT catalog (.ypt) + entityfx.dat tags: what a ytyp fxName resolves to")
     s.add_argument("query", nargs="?", default="", help="effect name or part of it")
-    s.add_argument("--exact", action="store_true", help="exact name; if missing it says so and suggests similar ones")
+    s.add_argument("--exact", action="store_true", help="exact fxName tag or effect name: resolves the tag through entityfx.dat, says so if missing")
     s.add_argument("--limit", type=int, default=30)
     s.set_defaults(func=cmd_fx)
 
